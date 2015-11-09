@@ -10,6 +10,7 @@
 
     <body>
         <script type="text/javascript" src="ArtMobilib/ArtMobilib.js"></script>
+        <link rel="stylesheet" href="style.css">
 
         <video id="webcam" style="display:none;" height="480" width="640"></video>
         <div style=" width:640px;height:480px;">
@@ -27,11 +28,11 @@
         <div id="pose1"></div>
 
         <!-- we load trained images here, in future read from json -->
-        <img id="trained0" src="trained/gvf.jpg" width="100">
-        <img id="trained1" src="trained/vsd.jpg" width="100">
-        <img id="trained2" src="trained/3Dtricart.jpg" width="100">
+        <img id="trained0" src="data/gvf.jpg" width="100">
+        <img id="trained1" src="data/vsd.jpg" width="100">
+        <img id="trained2" src="data/3Dtricart.jpg" width="100">
         <video id="videoTexture" autoplay loop style="display:none">
-            <source src="video/video.mp4" type='video/mp4; codecs="avc1.42E01E, mp4a.40.2"'>
+            <source src="data/video.mp4" type='video/mp4; codecs="avc1.42E01E, mp4a.40.2"'>
         </video>
 
         <script type="text/javascript">
@@ -470,7 +471,6 @@
                 stat.add("Posit");
                 stat.add("update");
 
-
                 //load_trained_patterns2("http://localhost:4400/img/trained/vsd1.jpg");
                 //load_trained_patterns2("http://localhost:4400/img/trained/3Dtricart.jpg");
                 load_trained_patterns("trained0");
@@ -550,7 +550,7 @@
             function createModel1() {
                 var object = new THREE.Object3D();
                 var geometry = new THREE.SphereGeometry(0.2, 15, 15, Math.PI);
-                var texture = THREE.ImageUtils.loadTexture("img/casa.jpg");
+                var texture = THREE.ImageUtils.loadTexture("data/casa.jpg");
                 var material = new THREE.MeshBasicMaterial({ map: texture });
                 var mesh = new THREE.Mesh(geometry, material);
 
@@ -562,7 +562,7 @@
             function createModel2() {
                 var object = new THREE.Object3D();
                 var geometry = new THREE.SphereGeometry(0.2, 15, 15, Math.PI);
-                var texture = THREE.ImageUtils.loadTexture("img/3DVTech.jpg");
+                var texture = THREE.ImageUtils.loadTexture("data/3DVTech.jpg");
                 var material = new THREE.MeshBasicMaterial({ map: texture });
                 var mesh = new THREE.Mesh(geometry, material);
 
@@ -575,7 +575,7 @@
             function createModel3() {
                 var object = new THREE.Object3D();
                 var geometry = new THREE.SphereGeometry(0.2, 15, 15, Math.PI);
-                var texture = THREE.ImageUtils.loadTexture("img/ARTmobilis.jpg");
+                var texture = THREE.ImageUtils.loadTexture("data/ARTmobilis.jpg");
                 var material = new THREE.MeshBasicMaterial({ map: texture });
                 var mesh = new THREE.Mesh(geometry, material);
 
