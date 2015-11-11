@@ -37,16 +37,16 @@
 
         <script type="text/javascript">
 
-            var imWidth = 640, imHeight = 480; // size of pipeline processing
-            var debugging = true;
-
-            var video = document.getElementById('webcam');
+            // some global elements
+            video = document.getElementById('webcam');
             canvas2d = document.getElementById('canvas2d');
             canvas3D = document.getElementById('canvas3d');
-            container = document.getElementById('container');
             timeproc = document.getElementById('timeproc');
             matchingresult = document.getElementById('matchingresult');
 
+            //##### to remove
+            container = document.getElementById('container');
+            
             // onload ask for camera and call demo_app
             window.onload = function () {
 
@@ -57,7 +57,7 @@
                             video.play();
                         }, 500);
                         video.src = compatibility.URL.createObjectURL(stream);
-                        main_app(video.videoWidth, video.videoHeight);
+                        main_app();
                     } catch (error) {
                         video.src = stream;
                         console.log("error init");
@@ -67,68 +67,13 @@
                 });
             }
 
-            // The following code will be progressively put in Artmobilib files
-
             /////////////////////
             // Demo initialisation
             /////////////////////
 
-            function main_app(videoWidth, videoHeight) {
-                initArtMobilib(); // initilize global objects
+            function main_app() {
+                ArtMobilib.initArtMobilib("webcam", "canvas2d", "canvas3d", true); // iniatilize global objects
 
-                //pb canvas is 300*150 by default
-                // here we will need to make something clever to resize canvas so that
-                // 1. it fulfill screen
-                // 2. it keeps capture proportion
-                // certainly: rescale to fit border and center in other coord
-                canvas2d.width = canvas3d.width = window.innerWidth;
-                canvas2d.height = canvas3d.height = window.innerHeight;
-                if (debugging) {
-                    canvas2d.width = canvas3d.width = imWidth;
-                    canvas2d.height = canvas3d.height = imHeight;
-                }
-
-                ctx = canvas2d.getContext('2d');
-
-                ctx.fillStyle = "rgb(0,255,0)";
-                ctx.strokeStyle = "rgb(0,255,0)";
-
-                // JSfeat Orb detection+matching part
-                img_u8 = new jsfeat.matrix_t(imWidth, imHeight, jsfeat.U8_t | jsfeat.C1_t);
-                img_u8_smooth = new jsfeat.matrix_t(imWidth, imHeight, jsfeat.U8_t | jsfeat.C1_t);            // after blur
-
-                // we will limit to 500 strongest points
-                screen_descriptors = new jsfeat.matrix_t(32, 500, jsfeat.U8_t | jsfeat.C1_t);
-
-                // recorded detection results for each pattern
-                pattern_descriptors = [];
-                pattern_preview = [];
-                screen_corners = [];
-                pattern_corners = [];
-                matches = [];
-
-                // transform matrix
-                homo3x3 = [];
-                match_mask = [];
-
-                // live displayed corners
-                var i = maxCorners; // 2000 corners maximum
-                while (--i >= 0)
-                    screen_corners[i] = new jsfeat.keypoint_t(0, 0, 0, 0, -1);
-
-                // Aruco part
-                posit = new POS.Posit(modelSize, canvas2d.width);
-
-                options = new demo_opt();
-                stat.add("grayscale");
-                stat.add("gauss blur");
-                stat.add("keypoints");
-                stat.add("orb descriptors");
-                stat.add("matching");
-                stat.add("Posit");
-                stat.add("update");
-
-                createRenderers();
                 createScenes();
 
                 //load_trained_patterns2("http://localhost:4400/img/trained/vsd1.jpg");
@@ -140,112 +85,10 @@
                 compatibility.requestAnimationFrame(tick);
             }
 
-            /////////////////////
-            // video live Processing
-            /////////////////////
-            var getVideoData = function getVideoData(x, y, w, h) {
-                var hiddenCanvas = document.createElement('canvas');
-                hiddenCanvas.width = video.videoWidth;
-                hiddenCanvas.height = video.videoHeight;
-                var hctx = hiddenCanvas.getContext('2d');
-                hctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
-                return hctx.getImageData(x, y, w, h);
-            };
-
-            // put ImgData in a hidden canvas to then write it with resizing on canvas
-            var resizeImData = function (canvas, imgData) {
-                var hiddenCanvas = document.createElement('canvas');
-                hiddenCanvas.width = imWidth;
-                hiddenCanvas.height = imHeight;
-                var hctx = hiddenCanvas.getContext('2d');
-                var cctx = canvas.getContext('2d');
-                hctx.putImageData(imgData, 0, 0);
-                cctx.drawImage(hiddenCanvas, 0, 0, canvas.width, canvas.height);
-            };
-
             function tick() {
-                stat.new_frame();
-
-                if (video) {
-                    if (video.videoWidth > 0) {
-
-                        var videoData = getVideoData(0, 0, imWidth, imHeight);
-                        ctx.putImageData(videoData, 0, 0);
-
-                        var imageData = ctx.getImageData(0, 0, imWidth, imHeight);
-
-                        stat.start("grayscale");
-                        jsfeat.imgproc.grayscale(imageData.data, imWidth, imHeight, img_u8);
-                        stat.stop("grayscale");
-
-                        stat.start("gauss blur");
-                        jsfeat.imgproc.gaussian_blur(img_u8, img_u8_smooth, options.blur_size | 0);
-                        stat.stop("gauss blur");
-
-                        jsfeat.yape06.laplacian_threshold = options.lap_thres | 0;
-                        jsfeat.yape06.min_eigen_value_threshold = options.eigen_thres | 0;
-
-                        stat.start("keypoints");
-                        num_corners = detect_keypoints(img_u8_smooth, screen_corners, 500);
-                        stat.stop("keypoints");
-
-                        stat.start("orb descriptors");
-                        jsfeat.orb.describe(img_u8_smooth, screen_corners, num_corners, screen_descriptors);
-                        stat.stop("orb descriptors");
-
-                        // render result back to canvas
-                        var data_u32 = new Uint32Array(imageData.data.buffer);
-                        render_corners(screen_corners, num_corners, data_u32, imWidth);
-
-                        // render pattern and matches
-                        var num_matches = [];
-                        var good_matches = 0;
-
-                        // search for the rigth pattern
-                        stat.start("matching");
-                        var id = 0;
-                        var str = "", found = false;
-                        for (id = 0; id < nb_trained; ++id) {
-                            num_matches[id] = match_pattern(id);
-                            str += "<br>Id : " + id + " nbMatches : " + num_matches[id];
-                            if (num_matches[id] < 20 || found)
-                                continue;
-
-                            good_matches = find_transform(matches[id], num_matches[id], id);
-                            str += " nbGood : " + good_matches;
-                            if (good_matches > 8) {
-                                current_pattern = id;
-                                found = true;
-                            }
-                        }
-                        matchingresult.innerHTML = str;
-                        stat.stop("matching");
-
-                        // display last detected pattern
-                        if (pattern_preview[current_pattern]) {
-                            render_mono_image(pattern_preview[current_pattern].data, data_u32, pattern_preview[current_pattern].cols, pattern_preview[current_pattern].rows, imWidth);
-                        }
-
-                        resizeImData(canvas2d, imageData);
-
-                        // display matching result and 3d when detection
-                        if (num_matches[current_pattern]) { // last detected
-                            render_matches(ctx, matches[current_pattern], num_matches[current_pattern]);
-                            if (found) {
-                                render_pattern_shape(ctx);
-                                updateScenes(shape_pts);
-                                render();
-                            }
-                            else
-                                renderer3d.clear();
-                        }
-
-                        timeproc.innerHTML = stat.log();
-                    }
-                }
+                ArtMobilib.tick();
                 compatibility.requestAnimationFrame(tick);
             }
-
 
         </script>
     </body>

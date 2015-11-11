@@ -6,7 +6,7 @@
 function render_matches(ctx, matches, count) {
     if (current_pattern == -1) return;
 
-    var scaleX = canvas2d.width / imWidth, scaleY = canvas2d.height / imHeight;
+    var scaleX = canvas2d.width / ArtMobilib.imWidth, scaleY = canvas2d.height / ArtMobilib.imHeight;
     for (var i = 0; i < count; ++i) {
         var m = matches[i];
         var s_kp = screen_corners[m.screen_idx];
@@ -26,7 +26,7 @@ function render_matches(ctx, matches, count) {
 
 function render_pattern_shape(ctx) {
     // get the projected pattern corners
-    var scaleX = canvas2d.width / imWidth, scaleY = canvas2d.height / imHeight;
+    var scaleX = canvas2d.width / ArtMobilib.imWidth, scaleY = canvas2d.height / ArtMobilib.imHeight;
     shape_pts = tCorners(homo3x3[current_pattern].data, pattern_preview[current_pattern].cols * 2, pattern_preview[current_pattern].rows * 2);
 
     ctx.strokeStyle = "rgb(0,255,0)";

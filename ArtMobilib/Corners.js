@@ -222,7 +222,7 @@ trainpattern = function (img) {
     matches[nb_trained] = [];
     var i = maxMatches;
     while (--i >= 0) {
-        matches[nb_trained][i] = new match_t();
+        matches[nb_trained][i] = new ArtMobilib.match_t();
     }
 
     // transform matrix

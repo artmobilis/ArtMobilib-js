@@ -15,7 +15,7 @@ function initVideo() {
 function updateScenes(corners) {
     var corners, corner, pose, i;
 
-    var scaleX = canvas2d.width / imWidth, scaleY = canvas2d.height / imHeight;
+    var scaleX = canvas2d.width / ArtMobilib.imWidth, scaleY = canvas2d.height / ArtMobilib.imHeight;
     for (i = 0; i < corners.length; ++i) {
         corner = corners[i];
         corner.x = corner.x * scaleX - (canvas2d.width / 2);
@@ -23,7 +23,7 @@ function updateScenes(corners) {
     }
 
     stat.start("Posit");
-    pose = posit.pose(corners);
+    pose = ArtMobilib.posit.pose(corners);
     stat.stop("Posit");
 
     stat.start("update");

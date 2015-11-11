@@ -53,10 +53,10 @@ var load_trained_patterns2 = function (name) {
 // Threejs initialisation
 /////////////////////
 
-function createRenderers() {
-    renderer3d = new THREE.WebGLRenderer({ canvas: canvas3D, alpha: true });
-    renderer3d.setClearColor(0xffffff, 0);
-    renderer3d.setSize(canvas2d.width, canvas2d.height);
+ArtMobilib.createRenderers = function() {
+    this.renderer3d = new THREE.WebGLRenderer({ canvas: canvas3D, alpha: true });
+    this.renderer3d.setClearColor(0xffffff, 0);
+    this.renderer3d.setSize(this.canvas2d.width, this.canvas2d.height);
 
     // to project direct texture
     scene1 = new THREE.Scene();
@@ -65,15 +65,15 @@ function createRenderers() {
 
     // for 3d projection
     scene2 = new THREE.Scene();
-    camera2 = new THREE.PerspectiveCamera(40, canvas2d.width / canvas2d.height, 1, 1000); // be carefull, projection only works if we keep width>heigth (landscape)
+    camera2 = new THREE.PerspectiveCamera(40, this.canvas2d.width / this.canvas2d.height, 1, 1000); // be carefull, projection only works if we keep width>heigth (landscape)
     scene2.add(camera2);
 };
 
-function render() {
-    renderer3d.autoClear = false;
-    renderer3d.clear();
-    //renderer3d.render(scene1, camera1);
-    renderer3d.render(scene2, camera2);
+ArtMobilib.render = function () {
+    this.renderer3d.autoClear = false;
+    this.renderer3d.clear();
+    //this.renderer3d.render(scene1, camera1);
+    this.renderer3d.render(scene2, camera2);
 };
 
 function createScenes() {
