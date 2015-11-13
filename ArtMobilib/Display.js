@@ -1,8 +1,11 @@
+// todo license???
+// it is mainly 2D rendering, for debugging
 
 /////////////////////
-// Drawers
+// 2D Drawers
 /////////////////////
 
+// draw red/green lines between detected matches
 function render_matches(ctx, matches, count) {
     if (current_pattern == -1) return;
 
@@ -24,6 +27,7 @@ function render_matches(ctx, matches, count) {
     }
 }
 
+// draw the 2D green polygon around detected pattern in canvas 2D image
 function render_pattern_shape(ctx) {
     // get the projected pattern corners
     var scaleX = canvas2d.width / ArtMobilib.imWidth, scaleY = canvas2d.height / ArtMobilib.imHeight;
@@ -42,6 +46,7 @@ function render_pattern_shape(ctx) {
     ctx.stroke();
 }
 
+// display detected corners in canvas 2D image
 function render_corners(corners, count, img, step) {
     var pix = (0xff << 24) | (0x00 << 16) | (0xff << 8) | 0x00;
     for (var i = 0; i < count; ++i) {
@@ -56,6 +61,7 @@ function render_corners(corners, count, img, step) {
     }
 }
 
+// display the detected image in upper/left part of canvas 2D image
 function render_mono_image(src, dst, sw, sh, dw) {
     var alpha = (0xff << 24);
     for (var i = 0; i < sh; ++i) {

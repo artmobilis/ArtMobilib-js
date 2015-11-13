@@ -1,3 +1,7 @@
+// todo license???
+// todo define the API: which objects are used by Application? How many instances?
+// put everything under ArtMobilib namespace.
+
 
 function include(fileName){
     document.write("<script type='text/javascript' src='"+fileName+"'></script>" );
@@ -93,8 +97,6 @@ ArtMobilib.initArtMobilib = function(video ,canvas2d, canvas3d, debug) {
     this.video = document.getElementById(video);
     this.canvas2d = document.getElementById(canvas2d);
     this.canvas3d = document.getElementById(canvas3d);
-
-    initVideo(); // a test to load video
 
     //pb canvas is 300*150 by default
     // here we will need to make something clever to resize canvas so that
