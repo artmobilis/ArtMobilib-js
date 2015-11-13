@@ -133,6 +133,29 @@ function match_pattern(id) {
     return num_matches;
 }
 
+// match with all recorded pattern and select the best if enough corresponding data
+function matching() {
+    var good_matches = 0;
+
+// search for the right pattern
+    var id = 0;
+    var str = "", found = false;
+    for (id = 0; id < nb_trained; ++id) {
+        num_matches[id] = match_pattern(id);
+        str += "<br>Id : " + id + " nbMatches : " + num_matches[id];
+        if (num_matches[id] < 20 || found)
+            continue;
+
+        good_matches = find_transform(matches[id], num_matches[id], id);
+        str += " nbGood : " + good_matches;
+        if (good_matches > 8) {
+            current_pattern = id;
+            found = true;
+        }
+    }
+    matchingresult.innerHTML = str;
+    return found;
+};
 
 /////////////////////
 // Pattern Training
