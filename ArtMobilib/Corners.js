@@ -1,3 +1,10 @@
+// todo license???
+// why matching not stable I suspect it is because using most dominant angle, we should use 2 bests with diff more than 30°
+// reduce matching processing time, it is more than 90% of the processing time
+//   - identify the part of matching which takes the longest time
+//   - use fast tracking/registration after detection
+//   - do one object per image if multiple
+
 
 /////////////////////
 // Corners detection
@@ -49,55 +56,6 @@ function ic_angle(img, px, py) {
     }
 
     return Math.atan2(m_01, m_10);
-}
-
-
-// estimate homography transform between matched points
-function find_transform(matches, count, id) {
-    // motion kernel
-    var mm_kernel = new jsfeat.motion_model.homography2d();
-    // ransac params
-    var num_model_points = 4;
-    var reproj_threshold = 3;
-    var ransac_param = new jsfeat.ransac_params_t(num_model_points,
-                                                  reproj_threshold, 0.5, 0.99);
-
-    var pattern_xy = [];
-    var screen_xy = [];
-
-    // construct correspondences
-    for (var i = 0; i < count; ++i) {
-        var m = matches[i];
-        var s_kp = screen_corners[m.screen_idx];
-        var p_kp = pattern_corners[id][m.pattern_lev][m.pattern_idx];
-        pattern_xy[i] = { "x": p_kp.x, "y": p_kp.y };
-        screen_xy[i] = { "x": s_kp.x, "y": s_kp.y };
-    }
-
-    // estimate motion
-    var ok = false;
-    ok = jsfeat.motion_estimator.ransac(ransac_param, mm_kernel,
-                                        pattern_xy, screen_xy, count, homo3x3[id], match_mask[id], 1000);
-
-    // extract good matches and re-estimate
-    var good_cnt = 0;
-    if (ok) {
-        for (var i = 0; i < count; ++i) {
-            if (match_mask[id].data[i]) {
-                pattern_xy[good_cnt].x = pattern_xy[i].x;
-                pattern_xy[good_cnt].y = pattern_xy[i].y;
-                screen_xy[good_cnt].x = screen_xy[i].x;
-                screen_xy[good_cnt].y = screen_xy[i].y;
-                good_cnt++;
-            }
-        }
-        // run kernel directly with inliers only
-        mm_kernel.run(pattern_xy, screen_xy, homo3x3[id], good_cnt);
-    } else {
-        jsfeat.matmath.identity_3x3(homo3x3[id], 1.0);
-    }
-
-    return good_cnt;
 }
 
 // non zero bits count
@@ -175,23 +133,29 @@ function match_pattern(id) {
     return num_matches;
 }
 
-// project/transform rectangle corners with 3x3 Matrix
-function tCorners(M, w, h) {
-    var pt = [{ 'x': 0, 'y': 0 }, { 'x': w, 'y': 0 }, { 'x': w, 'y': h }, { 'x': 0, 'y': h }];
-    var z = 0.0, i = 0, px = 0.0, py = 0.0;
+// match with all recorded pattern and select the best if enough corresponding data
+function matching() {
+    var good_matches = 0;
 
-    for (; i < 4; ++i) {
-        px = M[0] * pt[i].x + M[1] * pt[i].y + M[2];
-        py = M[3] * pt[i].x + M[4] * pt[i].y + M[5];
-        z = M[6] * pt[i].x + M[7] * pt[i].y + M[8];
-        pt[i].x = px / z;
-        pt[i].y = py / z;
+// search for the right pattern
+    var id = 0;
+    var str = "", found = false;
+    for (id = 0; id < nb_trained; ++id) {
+        num_matches[id] = match_pattern(id);
+        str += "<br>Id : " + id + " nbMatches : " + num_matches[id];
+        if (num_matches[id] < 20 || found)
+            continue;
+
+        good_matches = find_transform(matches[id], num_matches[id], id);
+        str += " nbGood : " + good_matches;
+        if (good_matches > 8) {
+            current_pattern = id;
+            found = true;
+        }
     }
-
-    return pt;
-}
-
-
+    matchingresult.innerHTML = str;
+    return found;
+};
 
 /////////////////////
 // Pattern Training

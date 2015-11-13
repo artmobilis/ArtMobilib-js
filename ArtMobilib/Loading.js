@@ -1,22 +1,8 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// todo license???
 // todo: any size/mode image learning
 // todo: init 3D objects associated here
-// todo: read 3D ad image from json
-
+// todo: read 3D and image from json
+// todo: deal with memory, preload 3D object but load/display/transform it only when image pattern is recovered
 
 var templateX = 400, templateY = 600; // size of learn patterns (portrait mode currently)
 var trained_8u;
@@ -152,3 +138,13 @@ function createModel3() {
 
     return object;
 };
+
+function createVideoTexture() {
+    var textureVideo;//, material, materials = [], mesh;
+    var video = document.getElementById('videoTexture');
+    textureVideo = new THREE.VideoTexture(video);
+    textureVideo.minFilter = THREE.LinearFilter;
+    textureVideo.magFilter = THREE.LinearFilter;
+    textureVideo.format = THREE.RGBFormat;
+}
+
