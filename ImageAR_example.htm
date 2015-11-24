@@ -28,9 +28,9 @@
         <div id="pose1"></div>
 
         <!-- we load trained images here, in future read from json -->
-        <img id="trained0" src="data/gvf.jpg" width="100">
+        <!-- img id="trained0" src="data/gvf.jpg" width="100" >
         <img id="trained1" src="data/vsd.jpg" width="100">
-        <img id="trained2" src="data/3Dtricart.jpg" width="100">
+        <img id="trained2" src="data/3Dtricart.jpg" width="100">  -->
         <video id="videoTexture" autoplay loop style="display:none">
             <source src="data/video.mp4" type='video/mp4; codecs="avc1.42E01E, mp4a.40.2"'>
         </video>
@@ -76,11 +76,17 @@
 
                 createScenes();
 
-                //load_trained_patterns2("http://localhost:4400/img/trained/vsd1.jpg");
+                <!-- we load trained images here, in future read from json -->
+                load_trained_patterns2("http://localhost:63342/ArtMobilib/data/3Dtricart.jpg");
+                load_trained_patterns2("http://localhost:63342/ArtMobilib/data/gvf.jpg");
+                load_trained_patterns2("http://localhost:63342/ArtMobilib//data/vsd.jpg");
+
+                //load_trained_patterns2("http://www.3dvtech.com/ArtMobilib/data/3Dtricart.jpg");
+                //load_trained_patterns2("http://www.3dvtech.com/ArtMobilib/data/gvf.jpg");
                 //load_trained_patterns2("http://localhost:4400/img/trained/3Dtricart.jpg");
-                load_trained_patterns("trained0");
-                load_trained_patterns("trained1");
-                load_trained_patterns("trained2");
+                //load_trained_patterns("trained0");
+                //load_trained_patterns("trained1");
+                //load_trained_patterns("trained2");
 
                 compatibility.requestAnimationFrame(tick);
             }

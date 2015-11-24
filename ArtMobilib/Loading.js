@@ -19,14 +19,15 @@ var load_trained_patterns = function (name) {
     trainpattern(trained_8u); // le pattern doit etre plus grand que 512*512 dans au moins une dimension (sinon pas de rescale et rien ne se passe)
 };
 
-// using direct link
+
+// using direct link with url
 var load_trained_patterns2 = function (name) {
-    img = new Image();
+    var img = new Image();
     img.onload = function () {
         var contx = container.getContext('2d');
         contx.drawImage(img, 0, 0, templateX, templateY);
-
         var imageData = contx.getImageData(0, 0, templateX, templateY);
+
         trained_8u = new jsfeat.matrix_t(templateX, templateY, jsfeat.U8_t | jsfeat.C1_t);
         jsfeat.imgproc.grayscale(imageData.data, templateX, templateY, trained_8u);
         trainpattern(trained_8u); // le pattern doit etre plus grand que 512*512 dans au moins une dimension (sinon pas de rescale et rien ne se passe)
