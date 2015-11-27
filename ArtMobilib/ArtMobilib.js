@@ -70,21 +70,26 @@ ArtMobilib.match_t = (function () {
     return match_t;
 })();
 
-// todo pt tose global data in objects
-
-// JSfeat
-var gui, options, ctx;
-var img_u8_smooth, screen_corners, num_corners, screen_descriptors;
+// list of learned images
 var pattern_corners, pattern_descriptors, pattern_preview;
-var matches, num_matches, homo3x3, match_mask;
+var match_mask, matches, num_matches, homo3x3;
+var nb_trained = 0, current_pattern = -1;
+
+// global parameters
 var num_train_levels = 4;
 var maxCorners = 2000, maxMatches = 2000;
-var nb_trained = 0, current_pattern = -1;
+
+
+
+// todo put those global data in objects
+// JSfeat
+var options, ctx;
+var img_u8_smooth, screen_corners, num_corners, screen_descriptors;
 
 // ARuco
 var scene1, scene2;
 var camera1, camera2;
-var plane, model1, model2, model3, texture;
+var plane, model, model1, model2, model3, model4, texture;
 var step = 0.0;
 var modelSize = 35.0; //millimeters
 

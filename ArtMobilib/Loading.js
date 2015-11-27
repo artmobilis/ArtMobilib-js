@@ -19,20 +19,72 @@ var load_trained_patterns = function (name) {
     trainpattern(trained_8u); // le pattern doit etre plus grand que 512*512 dans au moins une dimension (sinon pas de rescale et rien ne se passe)
 };
 
-// using direct link
+
+// using direct link with url
 var load_trained_patterns2 = function (name) {
-    img = new Image();
+    var img = new Image();
     img.onload = function () {
         var contx = container.getContext('2d');
         contx.drawImage(img, 0, 0, templateX, templateY);
-
         var imageData = contx.getImageData(0, 0, templateX, templateY);
+
         trained_8u = new jsfeat.matrix_t(templateX, templateY, jsfeat.U8_t | jsfeat.C1_t);
         jsfeat.imgproc.grayscale(imageData.data, templateX, templateY, trained_8u);
         trainpattern(trained_8u); // le pattern doit etre plus grand que 512*512 dans au moins une dimension (sinon pas de rescale et rien ne se passe)
     }
     img.src = name;
 };
+
+
+var loadMarker = function(nameImage, name3D) {
+    load_trained_patterns2("http://localhost:63342/ArtMobilib/"+ nameImage);
+    load_3D("http://localhost:63342/ArtMobilib/"+ name3D, addModelToScene);
+}
+
+var loadMarkerAnim = function(nameImage, name3D) {
+    load_trained_patterns2("http://localhost:63342/ArtMobilib/"+ nameImage);
+    load_3D("http://localhost:63342/ArtMobilib/"+ name3D, addModelToSceneAnim);
+}
+
+function addModelToSceneAnim( geometry, materials )
+{
+    // for preparing animation
+    for (var i = 0; i < materials.length; i++)
+        materials[i].morphTargets = true;
+
+    var material = new THREE.MeshFaceMaterial( materials );
+    var object = new THREE.Mesh( geometry, material );
+    model4 = new THREE.Object3D();
+    model4.add(object);
+
+    object.translateY(5); // for Android robot
+    scene2.add(model4);
+}
+
+function addModelToScene (geometry, materials) {
+    var material = new THREE.MeshFaceMaterial(materials);
+    var object = new THREE.Mesh(geometry, material);
+    model = new THREE.Object3D();
+    model.add(object);
+
+    object.translateY(5); // for Android robot
+    scene2.add(model);
+}
+
+// add a static 3D object
+var load_3D = function (url3D ,addModelToSceneFunction) {
+
+// instantiate a loader
+    var loader = new THREE.JSONLoader();
+
+// load a resource
+    loader.load(
+        // resource URL
+        url3D,
+        // Function when resource is loaded
+        addModelToSceneFunction
+    );
+}
 
 
 /////////////////////
@@ -53,6 +105,12 @@ ArtMobilib.createRenderers = function() {
     scene2 = new THREE.Scene();
     camera2 = new THREE.PerspectiveCamera(40, this.canvas2d.width / this.canvas2d.height, 1, 1000); // be carefull, projection only works if we keep width>heigth (landscape)
     scene2.add(camera2);
+
+    // LIGHT
+    var light = new THREE.PointLight(0xffffff);
+    light.position.set(-100,200,100);
+    scene2.add(light);
+  //  camera2.position.set(0,150,400);
 };
 
 ArtMobilib.render = function () {
