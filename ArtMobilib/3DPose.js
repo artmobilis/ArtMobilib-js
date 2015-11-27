@@ -90,10 +90,12 @@ function updateScenes(corners) {
     stat.stop("Posit");
 
     stat.start("update");
-    updateObject(plane, pose.bestRotation, pose.bestTranslation);
-    updateObject(model1, pose.bestRotation, pose.bestTranslation);
-    updateObject(model2, pose.bestRotation, pose.bestTranslation);
-    updateObject(model3, pose.bestRotation, pose.bestTranslation);
+    updateObject(plane, pose.bestRotation, pose.bestTranslation, modelSize);
+    updateObject(model1, pose.bestRotation, pose.bestTranslation, modelSize);
+    updateObject(model2, pose.bestRotation, pose.bestTranslation, modelSize);
+    updateObject(model3, pose.bestRotation, pose.bestTranslation, modelSize);
+    updateObject(model, pose.bestRotation, pose.bestTranslation,1);
+    updateObject(model4, pose.bestRotation, pose.bestTranslation,1);
     updatePose("pose1", pose.bestError, pose.bestRotation, pose.bestTranslation);
     stat.stop("update");
 
@@ -106,14 +108,16 @@ function updateScenes(corners) {
     model1.rotation.y -= step;
     model2.rotation.y -= step;
     model3.rotation.y -= step;
+    model.rotation.y -= step;
+    model4.rotation.y -= step;
 
     texture.children[0].material.map.needsUpdate = true;
 };
 
-function updateObject(object, rotation, translation) {
-    object.scale.x = modelSize;
-    object.scale.y = modelSize;
-    object.scale.z = modelSize;
+function updateObject(object, rotation, translation, scale) {
+    object.scale.x = scale;
+    object.scale.y = scale;
+    object.scale.z = scale;
 
     object.rotation.x = -Math.asin(-rotation[1][2]);
     object.rotation.y = -Math.atan2(rotation[0][2], rotation[2][2]);

@@ -36,6 +36,57 @@ var load_trained_patterns2 = function (name) {
 };
 
 
+var loadMarker = function(nameImage, name3D) {
+    load_trained_patterns2("http://localhost:63342/ArtMobilib/"+ nameImage);
+    load_3D("http://localhost:63342/ArtMobilib/"+ name3D, addModelToScene);
+}
+
+var loadMarkerAnim = function(nameImage, name3D) {
+    load_trained_patterns2("http://localhost:63342/ArtMobilib/"+ nameImage);
+    load_3D("http://localhost:63342/ArtMobilib/"+ name3D, addModelToSceneAnim);
+}
+
+function addModelToSceneAnim( geometry, materials )
+{
+    // for preparing animation
+    for (var i = 0; i < materials.length; i++)
+        materials[i].morphTargets = true;
+
+    var material = new THREE.MeshFaceMaterial( materials );
+    var object = new THREE.Mesh( geometry, material );
+    model4 = new THREE.Object3D();
+    model4.add(object);
+
+    object.translateY(5); // for Android robot
+    scene2.add(model4);
+}
+
+function addModelToScene (geometry, materials) {
+    var material = new THREE.MeshFaceMaterial(materials);
+    var object = new THREE.Mesh(geometry, material);
+    model = new THREE.Object3D();
+    model.add(object);
+
+    object.translateY(5); // for Android robot
+    scene2.add(model);
+}
+
+// add a static 3D object
+var load_3D = function (url3D ,addModelToSceneFunction) {
+
+// instantiate a loader
+    var loader = new THREE.JSONLoader();
+
+// load a resource
+    loader.load(
+        // resource URL
+        url3D,
+        // Function when resource is loaded
+        addModelToSceneFunction
+    );
+}
+
+
 /////////////////////
 // Threejs initialisation
 /////////////////////
@@ -54,6 +105,12 @@ ArtMobilib.createRenderers = function() {
     scene2 = new THREE.Scene();
     camera2 = new THREE.PerspectiveCamera(40, this.canvas2d.width / this.canvas2d.height, 1, 1000); // be carefull, projection only works if we keep width>heigth (landscape)
     scene2.add(camera2);
+
+    // LIGHT
+    var light = new THREE.PointLight(0xffffff);
+    light.position.set(-100,200,100);
+    scene2.add(light);
+  //  camera2.position.set(0,150,400);
 };
 
 ArtMobilib.render = function () {
