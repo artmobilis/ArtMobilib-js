@@ -37,13 +37,13 @@ var load_trained_patterns2 = function (name) {
 
 
 var loadMarker = function(nameImage, name3D) {
-    load_trained_patterns2("http://localhost:63342/ArtMobilib/"+ nameImage);
-    load_3D("http://localhost:63342/ArtMobilib/"+ name3D, addModelToScene);
+    load_trained_patterns2( nameImage);
+    load_3D( name3D, addModelToScene);
 }
 
 var loadMarkerAnim = function(nameImage, name3D) {
-    load_trained_patterns2("http://localhost:63342/ArtMobilib/"+ nameImage);
-    load_3D("http://localhost:63342/ArtMobilib/"+ name3D, addModelToSceneAnim);
+    load_trained_patterns2( nameImage);
+    load_3D( name3D, addModelToSceneAnim);
 }
 
 function addModelToSceneAnim( geometry, materials )
