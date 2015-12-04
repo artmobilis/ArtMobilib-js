@@ -6,7 +6,7 @@ var compatibility = (function() {
         var lastTime = 0,
         isLittleEndian = true,
 
-        URL = window.URL || window.webkitURL,
+        URL = window.URL || window.webkitURL|| window.mozURL || window.msURL,
 
         requestAnimationFrame = function(callback, element) {
             var requestAnimationFrame =
