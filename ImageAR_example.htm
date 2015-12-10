@@ -74,10 +74,11 @@
             function main_app() {
                 ArtMobilib.initArtMobilib("webcam", "canvas2d", "canvas3d", true); // iniatilize global objects
 
+                
                 createScenes();
 
                 // we load trained images here, in future read from json
-                loadMarkerAnim("data/3Dtricart.jpg", "data/android-animations.js");
+                //loadMarkerAnim("data/3Dtricart.jpg", "data/android-animations.js");
                 //loadMarker("/data/gvf.jpg", "/data/android.js");
                 loadMarker("data/vsd.jpg", "data/android.js");
 
@@ -89,6 +90,9 @@
                 //load_trained_patterns("trained2");
 
                 compatibility.requestAnimationFrame(tick);
+
+                var toto = ArtMobilib.cdetector.testCorner;
+
             }
 
             function tick() {

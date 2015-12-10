@@ -9,6 +9,13 @@
 /////////////////////
 // Corners detection
 /////////////////////
+var CornerDetector = function () {
+    var that = this;
+    var testCorner='4';
+
+    function init() {
+    }
+};
 
 function detect_keypoints(img, corners, max_allowed) {
     // detect features
