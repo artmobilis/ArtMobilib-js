@@ -36,7 +36,9 @@ var load_trained_patterns2 = function (name) {
 
 var loadMarker = function(nameImage, name3D) {
     load_trained_patterns2( nameImage);
-    load_3D( name3D, addModelToScene);
+    load_3D(name3D, addModelToScene);
+
+    var im = new ImageMarkers(nameImage);
 }
 
 var loadMarkerAnim = function(nameImage, name3D) {

@@ -22,12 +22,15 @@ include('ArtMobilib/aruco/posit1.js');
 // Three
 include('ArtMobilib/three/three72.js');
 
-// ArtMobilib
+// Old ArtMobilib
 include('ArtMobilib/Loading.js');
 include('ArtMobilib/Corners.js');
 include('ArtMobilib/3DPose.js');
 include('ArtMobilib/Display.js');
 include('ArtMobilib/Init.js');
+
+// ArtMobilib
+include('ArtMobilib/ImageMarkers.js');
 
 // namespace ?
 var ArtMobilib = ArtMobilib || {REVISION: 'ALPHA'};
