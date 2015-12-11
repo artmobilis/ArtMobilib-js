@@ -44,7 +44,7 @@ var match_mask, matches, num_matches, homo3x3;
 var nb_trained = 0, current_pattern = -1;
 
 // global parameters
-var num_train_levels = 4;
+var num_train_levels = 3;
 var maxCorners = 2000, maxMatches = 2000;
 
 
@@ -133,6 +133,11 @@ ArtMobilib.initArtMobilib = function (video, canvas2d, canvas3d, debug) {
     stat.add("keypoints");
     stat.add("orb descriptors");
     stat.add("matching");
+    stat.add("match_pattern");
+    stat.add("find_transform");
+
+
+
     stat.add("Posit");
     stat.add("update");
 }
@@ -141,8 +146,8 @@ ArtMobilib.initArtMobilib = function (video, canvas2d, canvas3d, debug) {
 /////////////////////
 // video live Processing
 /////////////////////
+var hiddenCanvas = document.createElement('canvas');
 ArtMobilib.getVideoData = function getVideoData(x, y, w, h) {
-    var hiddenCanvas = document.createElement('canvas');
     hiddenCanvas.width = video.videoWidth;
     hiddenCanvas.height = video.videoHeight;
     var hctx = hiddenCanvas.getContext('2d');
@@ -152,7 +157,6 @@ ArtMobilib.getVideoData = function getVideoData(x, y, w, h) {
 
 // put ImgData in a hidden canvas to then write it with resizing on canvas
 ArtMobilib.resizeImDataonCanvas = function (imgData) {
-    var hiddenCanvas = document.createElement('canvas');
     hiddenCanvas.width = this.imWidth;
     hiddenCanvas.height = this.imHeight;
     var hctx = hiddenCanvas.getContext('2d');
@@ -184,7 +188,7 @@ ArtMobilib.tick = function () {
             jsfeat.yape06.min_eigen_value_threshold = options.eigen_thres | 0;
 
             stat.start("keypoints");
-            num_corners = detect_keypoints(img_u8_smooth, screen_corners, 500);
+            num_corners = detect_keypoints(img_u8_smooth, screen_corners, 150);
             stat.stop("keypoints");
 
             stat.start("orb descriptors");
