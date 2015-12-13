@@ -1,7 +1,7 @@
 // todo license???
 
 // Marker container
-// contain all marker ad the index to ext to search
+// contain all marker and the index last marker searched
 var MarkerContainer = function () {
 
     /// private data
@@ -22,8 +22,12 @@ var MarkerContainer = function () {
         currentId = -1;
     }
 
+    this.GetCurrent = function () {
+        return that.markerContainer[currentId];
+    }
+
     this.GetNext = function () {
-        currentId = (currentId+1)%that.markerContainer.length;
+        currentId = (currentId + 1) % that.markerContainer.length;
         return that.markerContainer[currentId];
     }
 

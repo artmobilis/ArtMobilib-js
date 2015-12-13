@@ -7,10 +7,7 @@
 // todo freezing every 5s: I suspect garbage collector because bad memory management
 
 
-
-/////////////////////
-// Corners detection
-/////////////////////
+// Multilevel Image marker
 var ImageMarkers = function (image) {
 
     /// private data
