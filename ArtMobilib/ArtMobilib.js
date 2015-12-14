@@ -31,6 +31,10 @@ include('ArtMobilib/Init.js');
 
 // ArtMobilib
 include('ArtMobilib/ImageMarkers.js');
+include('ArtMobilib/MarkerContainer.js');
+include('ArtMobilib/MarkerMatcher.js');
+include('ArtMobilib/webcamConverter.js');
+include('ArtMobilib/MarkerManager.js');
 
 // namespace ?
 var ArtMobilib = ArtMobilib || {REVISION: 'ALPHA'};

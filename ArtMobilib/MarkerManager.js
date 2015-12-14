@@ -21,18 +21,30 @@ var MarkerManager = function () {
     // private or public? what is needed for display (matches, corners) and for application
     this.markers = new MarkerContainer();
     this.matcher = new MarkerMatcher();
-    this.status = new MarkerStatus(); // needed??
+    this.webcamconv;
 
-    // corer in screen: we will limit to 100 strongest points
+    // corner in screen: we will limit to 100 strongest points
     this.max_corner = 100;
+    this.allocation_corner = 2000; // we eed to allocate a large mber to detect corners in the full image
+    this.screen_corners = [];
     this.num_corners;
 
     // JSfeat Orb detection+matching part
-    this.img_u8        = new jsfeat.matrix_t(that.imWidth, that.imHeight, jsfeat.U8_t | jsfeat.C1_t);
-    var  img_u8_smooth = new jsfeat.matrix_t(that.imWidth, that.imHeight, jsfeat.U8_t | jsfeat.C1_t);
+    var img_u8 = new jsfeat.matrix_t(that.imWidth, that.imHeight, jsfeat.U8_t | jsfeat.C1_t);
+    var img_u8_smooth = new jsfeat.matrix_t(that.imWidth, that.imHeight, jsfeat.U8_t | jsfeat.C1_t);
     this.screen_descriptors = new jsfeat.matrix_t(32, that.max_corner, jsfeat.U8_t | jsfeat.C1_t);
 
+    // live displayed corners
+    var i = this.allocation_corner;
+    while (--i >= 0)
+        this.screen_corners[i] = new jsfeat.keypoint_t(0, 0, 0, 0, -1);
+
     /// public methods
+
+    this.AttachVideo = function (video, canvas) {
+        that.webcamconv = new WebcamConverter(video, canvas);
+    }
+
     // extract corners ad descriptors and add it to the container
     this.AddMarker = function (image) {
         var marker = new ImageMaker(image);
@@ -41,38 +53,50 @@ var MarkerManager = function () {
 
     // process a color Html image
     this.ProcessHtmlImage = function (htmlImage) {
-        jsfeat.imgproc.grayscale(HtmlImage.data, that.imWidth, that.imHeight, that.img_u8);
+        jsfeat.imgproc.grayscale(HtmlImage.data, that.imWidth, that.imHeight, img_u8);
+        that.Process();
+    }
+
+    // process a color Html image
+    this.ProcessVideo = function () {
+        var image = that.webcamconv.getNewImage();
+        if (image) {
+            jsfeat.imgproc.grayscale(image.data, that.imWidth, that.imHeight, img_u8);
+            that.Process();
+        }
     }
 
     // process a jsfeat gray image
     this.ProcessGrayImage = function (image) {
-        that.img_u8 = image;
+        img_u8 = image;
         that.Process();
     }
 
     this.Process = function () {
         // depending on status search for a specific or a marker
-        jsfeat.imgproc.gaussian_blur(that.img_u8, that.img_u8_smooth, options.blur_size | 0);
+        jsfeat.imgproc.gaussian_blur(img_u8, img_u8_smooth, options.blur_size | 0);
 
         jsfeat.yape06.laplacian_threshold = options.lap_thres | 0;
         jsfeat.yape06.min_eigen_value_threshold = options.eigen_thres | 0;
 
         stat.start("orb descriptors");
-        that.num_corners = detect_keypoints(that.img_u8_smooth, that.screen_corners, this.max_corner);
+        that.num_corners = detect_keypoints(img_u8_smooth, that.screen_corners, that.max_corner);
 
-        jsfeat.orb.describe(that.img_u8_smooth, that.screen_corners, that.num_corners, that.screen_descriptors);
+        jsfeat.orb.describe(img_u8_smooth, that.screen_corners, that.num_corners, that.screen_descriptors);
         stat.stop("orb descriptors");
+
+        console.log("Screen: " + img_u8_smooth.cols + "x" + img_u8_smooth.rows + " points: " + that.num_corners);
 
         // search the same marker while it is detected or one different at each image
         stat.start("matching");
         if (that.found > 0) { // if one has already been detected
-            if (matching(that.screen_descriptors, markers.GetCurrent()))
+            if (matching(that.screen_descriptors, that.markers.GetCurrent()))
                 that.found = that.nbFocussingMarker;
             else
                 that.found--;
         }
         else { // no detection before, search for new marker
-            if (matching(screen_descriptors, markers.GetNext()))
+            if (matching(that.screen_descriptors, that.markers.GetNext()))
                 that.found = that.nbFocussingMarker;
             else
                 that.found--;
@@ -89,3 +113,4 @@ var MarkerManager = function () {
 };
 
 
+AMmarkerManager = new MarkerManager();

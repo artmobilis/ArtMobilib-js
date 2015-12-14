@@ -46,7 +46,7 @@ var MarkerMatcher = function () {
     this.match_mask;
 
     this.log = ""; // output log
-
+    
     var init = function () {
         // alloc matches
         that.matches[nb_trained] = [];

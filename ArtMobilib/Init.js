@@ -152,7 +152,9 @@ ArtMobilib.getVideoData = function getVideoData(x, y, w, h) {
     hiddenCanvas.height = video.videoHeight;
     var hctx = hiddenCanvas.getContext('2d');
     hctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
-    return hctx.getImageData(x, y, w, h);
+    var videoData = hctx.getImageData(x, y, w, h);
+    ctx.putImageData(videoData, 0, 0);
+    return ctx.getImageData(0, 0, this.imWidth, this.imHeight);
 };
 
 // put ImgData in a hidden canvas to then write it with resizing on canvas
@@ -170,11 +172,7 @@ ArtMobilib.tick = function () {
 
     if (this.video) {
         if (this.video.videoWidth > 0) {
-
-            var videoData = this.getVideoData(0, 0, this.imWidth, this.imHeight);
-            ctx.putImageData(videoData, 0, 0);
-
-            var imageData = ctx.getImageData(0, 0, this.imWidth, this.imHeight);
+            var imageData = ArtMobilib.getVideoData(0, 0, this.imWidth, this.imHeight);
 
             stat.start("grayscale");
             jsfeat.imgproc.grayscale(imageData.data, this.imWidth, this.imHeight, img_u8);
@@ -194,6 +192,8 @@ ArtMobilib.tick = function () {
             stat.start("orb descriptors");
             jsfeat.orb.describe(img_u8_smooth, screen_corners, num_corners, screen_descriptors);
             stat.stop("orb descriptors");
+
+            console.log("AMScreen: " + img_u8_smooth.cols + "x" + img_u8_smooth.rows + " points: " + num_corners);
 
             // render result in ImageData
             var data_u32 = new Uint32Array(imageData.data.buffer);

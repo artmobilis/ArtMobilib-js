@@ -46,7 +46,7 @@
 
             //##### to remove
             container = document.getElementById('container');
-            
+
             // onload ask for camera and call demo_app
             window.onload = function () {
 
@@ -74,7 +74,8 @@
             function main_app() {
                 ArtMobilib.initArtMobilib("webcam", "canvas2d", "canvas3d", true); // iniatilize global objects
 
-                
+                AMmarkerManager.AttachVideo(video, canvas2d);
+
                 createScenes();
 
                 // we load trained images here, in future read from json
@@ -97,7 +98,8 @@
             }
 
             function tick() {
-                ArtMobilib.tick();
+                //ArtMobilib.tick();
+                AMmarkerManager.ProcessVideo();
                 compatibility.requestAnimationFrame(tick);
             }
 
