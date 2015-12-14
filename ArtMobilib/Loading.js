@@ -1,7 +1,5 @@
 // todo license???
 // todo: any size/mode image learning
-// todo: init 3D objects associated here
-// todo: read 3D and image from json
 // todo: deal with memory, preload 3D object but load/display/transform it only when image pattern is recovered
 
 var templateX = 400, templateY = 600; // size of learn patterns (portrait mode currently)
@@ -38,7 +36,9 @@ var load_trained_patterns2 = function (name) {
 
 var loadMarker = function(nameImage, name3D) {
     load_trained_patterns2( nameImage);
-    load_3D( name3D, addModelToScene);
+    load_3D(name3D, addModelToScene);
+
+    var im = new ImageMarkers(nameImage);
 }
 
 var loadMarkerAnim = function(nameImage, name3D) {

@@ -46,7 +46,7 @@
 
             //##### to remove
             container = document.getElementById('container');
-            
+
             // onload ask for camera and call demo_app
             window.onload = function () {
 
@@ -74,11 +74,14 @@
             function main_app() {
                 ArtMobilib.initArtMobilib("webcam", "canvas2d", "canvas3d", true); // iniatilize global objects
 
+                AMmarkerManager.AttachVideo(video, canvas2d);
+
                 createScenes();
 
                 // we load trained images here, in future read from json
-                loadMarkerAnim("data/3Dtricart.jpg", "data/android-animations.js");
-                //loadMarker("/data/gvf.jpg", "/data/android.js");
+                //loadMarkerAnim("data/3Dtricart.jpg", "data/android-animations.js");
+                loadMarker("data/gvf.jpg", "data/android.js");
+                loadMarker("data/3Dtricart.jpg", "data/android.js");
                 loadMarker("data/vsd.jpg", "data/android.js");
 
                 //load_trained_patterns2("http://www.3dvtech.com/ArtMobilib/data/3Dtricart.jpg");
@@ -89,10 +92,14 @@
                 //load_trained_patterns("trained2");
 
                 compatibility.requestAnimationFrame(tick);
+
+                var toto = ArtMobilib.cdetector.testCorner;
+
             }
 
             function tick() {
-                ArtMobilib.tick();
+                //ArtMobilib.tick();
+                AMmarkerManager.ProcessVideo();
                 compatibility.requestAnimationFrame(tick);
             }
 

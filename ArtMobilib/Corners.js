@@ -1,14 +1,21 @@
 // todo license???
-// why matching not stable I suspect it is because using most dominant angle, we should use 2 bests with diff more than 30°
-// reduce matching processing time, it is more than 90% of the processing time
-//   - identify the part of matching which takes the longest time
-//   - use fast tracking/registration after detection
-//   - do one object per image if multiple
-
+// acceleration done : Brut force matcig so redce mber of corners (500 -> 150 in live ad 100/level wit 3 levels in training), can maybe be more reduced
+// detection improvement by reducing nb good corers for acceptance from 20 to 10
+// todo acceleration: use one marker to search par image to keep good frame rate
+// todo acceleration: after recogition, use a fast corner tracking/registration or Gyro+Gps
+// todo improve detection: I suspect it is because using most dominant angle, we should use 2 bests with diff more than 30°
+// todo freezing every 5s: I suspect garbage collector because bad memory management
 
 /////////////////////
 // Corners detection
 /////////////////////
+var CornerDetector = function () {
+    var that = this;
+    var testCorner='4';
+
+    function init() {
+    }
+};
 
 function detect_keypoints(img, corners, max_allowed) {
     // detect features
@@ -76,6 +83,8 @@ function match_pattern(id) {
     var qidx = 0, lev = 0, pidx = 0, k = 0;
     var num_matches = 0;
 
+    stat.start("match_pattern");
+
     for (qidx = 0; qidx < q_cnt; ++qidx) {
         var best_dist = 256;
         var best_dist2 = 256;
@@ -130,6 +139,8 @@ function match_pattern(id) {
         qd_off += 8; // next query descriptor
     }
 
+    stat.stop("match_pattern");
+
     return num_matches;
 }
 
@@ -143,10 +154,12 @@ function matching() {
     for (id = 0; id < nb_trained; ++id) {
         num_matches[id] = match_pattern(id);
         str += "<br>Id : " + id + " nbMatches : " + num_matches[id];
-        if (num_matches[id] < 20 || found)
+        if (num_matches[id] < 10 || found)
             continue;
 
+        stat.start("find_transform");
         good_matches = find_transform(matches[id], num_matches[id], id);
+        stat.stop("find_transform");
         str += " nbGood : " + good_matches;
         if (good_matches > 8) {
             current_pattern = id;
@@ -170,7 +183,7 @@ trainpattern = function (img) {
     var lev = 0, i = 0;
     var sc = 1.0;
     var max_pattern_size = 512;
-    var max_per_level = 300;
+    var max_per_level = 100;
     var sc_inc = Math.sqrt(2.0); // magic number ;)
     var lev0_img = new jsfeat.matrix_t(img.cols, img.rows, jsfeat.U8_t | jsfeat.C1_t);
     var lev_img = new jsfeat.matrix_t(img.cols, img.rows, jsfeat.U8_t | jsfeat.C1_t);

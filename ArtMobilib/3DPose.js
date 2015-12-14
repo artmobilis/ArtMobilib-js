@@ -108,13 +108,15 @@ function updateScenes(corners) {
     model1.rotation.y -= step;
     model2.rotation.y -= step;
     model3.rotation.y -= step;
-    model.rotation.y -= step;
-    model4.rotation.y -= step;
+    if (model) model.rotation.y -= step;
+    if (model4) model4.rotation.y -= step;
 
     texture.children[0].material.map.needsUpdate = true;
 };
 
 function updateObject(object, rotation, translation, scale) {
+    if (object == undefined) return;
+
     object.scale.x = scale;
     object.scale.y = scale;
     object.scale.z = scale;
