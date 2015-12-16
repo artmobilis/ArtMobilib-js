@@ -68,6 +68,7 @@ Scene = function(parameters) {
   var m_cameraBody = new THREE.Object3D();
   var m_updateFctns = [];
   var m_geoConverter;
+  var m_objLoader;
 
 
   m_cameraBody.add(m_camera);
@@ -83,6 +84,7 @@ Scene = function(parameters) {
     m_geoConverter = new Math.GeoToCoordsConverter(43.7141516, 7.2889739);
   else
     console.warn('Scene: GeoToCoordsConverter undefined');
+
 
 
   this.clear = function() {
@@ -143,23 +145,24 @@ Scene = function(parameters) {
   };
 
 
-  this.parse = function() {
+  this.parse = function(json) {
 
-    if (typeof ObjectLoaderAM != 'undefined') {
-      var objLoader = new ObjectLoaderAM(onUpdate);
-      objLoader.onAdd(that.addObject);
+    if (m_objLoader) {
+      var newScene = m_objLoader.parse(json);
+      m_threeScene.copy(newScene, false);
     }
-    else
-      console.warn('Scene: ObjectLoaderAM undefined');
+  };
 
-    return function(json) {
+  this.load = function(url) {
+    if (m_objLoader) {
 
-      if (objLoader) {
-        var newScene = objLoader.parse(json);
-        m_threeScene.copy(newScene, false);
-      }
+      m_objLoader.load(url, function(obj) {
+
+        m_threeScene.copy(obj, false);
+      } );
+
     }
-  }();
+  }
 
 
   this.getCamera = function() {
@@ -181,4 +184,12 @@ Scene = function(parameters) {
   function onUpdate(fctn) {
     m_updateFctns.push(fctn);
   }
+
+  
+  if (typeof ObjectLoaderAM != 'undefined') {
+    m_objLoader = new ObjectLoaderAM(onUpdate);
+    m_objLoader.onAdd(this.addObject);
+  }
+  else
+    console.warn('Scene: ObjectLoaderAM undefined');
 };
