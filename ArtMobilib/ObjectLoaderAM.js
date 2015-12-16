@@ -3,22 +3,27 @@
  */
 //
 
-/** Edited for ArtMobilis
- *
- * ObjectLoaderAM
- * A loader for loading a JSON resource
- * A THREE.ObjectLoader edited to support .GIF, .MP4 as textures,
- * and can load OBJ models and Collada models.
- *
- *
- * Dependency:
- *  three.js,
- * 	ColladaLoader.js,
- * 	OBJLoader.js,
- * 	OBJMTLLoader.js,
- * 	libgif.js
- **/
-//
+/*********************
+
+Edited for ArtMobilis
+
+
+ObjectLoaderAM
+A loader for loading a JSON resource
+A THREE.ObjectLoader edited to support .GIF, .MP4 as textures,
+and can load OBJ models and Collada models.
+
+
+Dependency:
+three.js,
+ColladaLoader.js,
+OBJLoader.js,
+OBJMTLLoader.js,
+libgif.js
+
+
+*********************/
+
 
 ObjectLoaderAM = function ( onUpdate, manager ) {
 
@@ -158,9 +163,9 @@ ObjectLoaderAM = function ( onUpdate, manager ) {
         var image = json[ i ];
 
         if (image.url === undefined)
-          console.warn('THREE.ObjectLoaderAM: no "url" specified for image ' + i);
+          console.warn('ObjectLoaderAM: no "url" specified for image ' + i);
         else if (image.uuid === undefined)
-          console.warn('THREE.ObjectLoaderAM: no "uuid" specified for image ' + i);
+          console.warn('ObjectLoaderAM: no "uuid" specified for image ' + i);
         else {
 
           var url = that.constants.imagePath + '/' + image.url;
@@ -180,16 +185,18 @@ ObjectLoaderAM = function ( onUpdate, manager ) {
         var video = json[ i ];
 
         if (video.url === undefined)
-          console.warn('THREE.ObjectLoaderAM: no "url" specified for video ' + i);
+          console.warn('ObjectLoaderAM: no "url" specified for video ' + i);
         else if (video.uuid === undefined)
-          console.warn('THREE.ObjectLoaderAM: no "uuid" specified for video ' + i);
+          console.warn('ObjectLoaderAM: no "uuid" specified for video ' + i);
         else {
 
-          var data = new THREEx.Video(that.constants.videoPath + '/' + video.url, video.uuid);
-          if (video.width !== undefined)
-            data.width = video.width;
-          if (video.height !== undefined)
-            data.height = video.height;
+          var data =
+          {
+            url: that.constants.videoPath + '/' + video.url,
+            uuid: video.uuid,
+            width: video.width || 640,
+            height: video.height || 480
+          };
 
           that.videos[ video.uuid ] = data;
         }
@@ -199,11 +206,14 @@ ObjectLoaderAM = function ( onUpdate, manager ) {
 
   this.parseTextures = function ( json ) {
 
+    if (typeof SuperGif == 'undefined')
+      console.warn('ObjectLoaderAM: SuperGif is undefined');
+
     function parseConstant( value ) {
 
       if ( typeof( value ) === 'number' ) return value;
 
-      console.warn( 'THREE.ObjectLoaderAM.parseTexture: Constant should be in numeric form.', value );
+      console.warn( 'ObjectLoaderAM.parseTexture: Constant should be in numeric form.', value );
 
       return THREE[ value ];
 
@@ -216,7 +226,7 @@ ObjectLoaderAM = function ( onUpdate, manager ) {
         var data = json[ i ];
 
         if ( data.image === undefined && data.video === undefined ) {
-          console.warn( 'THREE.ObjectLoaderAM: No "image" nor "video" specified for', data.uuid );
+          console.warn( 'ObjectLoaderAM: No "image" nor "video" specified for', data.uuid );
           continue;
         }
 
@@ -224,13 +234,17 @@ ObjectLoaderAM = function ( onUpdate, manager ) {
         if ( data.image !== undefined ) {
 
           if ( that.images[ data.image ] === undefined ) {
-            console.warn( 'THREE.ObjectLoaderAM: Undefined image', data.image );
+            console.warn( 'ObjectLoaderAM: Undefined image', data.image );
             continue;
           }
 
           var image = that.images[ data.image ];
 
           if (data.animated !== undefined && data.animated) {
+
+            if (typeof SuperGif == 'undefined')
+              continue;
+
             var img = document.createElement('img');
             var scriptTag = document.getElementsByTagName('script');
             scriptTag = scriptTag[scriptTag.length - 1];
@@ -262,7 +276,7 @@ ObjectLoaderAM = function ( onUpdate, manager ) {
         else {
 
           if ( that.videos[ data.video ] === undefined ) {
-            console.warn( 'THREE.ObjectLoaderAM: Undefined video', data.video );
+            console.warn( 'ObjectLoaderAM: Undefined video', data.video );
             continue;
           }
 
@@ -501,7 +515,7 @@ ObjectLoaderAM = function ( onUpdate, manager ) {
 
           default:
 
-          console.warn( 'THREE.ObjectLoaderAM: Unsupported geometry type "' + data.type + '"' );
+          console.warn( 'ObjectLoaderAM: Unsupported geometry type "' + data.type + '"' );
 
           continue;
 
@@ -520,10 +534,20 @@ ObjectLoaderAM = function ( onUpdate, manager ) {
 
   this.parseObject = function () {
 
-    var colladaLoader = new THREE.ColladaLoader();
-    colladaLoader.options.convertUpAxis = true;
-    var objLoader = new THREE.OBJLoader();
-    var objMtlLoader = new THREE.OBJMTLLoader();
+    if (THREE.ColladaLoader) {
+      var colladaLoader = new THREE.ColladaLoader();
+      colladaLoader.options.convertUpAxis = true;
+    }
+    else
+      console.warn('ObjectLoaderAM: THREE.ColladaLoader undefined');
+    if (THREE.OBJLoader)
+      var objLoader = new THREE.OBJLoader();
+    else
+      console.warn('ObjectLoaderAM: THREE.OBJLoader undefined');
+    if (THREE.OBJMTLLoader)
+      var objMtlLoader = new THREE.OBJMTLLoader();
+    else
+      console.warn('ObjectLoaderAM: THREE.OBJMTLLoader undefined');
 
     function setAttributes( object, data ) {
 
@@ -563,7 +587,7 @@ ObjectLoaderAM = function ( onUpdate, manager ) {
       function getGeometry( name ) {
         if ( name === undefined ) return undefined;
         if ( that.geometries[ name ] === undefined ) {
-          console.warn( 'THREE.ObjectLoaderAM: Undefined geometry', name );
+          console.warn( 'ObjectLoaderAM: Undefined geometry', name );
         }
         return that.geometries[ name ];
       }
@@ -571,7 +595,7 @@ ObjectLoaderAM = function ( onUpdate, manager ) {
       function getMaterial( name ) {
         if ( name === undefined ) return undefined;
         if ( that.materials[ name ] === undefined ) {
-          console.warn( 'THREE.ObjectLoaderAM: Undefined material', name );
+          console.warn( 'ObjectLoaderAM: Undefined material', name );
         }
         return that.materials[ name ];
       }
@@ -579,7 +603,7 @@ ObjectLoaderAM = function ( onUpdate, manager ) {
       function getModel( name ) {
         if ( name === undefined ) return undefined;
         if ( that.models[ name ] === undefined ) {
-          console.warn( 'THREE.ObjectLoaderAM: Undefined model', name );
+          console.warn( 'ObjectLoaderAM: Undefined model', name );
         }
         return that.models[ name ];
       }
@@ -673,6 +697,9 @@ ObjectLoaderAM = function ( onUpdate, manager ) {
 
         case 'OBJ':
 
+        if (typeof objLoader == 'undefined')
+          return undefined;
+
         objLoader.load( that.constants.modelPath + '/' + data.url, function ( par, dat ) {
           return function ( model ) {
 
@@ -694,6 +721,9 @@ ObjectLoaderAM = function ( onUpdate, manager ) {
         break;
 
         case 'OBJMTL':
+
+        if (typeof objMtlLoader == 'undefined')
+          return undefined;
 
         objMtlLoader.load( that.constants.modelPath + '/' + data.objUrl,
           that.constants.modelPath + '/' + data.mtlUrl, function ( par, dat ) {
@@ -717,6 +747,9 @@ ObjectLoaderAM = function ( onUpdate, manager ) {
         break;
 
         case 'Collada':
+
+        if (typeof colladaLoader == 'undefined')
+          return undefined;
 
         object = new THREE.Object3D();
 
