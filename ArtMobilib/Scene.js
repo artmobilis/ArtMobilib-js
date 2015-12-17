@@ -137,18 +137,7 @@ Scene = function(parameters) {
   }();
 
   this.AddObject = function(object) {
-    if (_geo_converter) {
-      if (object.userData !== undefined && object.position !== undefined) {
-        var data = object.userData;
-
-        if (data.latitude !== undefined && data.longitude !== undefined) {
-          object.position.copy(_geo_converter.getCoords(data.latitude, data.longitude));
-        }
-        if (data.altitude !== undefined) {
-          object.position.y = data.altitude;
-        }
-      }
-    }
+    MoveObjectToGPSCoords(object);
     _three_scene.add(object);
   };
 
@@ -165,28 +154,34 @@ Scene = function(parameters) {
     }
   };
 
-  this.Load = function(url) {
+  this.Load = function(url, on_load) {
     if (_obj_loader) {
 
-      _obj_loader.Load(url, function(new_scene) {
+      var on_load_three_scene = function(on_load_cpy) {
+        return function(new_scene) {
 
-        _loading_manager.onLoad = function() {
-          for(child of new_scene.children) {
-            that.AddObject(child);
-          }
-
-          _three_scene.copy(new_scene, false);
-
-          _three_scene.traverse( function ( child ) {
-            if ( child instanceof THREE.SkinnedMesh ) {
-              var animation = new THREE.Animation( child, child.geometry.animation );
-              animation.play();
+          _loading_manager.onLoad = function() {
+            for(child of new_scene.children) {
+              that.AddObject(child);
             }
-          } );
 
-        };
+            _three_scene.copy(new_scene, false);
 
-      } );
+            _three_scene.traverse( function ( child ) {
+              if ( child instanceof THREE.SkinnedMesh ) {
+                var animation = new THREE.Animation( child, child.geometry.animation );
+                animation.play();
+              }
+            } );
+
+            if (on_load_cpy)
+              on_load_cpy();
+
+          };
+        }
+      }(on_load);
+
+      _obj_loader.Load(url, on_load_three_scene);
 
     }
   }
@@ -207,4 +202,19 @@ Scene = function(parameters) {
   this.GetCanvas = function() {
     return _renderer.domElement;
   };
+
+  function MoveObjectToGPSCoords() {
+    if (_geo_converter) {
+      if (object.userData !== undefined && object.position !== undefined) {
+        var data = object.userData;
+
+        if (data.latitude !== undefined && data.longitude !== undefined) {
+          object.position.copy(_geo_converter.getCoords(data.latitude, data.longitude));
+        }
+        if (data.altitude !== undefined) {
+          object.position.y = data.altitude;
+        }
+      }
+    }
+  }
 };
