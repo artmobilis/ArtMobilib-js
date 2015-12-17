@@ -47,14 +47,14 @@ var MarkerManager = function () {
 
     // extract corners ad descriptors and add it to the container
     this.AddMarker = function (image) {
-        var marker = new ImageMaker(image);
-        markers.add(marker);
+        var marker = new ImageMarkers(image);
+        that.markers.Add(marker);
     }
 
     // process a color Html image
     this.ProcessHtmlImage = function (htmlImage) {
         jsfeat.imgproc.grayscale(HtmlImage.data, that.imWidth, that.imHeight, img_u8);
-        that.Process();
+        return that.Process();
     }
 
     // process a color Html image
@@ -62,14 +62,15 @@ var MarkerManager = function () {
         var image = that.webcamconv.getNewImage();
         if (image) {
             jsfeat.imgproc.grayscale(image.data, that.imWidth, that.imHeight, img_u8);
-            that.Process();
+            return that.Process();
         }
+        return that.found > 0;
     }
 
     // process a jsfeat gray image
     this.ProcessGrayImage = function (image) {
         img_u8 = image;
-        that.Process();
+        return that.Process();
     }
 
     this.Process = function () {
@@ -87,21 +88,22 @@ var MarkerManager = function () {
 
         console.log("Screen: " + img_u8_smooth.cols + "x" + img_u8_smooth.rows + " points: " + that.num_corners);
 
+        if (!that.markers.markerContainer.length || !that.num_corners) return;
+
         // search the same marker while it is detected or one different at each image
         stat.start("matching");
         if (that.found > 0) { // if one has already been detected
-            if (matching(that.screen_descriptors, that.markers.GetCurrent()))
+            if (that.matcher.matching(that.screen_descriptors, that.markers.GetCurrent()))
                 that.found = that.nbFocussingMarker;
             else
                 that.found--;
         }
         else { // no detection before, search for new marker
-            if (matching(that.screen_descriptors, that.markers.GetNext()))
+            if (that.matcher.matching(that.screen_descriptors, that.markers.GetNext()))
                 that.found = that.nbFocussingMarker;
             else
                 that.found--;
         }
-
 
         stat.stop("matching");
     }

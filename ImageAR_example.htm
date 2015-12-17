@@ -99,7 +99,9 @@
 
             function tick() {
                 //ArtMobilib.tick();
-                AMmarkerManager.ProcessVideo();
+                if (AMmarkerManager.ProcessVideo())
+                    console.log("Marker detected");
+                console.log(AMmarkerManager.matcher.log);
                 compatibility.requestAnimationFrame(tick);
             }
 
