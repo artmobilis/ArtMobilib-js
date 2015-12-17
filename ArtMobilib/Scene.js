@@ -3,7 +3,7 @@
 Scene
 
 A class to handle a THREE.Scene, with a unique camera,
-and that can load a scene from a JSON file,
+and that can Load a scene from a JSON file,
 and place objects according to geographic coordinates.
 
 
@@ -14,27 +14,30 @@ Scene(parameters)
 
 Methods
 
-init()
+Init()
 Init event listerners
 
-stop()
+Stop()
 Clear event listeners
 
-render()
+Render()
 
-update()
+Update()
 Update animations and textures (video, gif)
 
-addObject(object)
+AddObject(object)
 Add an object to the scene. If possible, place the object occordingly to the geographic coordinates
 
-removeObject()
+RemoveObject()
 
-clear()
+Clear()
 Clear the scene.
 
-parse(json)
+Parse(json)
 Load a scene from a JSON structure. no-op if ObjectLoaderAM is unavailable.
+
+Load(url)
+Load a json file then call Parse on the generated JSON structure.
 
 getCamera()
 Returns the camera, a THREE.PerspectiveCamera, and a child of cameraBody.
@@ -61,135 +64,147 @@ Scene = function(parameters) {
 
   var that = this;
 
-  var m_renderer = new THREE.WebGLRenderer( { alpha: true, canvas: parameters.canvas } );
-  var m_threeScene = new THREE.Scene();
-  var m_camera = new THREE.PerspectiveCamera(parameters.fov || 80,
-    m_renderer.domElement.width / m_renderer.domElement.height, 0.1, 10000);
-  var m_cameraBody = new THREE.Object3D();
-  var m_updateFctns = [];
-  var m_geoConverter;
-  var m_objLoader;
+  var _renderer = new THREE.WebGLRenderer( { alpha: true, canvas: parameters.canvas } );
+  var _three_scene = new THREE.Scene();
+  var _camera = new THREE.PerspectiveCamera(parameters.fov || 80,
+    _renderer.domElement.width / _renderer.domElement.height, 0.1, 10000);
+  var _camera_body = new THREE.Object3D();
+  var _update_callbacks = [];
+  var _geo_converter;
+  var _obj_loader;
+  var _loading_manager = new THREE.LoadingManager();
 
 
-  m_cameraBody.add(m_camera);
+  _camera_body.add(_camera);
 
-  m_threeScene.add(m_cameraBody);
+  _three_scene.add(_camera_body);
 
   if (!parameters.canvas)
-    m_renderer.setSize(window.innerWidth, window.innerHeight);
-  m_renderer.setClearColor(0x9999cf, 0);
-  document.body.appendChild(m_renderer.domElement);
+    _renderer.setSize(window.innerWidth, window.innerHeight);
+  _renderer.setClearColor(0x9999cf, 0);
+  document.body.appendChild(_renderer.domElement);
 
   if (typeof Math.GeoToCoordsConverter != 'undefined')
-    m_geoConverter = new Math.GeoToCoordsConverter(43.7141516, 7.2889739);
+    _geo_converter = new Math.GeoToCoordsConverter(43.7141516, 7.2889739);
   else
     console.warn('Scene: GeoToCoordsConverter undefined');
 
+  if (typeof ObjectLoaderAM != 'undefined')
+    _obj_loader = new ObjectLoaderAM(_loading_manager);
+  else
+    console.warn('Scene: ObjectLoaderAM undefined');
 
 
-  this.clear = function() {
-    m_threeScene.children = [];
-    m_threeScene.copy(new THREE.Scene(), false);
+
+  this.Clear = function() {
+    _three_scene.children = [];
+    _three_scene.copy(new THREE.Scene(), false);
   };
 
-  this.init = function() {
+  this.Init = function() {
     function onWindowResize() {
-      m_camera.aspect = window.innerWidth / window.innerHeight;
-      m_camera.updateProjectionMatrix();
+      _camera.aspect = window.innerWidth / window.innerHeight;
+      _camera.updateProjectionMatrix();
 
-      m_renderer.setSize(window.innerWidth, window.innerHeight);
+      _renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
     window.addEventListener('resize', onWindowResize, false);
   };
 
-  this.stop = function() {
+  this.Stop = function() {
     window.removeEventListener('resize', onWindowResize, false);
   }
 
-  this.render = function() {
-    m_renderer.render(m_threeScene, m_camera);
+  this.Render = function() {
+    _renderer.render(_three_scene, _camera);
   };
 
-  this.update = function() {
+  this.Update = function() {
 
     var clock = new THREE.Clock();
 
     return function() {
-      for (i = 0, c = m_updateFctns.length; i < c; ++i) {
-        m_updateFctns[i]();
+
+      var update_callbacks = _obj_loader.GetOnUpdateCallbacks();
+
+      for (i = 0, c = update_callbacks.length; i < c; ++i) {
+        update_callbacks[i]();
       }
       if (THREE.AnimationHandler)
         THREE.AnimationHandler.update(clock.getDelta());
     }
   }();
 
-  this.addObject = function(object) {
-    if (m_geoConverter) {
+  this.AddObject = function(object) {
+    if (_geo_converter) {
       if (object.userData !== undefined && object.position !== undefined) {
         var data = object.userData;
 
         if (data.latitude !== undefined && data.longitude !== undefined) {
-          object.position.copy(m_geoConverter.getCoords(data.latitude, data.longitude));
+          object.position.copy(_geo_converter.getCoords(data.latitude, data.longitude));
         }
         if (data.altitude !== undefined) {
           object.position.y = data.altitude;
         }
       }
     }
-    m_threeScene.add(object);
+    _three_scene.add(object);
   };
 
-  this.removeObject = function(object) {
-    m_threeScene.remove(object);
+  this.RemoveObject = function(object) {
+    _three_scene.remove(object);
   };
 
 
-  this.parse = function(json) {
+  this.Parse = function(json) {
 
-    if (m_objLoader) {
-      var newScene = m_objLoader.parse(json);
-      m_threeScene.copy(newScene, false);
+    if (_obj_loader) {
+      var new_scene = _obj_loader.parse(json);
+      _three_scene.copy(new_scene, false);
     }
   };
 
-  this.load = function(url) {
-    if (m_objLoader) {
+  this.Load = function(url) {
+    if (_obj_loader) {
 
-      m_objLoader.load(url, function(obj) {
+      _obj_loader.load(url, function(new_scene) {
 
-        m_threeScene.copy(obj, false);
+        _loading_manager.onLoad = function() {
+          for(child of new_scene.children) {
+            that.AddObject(child);
+          }
+
+          _three_scene.copy(new_scene, false);
+
+          _three_scene.traverse( function ( child ) {
+            if ( child instanceof THREE.SkinnedMesh ) {
+              var animation = new THREE.Animation( child, child.geometry.animation );
+              animation.play();
+            }
+          } );
+
+        };
+
       } );
 
     }
   }
 
 
-  this.getCamera = function() {
-    return m_camera;
+  this.GetCamera = function() {
+    return _camera;
   };
 
-  this.getCameraBody = function() {
-    return m_cameraBody;
+  this.GetCameraBody = function() {
+    return _camera_body;
   };
 
-  this.getScene = function() {
-    return m_threeScene;
+  this.GetScene = function() {
+    return _three_scene;
   }
 
-  this.getCanvas = function() {
-    return m_renderer.domElement;
+  this.GetCanvas = function() {
+    return _renderer.domElement;
   };
-
-  function onUpdate(fctn) {
-    m_updateFctns.push(fctn);
-  }
-
-  
-  if (typeof ObjectLoaderAM != 'undefined') {
-    m_objLoader = new ObjectLoaderAM(onUpdate);
-    m_objLoader.onAdd(this.addObject);
-  }
-  else
-    console.warn('Scene: ObjectLoaderAM undefined');
 };
