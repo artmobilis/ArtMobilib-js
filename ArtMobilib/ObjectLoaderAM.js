@@ -46,58 +46,50 @@ ObjectLoaderAM = function ( manager ) {
   var _on_update_callbacks = [];
 
 
-  this.load = function ( url, onLoad, onProgress, onError ) {
+  this.Load = function ( url, on_load, on_progress, on_error ) {
 
     var loader = new THREE.XHRLoader( that.manager );
-    loader.setCrossOrigin( this.crossOrigin );
 
-    that.onLoad = onLoad;
-
-    loader.load( url, function( onLoad ) {
+    loader.load( url, function( on_load ) {
 
       return function ( text ) {
 
         that.json = JSON.parse( text );
 
-        onLoad(that.parse( that.json ));
+        on_load(that.Parse( that.json ));
 
       };
-    }(onLoad), onProgress, onError );
+    }(on_load), on_progress, on_error );
   };
 
-  this.setCrossOrigin = function ( value ) {
-
-    this.crossOrigin = value;
-  };
-
-  this.parse = function ( json ) {
+  this.Parse = function ( json ) {
     that.json = json;
 
-    that.parseConstants( json.constants );
-    that.parseGeometries( json.geometries );
-    that.parseImages( json.images );
-    that.parseVideos( json.videos );
-    that.parseTextures( json.textures );
-    that.parseMaterials( json.materials );
-    that.parseAnimations( json.animations );
+    that.ParseConstants( json.constants );
+    that.ParseGeometries( json.geometries );
+    that.ParseImages( json.images );
+    that.ParseVideos( json.videos );
+    that.ParseTextures( json.textures );
+    that.ParseMaterials( json.materials );
+    that.ParseAnimations( json.animations );
 
-    var object = that.parseObject( json.object );
+    var object = that.ParseObject( json.object );
 
     object.animations = that.animations;
 
     return object;
   };
 
-  this.parseConstants = function ( json ) {
+  this.ParseConstants = function ( json ) {
     data = (json !== undefined) ? json : {};
 
-    that.constants.assets = (data.assetPath !== undefined) ? data.assetPath : ".";
-    that.constants.imagePath = that.constants.assets + '/' + ((data.imagePath !== undefined) ? data.imagePath : "");
-    that.constants.videoPath = that.constants.assets + '/' + ((data.videoPath !== undefined) ? data.videoPath : "");
-    that.constants.modelPath = that.constants.assets + '/' + ((data.modelPath !== undefined) ? data.modelPath : "");
+    that.constants.asset_path = (data.asset_path !== undefined) ? data.asset_path : ".";
+    that.constants.image_path = that.constants.asset_path + '/' + ((data.image_path !== undefined) ? data.image_path : "");
+    that.constants.video_path = that.constants.asset_path + '/' + ((data.video_path !== undefined) ? data.video_path : "");
+    that.constants.model_path = that.constants.asset_path + '/' + ((data.model_path !== undefined) ? data.model_path : "");
   };
 
-  this.parseMaterials = function ( json ) {
+  this.ParseMaterials = function ( json ) {
 
     if ( json !== undefined ) {
 
@@ -114,7 +106,7 @@ ObjectLoaderAM = function ( manager ) {
     }
   };
 
-  this.parseAnimations = function ( json ) {
+  this.ParseAnimations = function ( json ) {
     if (json === undefined) return;
 
     that.animations = [];
@@ -128,9 +120,9 @@ ObjectLoaderAM = function ( manager ) {
     }
   };
 
-  this.parseImages = function ( json ) {
+  this.ParseImages = function ( json ) {
 
-    function loadImage( url ) {
+    function LoadImage( url ) {
 
       that.manager.itemStart( url );
 
@@ -147,7 +139,6 @@ ObjectLoaderAM = function ( manager ) {
       var manager = new THREE.LoadingManager();
 
       var loader = new THREE.ImageLoader( manager );
-      loader.setCrossOrigin( that.crossOrigin );
 
       for ( var i = 0, l = json.length; i < l; i ++ ) {
 
@@ -159,15 +150,15 @@ ObjectLoaderAM = function ( manager ) {
           console.warn('ObjectLoaderAM: no "uuid" specified for image ' + i);
         else {
 
-          var url = that.constants.imagePath + '/' + image.url;
+          var url = that.constants.image_path + '/' + image.url;
 
-          that.images[ image.uuid ] = loadImage( url );
+          that.images[ image.uuid ] = LoadImage( url );
         }
       }
     }
   };
 
-  this.parseVideos = function ( json ) {
+  this.ParseVideos = function ( json ) {
 
     if ( json !== undefined ) {
 
@@ -183,7 +174,7 @@ ObjectLoaderAM = function ( manager ) {
 
           var data =
           {
-            url: that.constants.videoPath + '/' + video.url,
+            url: that.constants.video_path + '/' + video.url,
             uuid: video.uuid,
             width: video.width || 640,
             height: video.height || 480
@@ -195,12 +186,12 @@ ObjectLoaderAM = function ( manager ) {
     }
   };
 
-  this.parseTextures = function ( json ) {
+  this.ParseTextures = function ( json ) {
 
     if (typeof SuperGif == 'undefined')
       console.warn('ObjectLoaderAM: SuperGif is undefined');
 
-    function parseConstant( value ) {
+    function ParseConstant( value ) {
 
       if ( typeof( value ) === 'number' ) return value;
 
@@ -237,9 +228,9 @@ ObjectLoaderAM = function ( manager ) {
               continue;
 
             var img = document.createElement('img');
-            var scriptTag = document.getElementsByTagName('script');
-            scriptTag = scriptTag[scriptTag.length - 1];
-            scriptTag.parentNode.appendChild(img);
+            var script_tag = document.getElementsByTagName('script');
+            script_tag = script_tag[script_tag.length - 1];
+            script_tag.parentNode.appendChild(img);
 
             img.width = img.naturalWidth;
             img.height = img.naturalHeight;
@@ -271,23 +262,23 @@ ObjectLoaderAM = function ( manager ) {
             continue;
           }
 
-          var video = that.videos [ data.video ];
+          var video_data = that.videos [ data.video ];
 
-          var vid = document.createElement('video');
-          vid.width	= video.width;
-          vid.height = video.height;
-          vid.autoplay = (data.autoplay !== undefined) ? data.autoplay : true;
-          vid.loop = (data.loop !== undefined) ? data.loop : true;
-          vid.src = video.url;
+          var video_element = document.createElement('video');
+          video_element.width	= video_data.width;
+          video_element.height = video_data.height;
+          video_element.autoplay = (data.autoplay !== undefined) ? data.autoplay : true;
+          video_element.loop = (data.loop !== undefined) ? data.loop : true;
+          video_element.src = video_data.url;
 
-          var texture = new THREE.Texture( vid );
+          var texture = new THREE.Texture( video_element );
 
-          var UpdateVideoTexture = function(video_cpy, texture_cpy) {
+          var UpdateVideoTexture = function(video_element_cpy, texture_cpy) {
             return function() {
-              if ( video_cpy.readyState == video_cpy.HAVE_ENOUGH_DATA )
+              if ( video_element_cpy.readyState == video_element_cpy.HAVE_ENOUGH_DATA )
                 texture_cpy.needsUpdate = true;
             }
-          }(vid, texture);
+          }(video_element, texture);
 
           _on_update_callbacks.push(UpdateVideoTexture);
         }
@@ -295,19 +286,18 @@ ObjectLoaderAM = function ( manager ) {
         texture.uuid = data.uuid;
 
         if ( data.name !== undefined ) texture.name = data.name;
-        if ( data.mapping !== undefined ) texture.mapping = parseConstant( data.mapping );
+        if ( data.mapping !== undefined ) texture.mapping = ParseConstant( data.mapping );
         if ( data.offset !== undefined ) texture.offset = new THREE.Vector2( data.offset[ 0 ], data.offset[ 1 ] );
         if ( data.repeat !== undefined ) texture.repeat = new THREE.Vector2( data.repeat[ 0 ], data.repeat[ 1 ] );
-        if ( data.minFilter !== undefined ) texture.minFilter = parseConstant( data.minFilter );
-        if ( data.magFilter !== undefined ) texture.magFilter = parseConstant( data.magFilter );
+        if ( data.minFilter !== undefined ) texture.minFilter = ParseConstant( data.minFilter );
+        if ( data.magFilter !== undefined ) texture.magFilter = ParseConstant( data.magFilter );
         if ( data.anisotropy !== undefined ) texture.anisotropy = data.anisotropy;
         if ( Array.isArray( data.wrap ) ) {
 
-          texture.wrapS = parseConstant( data.wrap[ 0 ] );
-          texture.wrapT = parseConstant( data.wrap[ 1 ] );
+          texture.wrapS = ParseConstant( data.wrap[ 0 ] );
+          texture.wrapT = ParseConstant( data.wrap[ 1 ] );
 
         }
-
 
         that.textures[ data.uuid ] = texture;
 
@@ -316,12 +306,12 @@ ObjectLoaderAM = function ( manager ) {
     }
   };
 
-  this.parseGeometries = function ( json ) {
+  this.ParseGeometries = function ( json ) {
 
     if ( json !== undefined ) {
 
-      var geometryLoader = new THREE.JSONLoader();
-      var bufferGeometryLoader = new THREE.BufferGeometryLoader();
+      var geometry_loader = new THREE.JSONLoader();
+      var buffer_geometry_loader = new THREE.BufferGeometryLoader();
 
       for ( var i = 0, l = json.length; i < l; i ++ ) {
 
@@ -498,13 +488,13 @@ ObjectLoaderAM = function ( manager ) {
 
           case 'BufferGeometry':
 
-          geometry = bufferGeometryLoader.parse( data );
+          geometry = buffer_geometry_loader.parse( data );
 
           break;
 
           case 'Geometry':
 
-          geometry = geometryLoader.parse( data.data, this.texturePath ).geometry;
+          geometry = geometry_loader.parse( data.data, this.texturePath ).geometry;
 
           break;
 
@@ -527,24 +517,24 @@ ObjectLoaderAM = function ( manager ) {
     }
   };
 
-  this.parseObject = function () {
+  this.ParseObject = function () {
 
     if (THREE.ColladaLoader) {
-      var colladaLoader = new THREE.ColladaLoader();
-      colladaLoader.options.convertUpAxis = true;
+      var collada_loader = new THREE.ColladaLoader();
+      collada_loader.options.convertUpAxis = true;
     }
     else
       console.warn('ObjectLoaderAM: THREE.ColladaLoader undefined');
     if (THREE.OBJLoader)
-      var objLoader = new THREE.OBJLoader();
+      var obj_loader = new THREE.OBJLoader();
     else
       console.warn('ObjectLoaderAM: THREE.OBJLoader undefined');
     if (THREE.OBJMTLLoader)
-      var objMtlLoader = new THREE.OBJMTLLoader();
+      var obj_mtl_loader = new THREE.OBJMTLLoader();
     else
       console.warn('ObjectLoaderAM: THREE.OBJMTLLoader undefined');
 
-    function setAttributes( object, data ) {
+    function SetAttributes( object, data ) {
 
       var matrix = new THREE.Matrix4();
 
@@ -692,18 +682,18 @@ ObjectLoaderAM = function ( manager ) {
 
         case 'OBJ':
 
-        if (typeof objLoader == 'undefined') {
+        if (typeof obj_loader == 'undefined') {
           console.warn('ObjectLoaderAM: failed to load ' + data.uuid + ': THREE.OBJLoader is undefined');
           return undefined;
         }
 
         object = new THREE.Object3D();
 
-        var url = that.constants.modelPath + '/' + data.url;
+        var url = that.constants.model_path + '/' + data.url;
 
         manager.itemStart(url);
 
-        objLoader.load( url, function ( object_cpy, data_cpy, manager_cpy, url_cpy ) {
+        obj_loader.load( url, function ( object_cpy, data_cpy, manager_cpy, url_cpy ) {
           return function ( model ) {
 
             object_cpy.copy(model);
@@ -713,7 +703,7 @@ ObjectLoaderAM = function ( manager ) {
                 child.geometry.computeBoundingSphere();
             });
 
-            setAttributes(object_cpy, data_cpy);
+            SetAttributes(object_cpy, data_cpy);
 
             manager_cpy.itemEnd(url_cpy);
 
@@ -726,20 +716,20 @@ ObjectLoaderAM = function ( manager ) {
 
         case 'OBJMTL':
 
-        if (typeof objMtlLoader == 'undefined') {
+        if (typeof obj_mtl_loader == 'undefined') {
           console.warn('ObjectLoaderAM: failed to load ' + data.uuid + ': THREE.OBJMTLLoader is undefined');
           return undefined;
         }
 
         object = new THREE.Group();
 
-        var obj_url = that.constants.modelPath + '/' + data.objUrl;
-        var mtl_url = that.constants.modelPath + '/' + data.mtlUrl;
+        var obj_url = that.constants.model_path + '/' + data.objUrl;
+        var mtl_url = that.constants.model_path + '/' + data.mtlUrl;
 
         manager.itemStart(obj_url);
         manager.itemStart(mtl_url);
 
-        objMtlLoader.load( obj_url, mtl_url,
+        obj_mtl_loader.load( obj_url, mtl_url,
           function ( object_cpy, data_cpy, manager_cpy, obj_url_cpy, mtl_url_cpy ) {
             return function ( model ) {
 
@@ -750,7 +740,7 @@ ObjectLoaderAM = function ( manager ) {
                   child.geometry.computeBoundingSphere();
               });
 
-              setAttributes(object_cpy, data_cpy);
+              SetAttributes(object_cpy, data_cpy);
 
               manager.itemEnd(obj_url_cpy);
               manager.itemEnd(mtl_url_cpy);
@@ -764,18 +754,18 @@ ObjectLoaderAM = function ( manager ) {
 
         case 'Collada':
 
-        if (typeof colladaLoader == 'undefined') {
+        if (typeof collada_loader == 'undefined') {
           console.warn('ObjectLoaderAM: failed to load ' + data.uuid + ': THREE.ColladaLoader is undefined');
           return undefined;
         }
 
         object = new THREE.Group();
 
-        var url = that.constants.modelPath + '/' + data.url;
+        var url = that.constants.model_path + '/' + data.url;
 
         manager.itemStart(url);
 
-        colladaLoader.load( url, function ( object_cpy, data_cpy, manager_cpy, url_cpy ) {
+        collada_loader.load( url, function ( object_cpy, data_cpy, manager_cpy, url_cpy ) {
           return function ( collada ) {
 
             var dae = collada.scene;
@@ -789,7 +779,7 @@ ObjectLoaderAM = function ( manager ) {
               }
             } );
 
-            setAttributes(object_cpy, data_cpy);
+            SetAttributes(object_cpy, data_cpy);
 
             manager_cpy.itemEnd(url_cpy);
           }
@@ -803,13 +793,13 @@ ObjectLoaderAM = function ( manager ) {
 
       }
 
-      setAttributes( object, data );
+      SetAttributes( object, data );
 
       if ( data.children !== undefined ) {
 
         for ( var child in data.children ) {
 
-          var o = that.parseObject( data.children[ child ], object );
+          var o = that.ParseObject( data.children[ child ], object );
           if (o !== undefined) {
             object.add( o );
           }

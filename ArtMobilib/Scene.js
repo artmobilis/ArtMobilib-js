@@ -168,7 +168,7 @@ Scene = function(parameters) {
   this.Load = function(url) {
     if (_obj_loader) {
 
-      _obj_loader.load(url, function(new_scene) {
+      _obj_loader.Load(url, function(new_scene) {
 
         _loading_manager.onLoad = function() {
           for(child of new_scene.children) {
