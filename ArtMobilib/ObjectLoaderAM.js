@@ -9,12 +9,14 @@ Edited for ArtMobilis
 
 
 ObjectLoaderAM
+
 A loader for loading a JSON resource
 A THREE.ObjectLoader edited to support .GIF, .MP4 as textures,
 and can load OBJ models and Collada models.
 
 
 Dependency:
+
 three.js,
 ColladaLoader.js,
 OBJLoader.js,
@@ -25,7 +27,7 @@ libgif.js
 *********************/
 
 
-ObjectLoaderAM = function ( onUpdate, manager ) {
+ObjectLoaderAM = function ( manager ) {
 
   var that = this;
 
@@ -40,20 +42,9 @@ ObjectLoaderAM = function ( onUpdate, manager ) {
   this.videos = {};
   this.textures = {};
 
-  this.onUpdate = onUpdate;
 
-  var onAddFctns = [];
+  var _on_update_callbacks = [];
 
-
-  this.onAdd = function ( fctn ) {
-    onAddFctns.push(fctn);
-  }
-
-  function applyOnAdd( obj ) {
-    for(fun of onAddFctns) {
-      fun(obj);
-    }
-  }
 
   this.load = function ( url, onLoad, onProgress, onError ) {
 
@@ -260,13 +251,13 @@ ObjectLoaderAM = function ( onUpdate, manager ) {
             var texture = new THREE.Texture(anim.get_canvas());
             texture.needsUpdate = true;
 
-            var updateTexture = function(text) {
+            var updateTexture = function(texture_cpy) {
               return function() {
-                text.needsUpdate = true;
+                texture_cpy.needsUpdate = true;
               }
             }(texture);
 
-            that.onUpdate(updateTexture);
+            _on_update_callbacks.push(updateTexture);
 
           } else {
             var texture = new THREE.Texture( image );
@@ -291,10 +282,14 @@ ObjectLoaderAM = function ( onUpdate, manager ) {
 
           var texture = new THREE.Texture( vid );
 
-          that.onUpdate(function() {
-            if ( vid.readyState == vid.HAVE_ENOUGH_DATA )
-              texture.needsUpdate	= true;
-          });
+          var UpdateVideoTexture = function(video_cpy, texture_cpy) {
+            return function() {
+              if ( video_cpy.readyState == video_cpy.HAVE_ENOUGH_DATA )
+                texture_cpy.needsUpdate = true;
+            }
+          }(vid, texture);
+
+          _on_update_callbacks.push(UpdateVideoTexture);
         }
 
         texture.uuid = data.uuid;
@@ -697,81 +692,110 @@ ObjectLoaderAM = function ( onUpdate, manager ) {
 
         case 'OBJ':
 
-        if (typeof objLoader == 'undefined')
+        if (typeof objLoader == 'undefined') {
+          console.warn('ObjectLoaderAM: failed to load ' + data.uuid + ': THREE.OBJLoader is undefined');
           return undefined;
+        }
 
-        objLoader.load( that.constants.modelPath + '/' + data.url, function ( par, dat ) {
+        object = new THREE.Object3D();
+
+        var url = that.constants.modelPath + '/' + data.url;
+
+        manager.itemStart(url);
+
+        objLoader.load( url, function ( object_cpy, data_cpy, manager_cpy, url_cpy ) {
           return function ( model ) {
 
-            model.traverse(function(child) {
+            object_cpy.copy(model);
+
+            object.traverse(function(child) {
               if (child.geometry)
                 child.geometry.computeBoundingSphere();
             });
 
-            setAttributes(model, dat);
+            setAttributes(object_cpy, data_cpy);
 
-            par.add(model);
-            that.onAdd(model);
+            manager_cpy.itemEnd(url_cpy);
 
           };
-        }( parent, data ));
+        }( object, data, manager, url ));
 
-        return undefined;
+        return object;
 
         break;
 
         case 'OBJMTL':
 
-        if (typeof objMtlLoader == 'undefined')
+        if (typeof objMtlLoader == 'undefined') {
+          console.warn('ObjectLoaderAM: failed to load ' + data.uuid + ': THREE.OBJMTLLoader is undefined');
           return undefined;
+        }
 
-        objMtlLoader.load( that.constants.modelPath + '/' + data.objUrl,
-          that.constants.modelPath + '/' + data.mtlUrl, function ( par, dat ) {
+        object = new THREE.Group();
+
+        var obj_url = that.constants.modelPath + '/' + data.objUrl;
+        var mtl_url = that.constants.modelPath + '/' + data.mtlUrl;
+
+        manager.itemStart(obj_url);
+        manager.itemStart(mtl_url);
+
+        objMtlLoader.load( obj_url, mtl_url,
+          function ( object_cpy, data_cpy, manager_cpy, obj_url_cpy, mtl_url_cpy ) {
             return function ( model ) {
 
-              model.traverse(function(child) {
+              object_cpy.copy(model);
+
+              object_cpy.traverse(function(child) {
                 if (child.geometry)
                   child.geometry.computeBoundingSphere();
               });
 
-              setAttributes(model, dat);
+              setAttributes(object_cpy, data_cpy);
 
-              par.add(model);
-              applyOnAdd(model);
+              manager.itemEnd(obj_url_cpy);
+              manager.itemEnd(mtl_url_cpy);
 
             };
-          }( parent, data ));
+          }( object, data, manager, obj_url, mtl_url ));
 
-        return undefined;
+        return object;
 
         break;
 
         case 'Collada':
 
-        if (typeof colladaLoader == 'undefined')
+        if (typeof colladaLoader == 'undefined') {
+          console.warn('ObjectLoaderAM: failed to load ' + data.uuid + ': THREE.ColladaLoader is undefined');
           return undefined;
+        }
 
-        object = new THREE.Object3D();
+        object = new THREE.Group();
 
-        colladaLoader.load( that.constants.modelPath + '/' + data.url, function ( par, dat ) {
+        var url = that.constants.modelPath + '/' + data.url;
+
+        manager.itemStart(url);
+
+        colladaLoader.load( url, function ( object_cpy, data_cpy, manager_cpy, url_cpy ) {
           return function ( collada ) {
 
             var dae = collada.scene;
 
-            dae.traverse( function ( child ) {
+            object_cpy.copy(dae);
+
+            object_cpy.traverse( function ( child ) {
               if ( child instanceof THREE.SkinnedMesh ) {
                 var animation = new THREE.Animation( child, child.geometry.animation );
                 animation.play();
               }
             } );
 
-            setAttributes(dae, dat);
-            par.add(dae);
-            applyOnAdd(dae);
-          }
-        }( parent, data ));
+            setAttributes(object_cpy, data_cpy);
 
-        return undefined;
+            manager_cpy.itemEnd(url_cpy);
+          }
+        }( object, data, manager, url ));
+
+        return object;
 
         default:
 
@@ -788,7 +812,6 @@ ObjectLoaderAM = function ( onUpdate, manager ) {
           var o = that.parseObject( data.children[ child ], object );
           if (o !== undefined) {
             object.add( o );
-            applyOnAdd( o );
           }
 
         }
@@ -818,4 +841,8 @@ ObjectLoaderAM = function ( onUpdate, manager ) {
       return object;
     }
   }();
+
+  this.GetOnUpdateCallbacks = function() {
+    return _on_update_callbacks;
+  }
 };
