@@ -13,8 +13,11 @@ var ImageMarkers = function (image) {
     /// private data
     var that = this;
     var _max_pattern_size = 512;
-    var _max_per_level = 100;
+    var _max_per_level = 150;
     var _num_train_levels = 3;
+    this.blur_size = 5;        // 3 to 9
+    this.lap_thres = 30;       // 1 to 100
+    this.eigen_thres = 25;     // 1 to 100
 
     /// public data
     // descriptors (should we keep level separated?)
@@ -77,13 +80,14 @@ var ImageMarkers = function (image) {
     IMload_image = function (name) {
         var img = new Image();
         img.onload = function () {
+            console.debug("load " + that.name);
             var contx = container.getContext('2d');
             contx.drawImage(img, 0, 0, templateX, templateY);
             var imageData = contx.getImageData(0, 0, templateX, templateY);
 
             var mtrained_8u = new jsfeat.matrix_t(templateX, templateY, jsfeat.U8_t | jsfeat.C1_t);
             jsfeat.imgproc.grayscale(imageData.data, templateX, templateY, mtrained_8u);
-            IMtrainpattern(mtrained_8u); // le pattern doit etre plus grand que 512*512 dans au moins une dimension (sinon pas de rescale et rien ne se passe)
+            that.IMtrainpattern(mtrained_8u); // le pattern doit etre plus grand que 512*512 dans au moins une dimension (sinon pas de rescale et rien ne se passe)
         }
         img.src = name;
     };
@@ -94,7 +98,7 @@ var ImageMarkers = function (image) {
     /////////////////////
     
     // train a pattern: extract corners multiscale, compute descriptor, store result
-    IMtrainpattern = function (img) {
+    this.IMtrainpattern = function (img) {
         var lev = 0, i = 0;
         var sc = 1.0;
         var sc_inc = Math.sqrt(2.0); // magic number ;)
@@ -103,6 +107,8 @@ var ImageMarkers = function (image) {
         var new_width = 0, new_height = 0;
         var lev_corners, lev_descr;
         //var corners_num = 0;
+
+        console.debug("Train " + that.name);
 
         var sc0 = Math.min(_max_pattern_size / img.cols, _max_pattern_size / img.rows);
         new_width = (img.cols * sc0) | 0;
@@ -135,7 +141,10 @@ var ImageMarkers = function (image) {
         lev_corners = that.pattern_corners[0];
         lev_descr = that.pattern_descriptors[0];
 
-        jsfeat.imgproc.gaussian_blur(lev0_img, lev_img, options.blur_size | 0); // this is more robust
+        jsfeat.imgproc.gaussian_blur(lev0_img, lev_img, that.blur_size); // this is more robust
+        jsfeat.yape06.laplacian_threshold = that.lap_thres;
+        jsfeat.yape06.min_eigen_value_threshold = that.eigen_thres;
+
         that.corners_num = detect_keypoints(lev_img, lev_corners, _max_per_level);
         jsfeat.orb.describe(lev_img, lev_corners, that.corners_num, lev_descr);
 
@@ -154,7 +163,7 @@ var ImageMarkers = function (image) {
             new_height = (lev0_img.rows * sc) | 0;
 
             jsfeat.imgproc.resample(lev0_img, lev_img, new_width, new_height);
-            jsfeat.imgproc.gaussian_blur(lev_img, lev_img, options.blur_size | 0);
+            jsfeat.imgproc.gaussian_blur(lev_img, lev_img, that.blur_size | 0);
             that.corners_num = detect_keypoints(lev_img, lev_corners, _max_per_level);
             jsfeat.orb.describe(lev_img, lev_corners, that.corners_num, lev_descr);
 
@@ -174,128 +183,3 @@ var ImageMarkers = function (image) {
 
     IMload_image(image);
 };
-
-
-/*
-// a mettre dans le status
-
-// alloc matches
-matches[nb_trained] = [];
-var i = maxMatches;
-while (--i >= 0) {
-    matches[nb_trained][i] = new ArtMobilib.match_t();
-}
-
-// transform matrix
-homo3x3[nb_trained] = new jsfeat.matrix_t(3, 3, jsfeat.F32C1_t);
-match_mask[nb_trained] = new jsfeat.matrix_t(500, 1, jsfeat.U8C1_t);
-
-
-
-// non zero bits count
-function popcnt32(n) {
-    n -= ((n >> 1) & 0x55555555);
-    n = (n & 0x33333333) + ((n >> 2) & 0x33333333);
-    return (((n + (n >> 4)) & 0xF0F0F0F) * 0x1010101) >> 24;
-}
-
-
-// naive brute-force matching.
-// each on screen point is compared to all pattern points
-// to find the closest match
-function match_pattern(id) {
-    var q_cnt = screen_descriptors.rows;
-    var query_du8 = screen_descriptors.data;
-    var query_u32 = screen_descriptors.buffer.i32; // cast to integer buffer
-    var qd_off = 0;
-    var qidx = 0, lev = 0, pidx = 0, k = 0;
-    var num_matches = 0;
-
-    stat.start("match_pattern");
-
-    for (qidx = 0; qidx < q_cnt; ++qidx) {
-        var best_dist = 256;
-        var best_dist2 = 256;
-        var best_idx = -1;
-        var best_lev = -1;
-
-        for (lev = 0; lev < num_train_levels; ++lev) {
-            var lev_descr = pattern_descriptors[id][lev];
-            var ld_cnt = lev_descr.rows;
-            var ld_i32 = lev_descr.buffer.i32; // cast to integer buffer
-            var ld_off = 0;
-
-            for (pidx = 0; pidx < ld_cnt; ++pidx) {
-
-                var curr_d = 0;
-                // our descriptor is 32 bytes so we have 8 Integers
-                for (k = 0; k < 8; ++k) {
-                    curr_d += popcnt32(query_u32[qd_off + k] ^ ld_i32[ld_off + k]);
-                }
-
-                if (curr_d < best_dist) {
-                    best_dist2 = best_dist;
-                    best_dist = curr_d;
-                    best_lev = lev;
-                    best_idx = pidx;
-                } else if (curr_d < best_dist2) {
-                    best_dist2 = curr_d;
-                }
-
-                ld_off += 8; // next descriptor
-            }
-        }
-
-        // filter out by some threshold
-        if (best_dist < options.match_threshold) {
-            matches[id][num_matches].screen_idx = qidx;
-            matches[id][num_matches].pattern_lev = best_lev;
-            matches[id][num_matches].pattern_idx = best_idx;
-            num_matches++;
-        }
-        //
-
-        /* filter using the ratio between 2 closest matches
-        if(best_dist < 0.8*best_dist2) {
-            matches[id][num_matches].screen_idx = qidx;
-            matches[id][num_matches].pattern_lev = best_lev;
-            matches[id][num_matches].pattern_idx = best_idx;
-            num_matches++;
-        }
-        */
-/*
-        qd_off += 8; // next query descriptor
-    }
-
-    stat.stop("match_pattern");
-
-    return num_matches;
-}
-
-// match with all recorded pattern and select the best if enough corresponding data
-function matching() {
-    var good_matches = 0;
-
-// search for the right pattern
-    var id = 0;
-    var str = "", found = false;
-    for (id = 0; id < nb_trained; ++id) {
-        num_matches[id] = match_pattern(id);
-        str += "<br>Id : " + id + " nbMatches : " + num_matches[id];
-        if (num_matches[id] < 10 || found)
-            continue;
-
-        stat.start("find_transform");
-        good_matches = find_transform(matches[id], num_matches[id], id);
-        stat.stop("find_transform");
-        str += " nbGood : " + good_matches;
-        if (good_matches > 8) {
-            current_pattern = id;
-            found = true;
-        }
-    }
-    matchingresult.innerHTML = str;
-    return found;
-};
-
-*/

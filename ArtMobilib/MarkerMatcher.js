@@ -36,6 +36,7 @@ var MarkerMatcher = function () {
     this.nb_homograpy_valid=8;
     this.nb_matches_valid = 20;
     this.maxMatches = 2000;
+    this.match_threshold = 48; // 16 to 128
 
     // matching result
     this.matches = [];
@@ -56,8 +57,8 @@ var MarkerMatcher = function () {
         }
 
         // transform matrix
-        homo3x3 = new jsfeat.matrix_t(3, 3, jsfeat.F32C1_t);
-        match_mask = new jsfeat.matrix_t(500, 1, jsfeat.U8C1_t);
+        that.homo3x3 = new jsfeat.matrix_t(3, 3, jsfeat.F32C1_t);
+        that.match_mask = new jsfeat.matrix_t(500, 1, jsfeat.U8C1_t);
     }
 
     // non zero bits count
@@ -69,7 +70,8 @@ var MarkerMatcher = function () {
 
 
     // estimate homography transform between matched points
-    function find_transform(matches, count) {
+    function find_transform(screen_corners, pattern_marker) {
+        var pattern_corners = pattern_marker.pattern_corners;
         // motion kernel
         var mm_kernel = new jsfeat.motion_model.homography2d();
         // ransac params
@@ -82,10 +84,10 @@ var MarkerMatcher = function () {
         var screen_xy = [];
 
         // construct correspondences
-        for (var i = 0; i < count; ++i) {
-            var m = matches[i];
+        for (var i = 0; i < that.num_matches; ++i) {
+            var m = that.matches[i];
             var s_kp = screen_corners[m.screen_idx];
-            var p_kp = pattern_corners[id][m.pattern_lev][m.pattern_idx];
+            var p_kp = pattern_corners[m.pattern_lev][m.pattern_idx];
             pattern_xy[i] = { "x": p_kp.x, "y": p_kp.y };
             screen_xy[i] = { "x": s_kp.x, "y": s_kp.y };
         }
@@ -93,13 +95,13 @@ var MarkerMatcher = function () {
         // estimate motion
         var ok = false;
         ok = jsfeat.motion_estimator.ransac(ransac_param, mm_kernel,
-            pattern_xy, screen_xy, count, that.homo3x3, that.match_mask, 1000);
+            pattern_xy, screen_xy, that.num_matches, that.homo3x3, that.match_mask, 1000);
 
         // extract good matches and re-estimate
         var good_cnt = 0;
         if (ok) {
-            for (var i = 0; i < count; ++i) {
-                if (match_mask[id].data[i]) {
+            for (var i = 0; i < that.num_matches; ++i) {
+                if (that.match_mask.data[i]) {
                     pattern_xy[good_cnt].x = pattern_xy[i].x;
                     pattern_xy[good_cnt].y = pattern_xy[i].y;
                     screen_xy[good_cnt].x = screen_xy[i].x;
@@ -164,7 +166,7 @@ var MarkerMatcher = function () {
             }
 
             // filter out by some threshold
-            if (best_dist < options.match_threshold) {
+            if (best_dist < that.match_threshold) {
                 that.matches[that.num_matches].screen_idx = qidx;
                 that.matches[that.num_matches].pattern_lev = best_lev;
                 that.matches[that.num_matches].pattern_idx = best_idx;
@@ -191,7 +193,7 @@ var MarkerMatcher = function () {
 
 
     // match with the pattern and test if enough corresponding data trough planar homography
-    this.matching = function (screen_marker, pattern_marker) {
+    this.matching = function (screen_corners, screen_descriptors, pattern_marker) {
         var good_matches = 0;
 
         // wait for ImageMarkers loaded
@@ -199,13 +201,13 @@ var MarkerMatcher = function () {
 
         // search for the right pattern
         that.log = ""
-        that.num_matches = match_pattern(screen_marker, pattern_marker);
+        that.num_matches = match_pattern(screen_descriptors, pattern_marker);
         that.log += pattern_marker.name + " nbMatches : " + that.num_matches;
-        if (num_matches < that.nb_matches_valid)
+        if (that.num_matches < that.nb_matches_valid)
             return false;
 
         stat.start("find_transform");
-        that.good_matches = find_transform(that.matches, that.num_matches);
+        that.good_matches = find_transform(screen_corners, pattern_marker);
         stat.stop("find_transform");
         that.log += " nbGood : " + that.good_matches + "\n";
         return (that.good_matches > that.nb_homograpy_valid);

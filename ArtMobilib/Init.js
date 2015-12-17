@@ -72,9 +72,21 @@ var demo_opt = function () {
     this.match_threshold = 48; // 16 to 128
 }
 
-ArtMobilib.initArtMobilib = function (video, canvas2d, canvas3d, debug) {
+InitProfiler = function(){
     stat = new profiler();
+    stat.add("grayscale");
+    stat.add("gauss blur");
+    stat.add("keypoints");
+    stat.add("orb descriptors");
+    stat.add("matching");
+    stat.add("match_pattern");
+    stat.add("find_transform");
+    stat.add("Posit");
+    stat.add("update");
+}
 
+ArtMobilib.initArtMobilib = function (video, canvas2d, canvas3d, debug) {
+    InitProfiler();
     this.debugging = debug;
     this.video = document.getElementById(video);
     this.canvas2d = document.getElementById(canvas2d);
@@ -128,18 +140,6 @@ ArtMobilib.initArtMobilib = function (video, canvas2d, canvas3d, debug) {
     this.createRenderers();
 
     options = new demo_opt();
-    stat.add("grayscale");
-    stat.add("gauss blur");
-    stat.add("keypoints");
-    stat.add("orb descriptors");
-    stat.add("matching");
-    stat.add("match_pattern");
-    stat.add("find_transform");
-
-
-
-    stat.add("Posit");
-    stat.add("update");
 }
 
 
