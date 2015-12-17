@@ -12,9 +12,9 @@ var ImageMarkers = function (image) {
 
     /// private data
     var that = this;
-    var max_pattern_size = 512;
-    var max_per_level = 100;
-    var num_train_levels = 3;
+    var _max_pattern_size = 512;
+    var _max_per_level = 100;
+    var _num_train_levels = 3;
 
     /// public data
     // descriptors (should we keep level separated?)
@@ -26,7 +26,7 @@ var ImageMarkers = function (image) {
     this.pattern_preview;
 
     /// private methods
-    function detect_keypoints(img, corners, max_allowed) {
+    function DetectKeypoints(img, corners, max_allowed) {
         // detect features
         var count = jsfeat.yape06.detect(img, corners, 17);
 
@@ -38,7 +38,7 @@ var ImageMarkers = function (image) {
 
         // calculate dominant orientation for each keypoint
         for (var i = 0; i < count; ++i) {
-            corners[i].angle = ic_angle(img, corners[i].x, corners[i].y);
+            corners[i].angle = IC_Angle(img, corners[i].x, corners[i].y);
         }
 
         return count;
@@ -46,7 +46,7 @@ var ImageMarkers = function (image) {
 
     // central difference using image moments to find dominant orientation
     var u_max = new Int32Array([15, 15, 15, 15, 14, 14, 14, 13, 13, 12, 11, 10, 9, 8, 6, 3, 0]);
-    function ic_angle(img, px, py) {
+    function IC_Angle(img, px, py) {
         var half_k = 15; // half patch size
         var m_01 = 0, m_10 = 0;
         var src = img.data, step = img.cols;
@@ -74,16 +74,16 @@ var ImageMarkers = function (image) {
         return Math.atan2(m_01, m_10);
     }
 
-    var IMload_image = function (name) {
+    IMload_image = function (name) {
         var img = new Image();
         img.onload = function () {
             var contx = container.getContext('2d');
             contx.drawImage(img, 0, 0, templateX, templateY);
             var imageData = contx.getImageData(0, 0, templateX, templateY);
 
-            trained_8u = new jsfeat.matrix_t(templateX, templateY, jsfeat.U8_t | jsfeat.C1_t);
-            jsfeat.imgproc.grayscale(imageData.data, templateX, templateY, trained_8u);
-            IMtrainpattern(trained_8u); // le pattern doit etre plus grand que 512*512 dans au moins une dimension (sinon pas de rescale et rien ne se passe)
+            var mtrained_8u = new jsfeat.matrix_t(templateX, templateY, jsfeat.U8_t | jsfeat.C1_t);
+            jsfeat.imgproc.grayscale(imageData.data, templateX, templateY, mtrained_8u);
+            IMtrainpattern(mtrained_8u); // le pattern doit etre plus grand que 512*512 dans au moins une dimension (sinon pas de rescale et rien ne se passe)
         }
         img.src = name;
     };
@@ -104,7 +104,7 @@ var ImageMarkers = function (image) {
         var lev_corners, lev_descr;
         //var corners_num = 0;
 
-        var sc0 = Math.min(max_pattern_size / img.cols, max_pattern_size / img.rows);
+        var sc0 = Math.min(_max_pattern_size / img.cols, _max_pattern_size / img.rows);
         new_width = (img.cols * sc0) | 0;
         new_height = (img.rows * sc0) | 0;
 
@@ -118,7 +118,7 @@ var ImageMarkers = function (image) {
         //pattern_corners[nb_trained] = []; c'est fait à l'init
         //pattern_descriptors[nb_trained] = [];
 
-        for (lev = 0; lev < num_train_levels; ++lev) {
+        for (lev = 0; lev < _num_train_levels; ++lev) {
             that.pattern_corners[lev] = [];
             lev_corners = that.pattern_corners[lev];
 
@@ -128,7 +128,7 @@ var ImageMarkers = function (image) {
                 lev_corners[i] = new jsfeat.keypoint_t(0, 0, 0, 0, -1);
             }
 
-            that.pattern_descriptors[lev] = new jsfeat.matrix_t(32, max_per_level, jsfeat.U8_t | jsfeat.C1_t);
+            that.pattern_descriptors[lev] = new jsfeat.matrix_t(32, _max_per_level, jsfeat.U8_t | jsfeat.C1_t);
         }
 
         // do the first level
@@ -136,7 +136,7 @@ var ImageMarkers = function (image) {
         lev_descr = that.pattern_descriptors[0];
 
         jsfeat.imgproc.gaussian_blur(lev0_img, lev_img, options.blur_size | 0); // this is more robust
-        that.corners_num = detect_keypoints(lev_img, lev_corners, max_per_level);
+        that.corners_num = detect_keypoints(lev_img, lev_corners, _max_per_level);
         jsfeat.orb.describe(lev_img, lev_corners, that.corners_num, lev_descr);
 
         console.log("IMtrain " + lev_img.cols + "x" + lev_img.rows + " points: " + that.corners_num);
@@ -146,7 +146,7 @@ var ImageMarkers = function (image) {
         // lets do multiple scale levels
         // we can use Canvas context draw method for faster resize
         // but its nice to demonstrate that you can do everything with jsfeat
-        for (lev = 1; lev < num_train_levels; ++lev) {
+        for (lev = 1; lev < _num_train_levels; ++lev) {
             lev_corners = that.pattern_corners[lev];
             lev_descr = that.pattern_descriptors[lev];
 
@@ -155,7 +155,7 @@ var ImageMarkers = function (image) {
 
             jsfeat.imgproc.resample(lev0_img, lev_img, new_width, new_height);
             jsfeat.imgproc.gaussian_blur(lev_img, lev_img, options.blur_size | 0);
-            that.corners_num = detect_keypoints(lev_img, lev_corners, max_per_level);
+            that.corners_num = detect_keypoints(lev_img, lev_corners, _max_per_level);
             jsfeat.orb.describe(lev_img, lev_corners, that.corners_num, lev_descr);
 
             // fix the coordinates due to scale level
