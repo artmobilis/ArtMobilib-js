@@ -239,7 +239,11 @@ ObjectLoaderAM = function ( manager ) {
             var anim = new SuperGif( { gif: img, auto_play: true } );
             anim.load();
 
-            var texture = new THREE.Texture(anim.get_canvas());
+            var gif_canvas = anim.get_canvas();
+
+            gif_canvas.style.display = 'none';
+            
+            var texture = new THREE.Texture(gif_canvas);
             texture.needsUpdate = true;
 
             var updateTexture = function(texture_cpy) {
