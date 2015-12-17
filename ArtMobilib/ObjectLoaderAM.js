@@ -290,6 +290,7 @@ ObjectLoaderAM = function ( manager ) {
         if ( data.offset !== undefined ) texture.offset = new THREE.Vector2( data.offset[ 0 ], data.offset[ 1 ] );
         if ( data.repeat !== undefined ) texture.repeat = new THREE.Vector2( data.repeat[ 0 ], data.repeat[ 1 ] );
         if ( data.minFilter !== undefined ) texture.minFilter = ParseConstant( data.minFilter );
+        else texture.minFilter = THREE.LinearFilter;
         if ( data.magFilter !== undefined ) texture.magFilter = ParseConstant( data.magFilter );
         if ( data.anisotropy !== undefined ) texture.anisotropy = data.anisotropy;
         if ( Array.isArray( data.wrap ) ) {
