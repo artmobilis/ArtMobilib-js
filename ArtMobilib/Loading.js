@@ -34,16 +34,17 @@ var load_trained_patterns2 = function (name) {
 };
 
 
-var loadMarker = function(nameImage, name3D) {
-    load_trained_patterns2( nameImage);
-    load_3D(name3D, addModelToScene);
+var loadMarker = function(name_image, name_3D) {
+    load_trained_patterns2(name_image);
+    load_3D(name_3D, addModelToScene);
 
-    var im = new ImageMarkers(nameImage);
+    //var im = new ImageMarkers(nameImage);
+    AMmarkerManager.AddMarker(name_image);
 }
 
-var loadMarkerAnim = function(nameImage, name3D) {
-    load_trained_patterns2( nameImage);
-    load_3D( name3D, addModelToSceneAnim);
+var loadMarkerAnim = function (name_image, name_3D) {
+    load_trained_patterns2(name_image);
+    load_3D(name_3D, addModelToSceneAnim);
 }
 
 function addModelToSceneAnim( geometry, materials )
