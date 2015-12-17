@@ -14,16 +14,38 @@
 
         <video id="webcam" style="display:none;" height="480" width="640"></video>
         <div style=" width:640px;height:480px;">
-            <canvas id="canvas2d" height="480" width="640"></canvas>
-            <canvas hidden id="container" width="480" height="640"></canvas>
+            <canvas id="canvas2d"></canvas>
+            <canvas id="canvas3d"></canvas>
+            <canvas hidden id="container" width="480" height="640" style=" float: left; border: solid 1px black; background: green;"></canvas>
             <div id="no_rtc" class="alert alert-error" style="display:none;"></div>
             <div id="log" class="alert alert-info"></div>
         </div>
+        <br>
+
+        <!-- debugging information -->
+        Processing : <span id="timeproc"></span><br>
+        <span id="matchingresult"></span><br>
+        <div id="pose1"></div>
+
+        <!-- we load trained images here, in future read from json -->
+        <!-- img id="trained0" src="data/gvf.jpg" width="100" >
+        <img id="trained1" src="data/vsd.jpg" width="100">
+        <img id="trained2" src="data/3Dtricart.jpg" width="100">  -->
+        <video id="videoTexture" autoplay loop style="display:none">
+            <source src="data/video.mp4" type='video/mp4; codecs="avc1.42E01E, mp4a.40.2"'>
+        </video>
+
         <script type="text/javascript">
 
             // some global elements
             video = document.getElementById('webcam');
             canvas2d = document.getElementById('canvas2d');
+            canvas3D = document.getElementById('canvas3d');
+            timeproc = document.getElementById('timeproc');
+            matchingresult = document.getElementById('matchingresult');
+
+            //##### to remove
+            container = document.getElementById('container');
 
             // onload ask for camera and call demo_app
             window.onload = function () {
@@ -50,19 +72,33 @@
             /////////////////////
 
             function main_app() {
-                InitProfiler(); // pt move somewere else
+                ArtMobilib.initArtMobilib("webcam", "canvas2d", "canvas3d", true); // iniatilize global objects
+
                 AMmarkerManager.AttachVideo(video, canvas2d);
 
+                createScenes();
+
                 // we load trained images here, in future read from json
-                AMmarkerManager.AddMarker("data/gvf.jpg");
-                AMmarkerManager.AddMarker("data/3Dtricart.jpg");
-                AMmarkerManager.AddMarker("data/vsd.jpg");
+                //loadMarkerAnim("data/3Dtricart.jpg", "data/android-animations.js");
+                loadMarker("data/gvf.jpg", "data/android.js");
+                loadMarker("data/3Dtricart.jpg", "data/android.js");
+                loadMarker("data/vsd.jpg", "data/android.js");
+
+                //load_trained_patterns2("http://www.3dvtech.com/ArtMobilib/data/3Dtricart.jpg");
+                //load_trained_patterns2("http://www.3dvtech.com/ArtMobilib/data/gvf.jpg");
+                //load_trained_patterns2("http://localhost:4400/img/trained/3Dtricart.jpg");
+                //load_trained_patterns("trained0");
+                //load_trained_patterns("trained1");
+                //load_trained_patterns("trained2");
 
                 compatibility.requestAnimationFrame(tick);
+
+                var toto = ArtMobilib.cdetector.testCorner;
 
             }
 
             function tick() {
+                //ArtMobilib.tick();
                 if (AMmarkerManager.ProcessVideo())
                     console.log("Marker detected");
                 //console.log(AMmarkerManager.matcher.log);
