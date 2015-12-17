@@ -9,7 +9,7 @@ Constructor
 
 TrackedObjManager(parameters)
 
-parameters: an object holding the parameters 'camera', 'lerpFactor', and 'timeout'
+parameters: an object holding the parameters 'camera', 'lerp_factor', and 'timeout'
 to set their respectives properties
 
 
@@ -17,28 +17,28 @@ Properties
 
 camera: the origin, a 'THREE.Object3D'. Tracked objects are set has children of this object.
 
-lerpFactor: a number in [0, 1], 0.2 by default.
+lerp_factor: a number in [0, 1], 0.2 by default.
 The higher, the faster tracked objects will converge toward the camera.
 
 timeout: time in seconds, 3 by default.
-If an object isn't tracked for 'timeout' seconds, onDisable() is called,
+If an object isn't tracked for 'timeout' seconds, on_disable() is called,
 and the object is disabled.
 
 
 Methods
 
-add(object, uuid, onEnable, onDisable)
+add(object, uuid, on_enable, on_disable)
 Add an object to track, and set the optionnal callbacks.
 The object is disabled until track() or trackCompose() are called.
 
 remove(uuid)
-Remove an object. If the object is enabled, onDisable is called before removal.
+Remove an object. If the object is enabled, on_disable is called before removal.
 
 update()
 
 track(uuid, matrix)
 Sets a new position for a previously added object.
-If the object is disabled, onEnable() is called and the object is enabled
+If the object is disabled, on_enable() is called and the object is enabled
 
 trackCompose(uuid, position, quaternion, scale)
 For convenience. Calls track().
@@ -60,49 +60,49 @@ TrackedObjManager = function(parameters) {
 
   var that = this;
 
-  var clock = new THREE.Clock(true);
+  var _clock = new THREE.Clock(true);
 
-  var holder = new this.Holder();
+  var _holder = new this.Holder();
 
 
   this.camera = parameters.camera;
 
-  this.lerpFactor = parameters.lerpFactor || 0.2;
+  this.lerp_factor = parameters.lerp_factor || 0.2;
 
   this.timeout = parameters.timeout || 3;
 
-  this.updateLerpMethod = function() {
-    holder.forEach( function(elem) {
+  this.UpdateLerpMethod = function() {
+    _holder.ForEach( function(elem) {
 
       var obj = elem.object;
       var target = elem.target;
 
-      obj.position.lerp(target.position, that.lerpFactor);
-      obj.quaternion.slerp(target.quaternion, that.lerpFactor);
-      obj.scale.lerp(target.scale, that.lerpFactor);
+      obj.position.lerp(target.position, that.lerp_factor);
+      obj.quaternion.slerp(target.quaternion, that.lerp_factor);
+      obj.scale.lerp(target.scale, that.lerp_factor);
 
     } );
   };
 
-  this.updateMethod = this.updateLerpMethod;
+  this.update_method = this.UpdateLerpMethod;
 
-  this.add = function(object, uuid, onEnable, onDisable) {
-    holder.add(object, uuid, onEnable, onDisable);
+  this.Add = function(object, uuid, on_enable, on_disable) {
+    _holder.Add(object, uuid, on_enable, on_disable);
   };
 
-  this.remove = function(uuid) {
-    holder.remove(uuid);
+  this.Remove = function(uuid) {
+    _holder.Remove(uuid);
   };
 
-  this.update = function() {
+  this.Update = function() {
 
-    holder.updateElapsed(clock.getDelta());
-    holder.checkTimeout(that.timeout);
+    _holder.UpdateElapsed(_clock.getDelta());
+    _holder.CheckTimeout(that.timeout);
 
-    that.updateMethod();
+    that.update_method();
   };
 
-  this.track = function() {
+  this.Track = function() {
 
     var new_matrix = new THREE.Matrix4();
 
@@ -110,7 +110,7 @@ TrackedObjManager = function(parameters) {
 
       if (that.camera) {
 
-        var elem = holder.get(uuid);
+        var elem = _holder.Get(uuid);
         if (elem) {
           var target = elem.target;
 
@@ -120,7 +120,7 @@ TrackedObjManager = function(parameters) {
           new_matrix.decompose(target.position, target.quaternion, target.scale);
 
 
-          holder.track(uuid);
+          _holder.Track(uuid);
 
           return true;
 
@@ -135,7 +135,7 @@ TrackedObjManager = function(parameters) {
     };
   }();
 
-  this.trackCompose = function() {
+  this.TrackCompose = function() {
 
     var matrix = new THREE.Matrix4();
 
@@ -143,12 +143,12 @@ TrackedObjManager = function(parameters) {
 
       matrix.compose(position, quaternion, scale);
 
-      return that.track(uuid, matrix);
+      return that.Track(uuid, matrix);
     }
   }();
 
-  this.getObject = function(uuid) {
-    var elem = holder.get(uuid);
+  this.GetObject = function(uuid) {
+    var elem = _holder.get(uuid);
     if (elem) {
       return elem.object;
     }
@@ -159,11 +159,11 @@ TrackedObjManager = function(parameters) {
 
 TrackedObjManager.prototype.Holder = function() {
 
-  var m_objects = {};
+  var _objects = {};
 
-  this.add = function(object, uuid, onEnable, onDisable) {
+  this.Add = function(object, uuid, on_enable, on_disable) {
 
-    m_objects[uuid] =
+    _objects[uuid] =
     {
       object: object,
       target:
@@ -173,62 +173,62 @@ TrackedObjManager.prototype.Holder = function() {
         scale: object.scale.clone(),
       },
       elapsed: 0,
-      onEnable: onEnable,
-      onDisable: onDisable,
+      on_enable: on_enable,
+      on_disable: on_disable,
       enabled: false
     };
   };
 
-  this.remove = function(uuid) {
-    var elem = m_objects[uuid];
+  this.Remove = function(uuid) {
+    var elem = _objects[uuid];
 
     if (elem.enabled) {
-      elem.onDisable(elem.object);
+      elem.on_disable(elem.object);
     }
-    delete m_objects[uuid];
+    delete _objects[uuid];
   };
 
-  this.track = function(uuid) {
+  this.Track = function(uuid) {
 
-    var elem = m_objects[uuid];
+    var elem = _objects[uuid];
 
     elem.elapsed = 0;
 
     if (!elem.enabled) {
       elem.enabled = true;
-      if (elem.onEnable)
-        elem.onEnable(elem.object);
+      if (elem.on_enable)
+        elem.on_enable(elem.object);
     }
   };
 
-  this.updateElapsed = function(elapsed) {
-    for (uuid in m_objects) {
+  this.UpdateElapsed = function(elapsed) {
+    for (uuid in _objects) {
 
-      m_objects[uuid].elapsed += elapsed;
+      _objects[uuid].elapsed += elapsed;
     }
   };
 
-  this.checkTimeout = function(timeout) {
+  this.CheckTimeout = function(timeout) {
 
-    for (uuid in m_objects) {
+    for (uuid in _objects) {
 
-      var elem = m_objects[uuid];
+      var elem = _objects[uuid];
 
       if (elem.elapsed > timeout) {
-        if (elem.onDisable)
-          elem.onDisable(elem.object);
+        if (elem.on_disable)
+          elem.on_disable(elem.object);
         elem.enabled = false;
       }
     }
   };
 
-  this.forEach = function(fun) {
-    for (uuid in m_objects) {
-      fun(m_objects[uuid]);
+  this.ForEach = function(fun) {
+    for (uuid in _objects) {
+      fun(_objects[uuid]);
     }
   };
 
-  this.get = function(uuid) {
-    return m_objects[uuid];
+  this.Get = function(uuid) {
+    return _objects[uuid];
   };
 };
