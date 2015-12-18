@@ -33,21 +33,23 @@ RemoveObject()
 Clear()
 Clear the scene.
 
-Parse(json)
+Parse(json, on_load_assets)
 Load a scene from a JSON structure. no-op if ObjectLoaderAM is unavailable.
+When every asset is loaded and added to the scene, 'on_load_assets' is called.
 
-Load(url)
-Load a json file then call Parse on the generated JSON structure.
+Load(url, on_load_assets)
+Load a scene from json file. no-op if ObjectLoaderAM is unavailable.
+When every asset is loaded and added to the scene, 'on_load_assets' is called.
 
-getCamera()
+GetCamera()
 Returns the camera, a THREE.PerspectiveCamera, and a child of cameraBody.
 
-getCameraBody()
+GetCameraBody()
 Returns the cameraBody, a THREE.Object3D, parent of the camera, and on the scene.
 
-getScene()
+GetScene()
 
-getCanvas()
+GetCanvas()
 
 
 Dependency
@@ -145,43 +147,47 @@ Scene = function(parameters) {
     _three_scene.remove(object);
   };
 
+  var OnLoadThreeScene = function(on_load_assets) {
+    return function(new_scene) {
 
-  this.Parse = function(json) {
+      function OnLoadAssets() {
+        for(child of new_scene.children) {
+          that.AddObject(child);
+        }
 
+        _three_scene.copy(new_scene, false);
+
+        _three_scene.traverse( function ( child ) {
+          if ( child instanceof THREE.SkinnedMesh ) {
+            var animation = new THREE.Animation( child, child.geometry.animation );
+            animation.play();
+          }
+        } );
+
+        if (on_load_assets)
+          on_load_assets();
+      }
+
+      _loading_manager.onLoad = OnLoadAssets;
+
+    };
+  };
+
+  this.Parse = function(json, on_load_assets) {
     if (_obj_loader) {
+
+      var on_load_scene = new OnLoadThreeScene(on_load_assets);
+
       var new_scene = _obj_loader.parse(json);
-      _three_scene.copy(new_scene, false);
+
+      on_load_scene(new_scene);
     }
   };
 
-  this.Load = function(url, on_load) {
+  this.Load = function(url, on_load_assets) {
     if (_obj_loader) {
 
-      var on_load_three_scene = function(on_load_cpy) {
-        return function(new_scene) {
-
-          _loading_manager.onLoad = function() {
-            for(child of new_scene.children) {
-              that.AddObject(child);
-            }
-
-            _three_scene.copy(new_scene, false);
-
-            _three_scene.traverse( function ( child ) {
-              if ( child instanceof THREE.SkinnedMesh ) {
-                var animation = new THREE.Animation( child, child.geometry.animation );
-                animation.play();
-              }
-            } );
-
-            if (on_load_cpy)
-              on_load_cpy();
-
-          };
-        }
-      }(on_load);
-
-      _obj_loader.Load(url, on_load_three_scene);
+      _obj_loader.Load(url, new OnLoadThreeScene(on_load_assets));
 
     }
   }
