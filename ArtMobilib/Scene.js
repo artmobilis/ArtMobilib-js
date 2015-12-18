@@ -56,7 +56,7 @@ Dependency
 
 three.js
 
-Optionnal: Math.GeoToCoordsConverter, ObjectLoaderAM
+Optionnal: GeographicCoordinatesConverter, ObjectLoaderAM
 
 **********************/
 
@@ -72,7 +72,6 @@ Scene = function(parameters) {
     _renderer.domElement.width / _renderer.domElement.height, 0.1, 10000);
   var _camera_body = new THREE.Object3D();
   var _update_callbacks = [];
-  var _geo_converter;
   var _obj_loader;
   var _loading_manager = new THREE.LoadingManager();
 
@@ -86,16 +85,13 @@ Scene = function(parameters) {
   _renderer.setClearColor(0x9999cf, 0);
   document.body.appendChild(_renderer.domElement);
 
-  if (typeof Math.GeoToCoordsConverter != 'undefined')
-    _geo_converter = new Math.GeoToCoordsConverter(43.7141516, 7.2889739);
-  else
-    console.warn('Scene: GeoToCoordsConverter undefined');
-
   if (typeof ObjectLoaderAM != 'undefined')
     _obj_loader = new ObjectLoaderAM(_loading_manager);
   else
     console.warn('Scene: ObjectLoaderAM undefined');
 
+
+  this.gps_converter = parameters.gps_converter;
 
 
   this.Clear = function() {
@@ -209,14 +205,14 @@ Scene = function(parameters) {
     return _renderer.domElement;
   };
 
-  function MoveObjectToGPSCoords() {
-    if (_geo_converter) {
+  function MoveObjectToGPSCoords(object) {
+    if (that.gps_converter) {
 
       if (object.userData !== undefined && object.position !== undefined) {
         var data = object.userData;
 
         if (data.latitude !== undefined && data.longitude !== undefined) {
-          object.position.copy(_geo_converter.getCoords(data.latitude, data.longitude));
+          object.position.copy(that.gps_converter.GetLocalCoordinatesFromDegres(data.latitude, data.longitude));
         }
         if (data.altitude !== undefined) {
           object.position.y = data.altitude;
