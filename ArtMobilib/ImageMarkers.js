@@ -15,6 +15,19 @@ var ImageMarkers = function (image) {
     var _max_pattern_size = 512;
     var _max_per_level = 150;
     var _num_train_levels = 3;
+
+    // image size resizing (image size should be over 512 in one dimension and below 1280*20)
+    var _resizing_canvas = document.createElement('canvas');
+    //var _resizing_canvas = document.getElementById('container'); // for debugging
+    _resizing_canvas.width = 1280;
+    _resizing_canvas.height = 1280;
+    var _ctx = _resizing_canvas.getContext('2d');
+    var _internalMaxWidth = 1280;
+    var _internalMinWidth = 512;
+    var _sx, _sy;
+    var _gray; // gray intermediate image
+
+    /// public data
     this.blur_size = 5;        // 3 to 9
     this.lap_thres = 30;       // 1 to 100
     this.eigen_thres = 25;     // 1 to 100
@@ -27,6 +40,7 @@ var ImageMarkers = function (image) {
 
     this.name = image;
     this.pattern_preview;
+
 
     /// private methods
     function DetectKeypoints(img, corners, max_allowed) {
@@ -77,17 +91,65 @@ var ImageMarkers = function (image) {
         return Math.atan2(m_01, m_10);
     }
 
+
+
+    this.ComputeImageSize = function (img) {
+        var x_is_dominant = img.width > img.height; // landscape/portrait
+        var ratio = img.width / img.height;
+        var need_resize_up = false;
+        var need_resize_down = false;
+        _sx = img.width;
+        _sy = img.height;
+
+        if (x_is_dominant) {
+            need_resize_up = img.width < _internalMaxWidth;
+            need_resize_down = img.width > _internalMinWidth;
+        }
+        else {
+            need_resize_up = img.height < _internalMinWidth;
+            need_resize_down = img.height > _internalMaxWidth;
+        }
+
+        if (need_resize_up) {
+            if (x_is_dominant) {
+                _sx = _internalMinWidth;
+                _sy = Math.round(_internalMinWidth / ratio);
+            }
+            else {
+                _sx = Math.round(_internalMinWidth * ratio);
+                _sy = _internalMinWidth;
+            }
+        }
+
+        if (need_resize_down) {
+            if (x_is_dominant) {
+                _sx = _internalMaxWidth;
+                _sy = Math.round(_internalMaxWidth / ratio);
+            }
+            else {
+                _sx = Math.round(_internalMaxWidth * ratio);
+                _sy = _internalMaxWidth;
+            }
+        }
+
+        // allocate gray image
+        _gray = new jsfeat.matrix_t(_sx, _sy, jsfeat.U8_t | jsfeat.C1_t);
+    }
+
+    this.ResizeImage = function (img) {
+
+        _ctx.drawImage(img, 0, 0, _sx, _sy);
+        return _ctx.getImageData(0, 0, _sx, _sy);
+    }
+
     IMload_image = function (name) {
         var img = new Image();
         img.onload = function () {
             console.debug("load " + that.name);
-            var contx = container.getContext('2d');
-            contx.drawImage(img, 0, 0, templateX, templateY);
-            var imageData = contx.getImageData(0, 0, templateX, templateY);
-
-            var mtrained_8u = new jsfeat.matrix_t(templateX, templateY, jsfeat.U8_t | jsfeat.C1_t);
-            jsfeat.imgproc.grayscale(imageData.data, templateX, templateY, mtrained_8u);
-            that.IMtrainpattern(mtrained_8u); // le pattern doit etre plus grand que 512*512 dans au moins une dimension (sinon pas de rescale et rien ne se passe)
+            that.ComputeImageSize(img);
+            var imageData = that.ResizeImage(img);
+            jsfeat.imgproc.grayscale(imageData.data, _sx, _sy, _gray);
+            that.IMtrainpattern(_gray); // le pattern doit etre plus grand que 512*512 dans au moins une dimension (sinon pas de rescale et rien ne se passe)
         }
         img.src = name;
     };
@@ -96,7 +158,7 @@ var ImageMarkers = function (image) {
     /////////////////////
     // Pattern Training
     /////////////////////
-    
+
     // train a pattern: extract corners multiscale, compute descriptor, store result
     this.IMtrainpattern = function (img) {
         var lev = 0, i = 0;
@@ -115,7 +177,10 @@ var ImageMarkers = function (image) {
         new_height = (img.rows * sc0) | 0;
 
         // be carefull nothing done if size <512
-        jsfeat.imgproc.resample(img, lev0_img, new_width, new_height);
+        if (sc0 == 1.0)
+            lev0_img = img;
+        else
+            jsfeat.imgproc.resample(img, lev0_img, new_width, new_height);
 
         // prepare preview
         that.pattern_preview = new jsfeat.matrix_t(new_width >> 1, new_height >> 1, jsfeat.U8_t | jsfeat.C1_t);
@@ -178,7 +243,7 @@ var ImageMarkers = function (image) {
             sc /= sc_inc;
         }
 
-       // nb_trained++;
+        // nb_trained++;
     };
 
     IMload_image(image);
