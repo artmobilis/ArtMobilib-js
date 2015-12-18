@@ -27,23 +27,26 @@ and the object is disabled.
 
 Methods
 
-add(object, uuid, on_enable, on_disable)
+Add(object, uuid, on_enable, on_disable)
 Add an object to track, and set the optionnal callbacks.
-The object is disabled until track() or trackCompose() are called.
+The object is disabled until Track() or TrackCompose() are called.
 
-remove(uuid)
+Remove(uuid)
 Remove an object. If the object is enabled, on_disable is called before removal.
 
-update()
+Update()
 
-track(uuid, matrix)
+Track(uuid, matrix)
 Sets a new position for a previously added object.
 If the object is disabled, on_enable() is called and the object is enabled
 
-trackCompose(uuid, position, quaternion, scale)
-For convenience. Calls track().
+TrackCompose(uuid, position, quaternion, scale)
+For convenience. Calls Track().
 
-getObject(uuid)
+TrackComposePosit(uuid, translation_pose, rotation_pose, model_size)
+For convenience. Calls TrackCompose().
+
+GetObject(uuid)
 
 
 Dependency
@@ -72,7 +75,7 @@ TrackedObjManager = function(parameters) {
   this.timeout = parameters.timeout || 3;
 
   this.UpdateLerpMethod = function() {
-    _holder.ForEach( function(elem) {
+    _holder.ForEach(function(elem) {
 
       var obj = elem.object;
       var target = elem.target;
@@ -81,7 +84,7 @@ TrackedObjManager = function(parameters) {
       obj.quaternion.slerp(target.quaternion, that.lerp_factor);
       obj.scale.lerp(target.scale, that.lerp_factor);
 
-    } );
+    });
   };
 
   this.update_method = this.UpdateLerpMethod;
@@ -145,6 +148,33 @@ TrackedObjManager = function(parameters) {
 
       return that.Track(uuid, matrix);
     }
+  }();
+
+  this.TrackComposePosit = function() {
+
+    var position = new THREE.Vector3();
+    var euler = new THREE.Euler();
+    var quaternion = new THREE.Quaternion();
+    var scale = new THREE.Vector3();
+
+    return function(uuid, translation_pose, rotation_pose, model_size) {
+
+      position.x = translation_pose[0];
+      position.y = translation_pose[1];
+      position.z = -translation_pose[2];
+
+      euler.x = -Math.asin(-rotation_pose[1][2]);
+      euler.y = -Math.atan2(rotation_pose[0][2], rotation_pose[2][2]);
+      euler.z = Math.atan2(rotation_pose[1][0], rotation_pose[1][1]);
+
+      scale.x = model_size;
+      scale.y = model_size;
+      scale.z = model_size;
+
+      quaternion.setFromEuler(euler);
+
+      return that.TrackCompose(uuid, position, quaternion, scale);
+    };
   }();
 
   this.GetObject = function(uuid) {
