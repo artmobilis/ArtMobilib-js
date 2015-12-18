@@ -42,24 +42,26 @@ ObjectLoaderAM = function ( manager ) {
   this.videos = {};
   this.textures = {};
 
+  this.json = {};
+
 
   var _on_update_callbacks = [];
 
 
-  this.Load = function ( url, on_load, on_progress, on_error ) {
+  this.Load = function ( url, on_load_object ) {
 
     var loader = new THREE.XHRLoader( that.manager );
 
-    loader.load( url, function( on_load ) {
+    loader.load( url, function( on_load_object ) {
 
       return function ( text ) {
 
         that.json = JSON.parse( text );
 
-        on_load(that.Parse( that.json ));
+        on_load_object(that.Parse( that.json ));
 
       };
-    }(on_load), on_progress, on_error );
+    }(on_load_object));
   };
 
   this.Parse = function ( json ) {
