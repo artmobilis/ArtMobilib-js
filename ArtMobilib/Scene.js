@@ -130,8 +130,8 @@ Scene = function(parameters) {
 
       var update_callbacks = _obj_loader.GetOnUpdateCallbacks();
 
-      for (i = 0, c = update_callbacks.length; i < c; ++i) {
-        update_callbacks[i]();
+      for (callback of update_callbacks) {
+        callback();
       }
       if (THREE.AnimationHandler)
         THREE.AnimationHandler.update(clock.getDelta());
@@ -211,6 +211,7 @@ Scene = function(parameters) {
 
   function MoveObjectToGPSCoords() {
     if (_geo_converter) {
+
       if (object.userData !== undefined && object.position !== undefined) {
         var data = object.userData;
 
@@ -221,6 +222,8 @@ Scene = function(parameters) {
           object.position.y = data.altitude;
         }
       }
+
     }
   }
+  
 };
