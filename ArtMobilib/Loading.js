@@ -39,7 +39,7 @@ var loadMarker = function(name_image, name_3D) {
     load_3D(name_3D, addModelToScene);
 
     //var im = new ImageMarkers(nameImage);
-    AMmarkerManager.AddMarker(name_image);
+    //AMmarkerManager.AddMarker(name_image);
 }
 
 var loadMarkerAnim = function (name_image, name_3D) {

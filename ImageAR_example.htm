@@ -50,8 +50,8 @@
             /////////////////////
 
             function main_app() {
-                InitProfiler(); // pt move somewere else
-                AMmarkerManager.AttachVideo(video, canvas2d);
+
+                AMmarkerManager = new MarkerManager(video, canvas2d);
 
                 // we load trained images here, in future read from json
                 AMmarkerManager.AddMarker("data/gvf.jpg");

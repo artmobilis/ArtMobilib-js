@@ -1,5 +1,7 @@
 // todo license???
 
+/******************
+
 // Marker manager is the main interface for Artmobilib
 // it process the image to (1) recognise markers (and (2) track it ---to be done if necessary)
 // it ensures imape processing time
@@ -8,8 +10,32 @@
 // todo use CornerDetector
 // simplify and use c++ naming convention
 
+Dependency
+MarkerContainer.js
+MarkerMatcher.js
 
-var MarkerManager = function () {
+
+******************/
+
+var stat;
+
+InitProfiler = function () {
+    stat = new profiler();
+    stat.add("grayscale");
+    stat.add("gauss blur");
+    stat.add("keypoints");
+    stat.add("orb descriptors");
+    stat.add("matching");
+    stat.add("match_pattern");
+    stat.add("find_transform");
+    stat.add("Posit");
+    stat.add("update");
+}
+
+InitProfiler();
+
+
+var MarkerManager = function (video, canvas2d) {
 
     /// private data
     var that = this;
@@ -30,7 +56,7 @@ var MarkerManager = function () {
 
     // corner in screen: we will limit to 150 strongest points
     this.max_corner = 150;
-    this.allocation_corner = 2000; // we eed to allocate a large mber to detect corners in the full image
+    this.allocation_corner = 2000; // we need to allocate a sufficient number of corners to cover corners of the full image
     this.screen_corners = [];
     this.num_corners;
 
@@ -50,7 +76,6 @@ var MarkerManager = function () {
         this.screen_corners[i] = new jsfeat.keypoint_t(0, 0, 0, 0, -1);
 
     /// public methods
-
     this.AttachVideo = function (video, canvas) {
         that.webcamconv = new WebcamConverter(video, canvas);
     }
@@ -116,14 +141,14 @@ var MarkerManager = function () {
         }
 
         stat.stop("matching");
-        return that.found>0;
+        return that.found > 0; // or that.found == that.nbFocussingMarker for instantaneous detection
     }
 
     this.reset = function () {
         that.markerContainer = [];
         currentId = -1;
     }
+
+    that.AttachVideo(video, canvas2d);
 };
 
-
-AMmarkerManager = new MarkerManager();
