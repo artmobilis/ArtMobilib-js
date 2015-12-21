@@ -1,9 +1,29 @@
-// todo license???
+/******************
 
-// Corners detection
-// detect corners and compute ORB descriptors
+Corners detection
+detect corners and compute ORB descriptors
 
-// todo: always sort corner 
+Properties
+
+blur_size: bluring kernel size before extracting corners
+lap_thres: laplacian threshold when comparing central point (corner) to Neigbor pixels in the circle
+eigen_thres: Hessian minimum eigen value threshold to check cornerbility
+
+Methods
+
+ProcessVideo : Capture and search for markers
+ProcessGrayImage : search for markers in the gray image
+
+Todo
+- always sort corner 
+
+Dependency
+
+MarkerContainer.js
+MarkerMatcher.js
+CornerDetector.js
+
+******************/
 
 var CornerDetector = function () {
 

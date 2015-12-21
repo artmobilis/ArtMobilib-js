@@ -1,5 +1,33 @@
 // todo license???
-// todo: do we separate matching and homograpy validation
+
+/******************
+
+Corners matching
+naive brute-force matching, each on screen point is compared to all pattern points
+to find the closest match
+
+Properties
+
+maxMatches: maximum number of matches ()
+match_threshold: number of bit in Hamming distance
+
+nb_matches_valid: minimum number of matches to accept detection
+nb_homograpy_valid: minimum number of matches after homograpy check to accept detection
+
+Methods
+
+matching: compare descriptors, then check repartition using homography estimation for matching 
+
+Todo
+- always sort corner? needed if we put a progressive matching method
+- do we separate matching and homograpy validation
+
+Dependency
+
+ImageMarkers.js
+CornerDetector.js
+
+******************/
 
 
 match_t = (function () {

@@ -1,11 +1,30 @@
 // todo license???
-// acceleration done : Brut force matching so reduce number of corners (500 -> 150 in live and 100/level wit 3 levels in training), can maybe be more reduced
-// detection improvement by reducing nb good corners for acceptance from 20 to 10
-// todo acceleration: use one marker to search par image to keep good frame rate
-// todo acceleration: after recogition, use a fast corner tracking/registration or Gyro+Gps
-// todo improve detection: I suspect it is because using most dominant angle, we should use 2 bests with diff more than 30°
+/******************
 
-// todo use CornerDetector
+Pattern learning b corner detection (Yape) and comptation of descriptors (ORB).
+Image is first resized in 512-1280 range for robustness and processing time
+Multilevel corner computation for scale robustness
+
+Properties
+
+_max_pattern_size: max image size after resizing
+_min_pattern_size: min image size after resizing
+ max_per_level: number of corners for each level
+ num_train_levels: multiscale depth
+
+Methods
+
+LoadImage : Load image and lear corners
+
+Todo
+- corners of each level in the same array?
+
+Dependency
+
+CornerDetector.js
+
+******************/
+
 
 // Multilevel Image marker
 var ImageMarkers = function (image) {
@@ -25,9 +44,6 @@ var ImageMarkers = function (image) {
     var _gray; // gray intermediate image
 
     /// public data
-    this.blur_size = 5;        // 3 to 9
-    this.lap_thres = 30;       // 1 to 100
-    this.eigen_thres = 25;     // 1 to 100
     this.max_per_level = 150;
     this.num_train_levels = 3;
 
@@ -141,25 +157,20 @@ var ImageMarkers = function (image) {
         return _ctx.getImageData(0, 0, _sx, _sy);
     }
 
-    IMload_image = function (name) {
+    LoadImage = function (name) {
         var img = new Image();
         img.onload = function () {
             console.debug("load " + that.name);
             that.ComputeImageSize(img);
             var imageData = that.ResizeImage(img);
             jsfeat.imgproc.grayscale(imageData.data, _sx, _sy, _gray);
-            that.IMtrainpattern(_gray); // le pattern doit etre plus grand que 512*512 dans au moins une dimension (sinon pas de rescale et rien ne se passe)
+            that.ImageTrainPattern(_gray); // le pattern doit etre plus grand que 512*512 dans au moins une dimension (sinon pas de rescale et rien ne se passe)
         }
         img.src = name;
     };
 
-
-    /////////////////////
-    // Pattern Training
-    /////////////////////
-
     // train a pattern: extract corners multiscale, compute descriptor, store result
-    this.IMtrainpattern = function (img) {
+    this.ImageTrainPattern = function (img) {
         var lev = 0, i = 0;
         var sc = 1.0;
         var sc_inc = Math.sqrt(2.0); // magic number ;)
@@ -221,5 +232,5 @@ var ImageMarkers = function (image) {
         }
     };
 
-    IMload_image(image);
+    LoadImage(image);
 };
