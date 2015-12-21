@@ -3,12 +3,18 @@
 /******************
 
 // Marker manager is the main interface for Artmobilib
+// we add patterns to be detected ad call process with current live image for detection
+
+
+
 // it process the image to (1) recognise markers (and (2) track it ---to be done if necessary)
 // it ensures imape processing time
 // it produces marker output for ArtMobilis application: 2D Homography or 3D pose of detected pattern
 
 // todo use CornerDetector
 // simplify and use c++ naming convention
+// todo freezing every 5s: I suspect garbage collector because bad memory management
+
 
 Dependency
 MarkerContainer.js
@@ -52,6 +58,7 @@ var MarkerManager = function (video, canvas2d) {
     // private or public? what is needed for display (matches, corners) and for application
     this.markers = new MarkerContainer();
     this.matcher = new MarkerMatcher();
+    this.cornerdetector = new CornerDetector();
     this.webcamconv;
 
     // corner in screen: we will limit to 150 strongest points
@@ -110,18 +117,20 @@ var MarkerManager = function (video, canvas2d) {
 
     this.Process = function () {
         // depending on status search for a specific or a marker
-        jsfeat.imgproc.gaussian_blur(img_u8, img_u8_smooth, that.blur_size);
+        /*jsfeat.imgproc.gaussian_blur(img_u8, img_u8_smooth, that.blur_size);
 
         jsfeat.yape06.laplacian_threshold = that.lap_thres ;
         jsfeat.yape06.min_eigen_value_threshold = that.eigen_thres;
 
         stat.start("orb descriptors");
-        that.num_corners = detect_keypoints(img_u8_smooth, that.screen_corners, that.max_corner);
+        that.num_corners = that.cornerdetector.DetectKeypoints(img_u8_smooth, that.screen_corners);
 
         jsfeat.orb.describe(img_u8_smooth, that.screen_corners, that.num_corners, that.screen_descriptors);
-        stat.stop("orb descriptors");
+        stat.stop("orb descriptors");*/
 
         //console.log("Screen: " + img_u8_smooth.cols + "x" + img_u8_smooth.rows + " points: " + that.num_corners);
+        that.num_corners = that.cornerdetector.DetectCorners(img_u8, that.screen_corners, that.screen_descriptors);
+
 
         if (!that.markers.markerContainer.length || !that.num_corners) return 0;
 

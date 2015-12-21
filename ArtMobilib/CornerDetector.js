@@ -9,9 +9,9 @@ var CornerDetector = function () {
 
     /// private data
     var that = this;
-    var _smoothed_img;
 
     /// public data
+    this.smoothed_img;
     this.max_per_level = 100;
     this.blur_size = 5;        // 3 to 9
     this.lap_thres = 30;       // 1 to 100
@@ -70,21 +70,21 @@ var CornerDetector = function () {
     }
     
     // check size compatbility
-    InitImage = function(img) {
-        if (_smoothed_img || _smoothed_img.cols != img.cols || _smoothed_img.rows != img.rows)
-            _smoothed_img = new jsfeat.matrix_t(img.cols, img.rows, jsfeat.U8_t | jsfeat.C1_t);
+    this.InitImage = function (img) {
+        if (that.smoothed_img == undefined || that.smoothed_img.cols != img.cols || that.smoothed_img.rows != img.rows)
+            that.smoothed_img = new jsfeat.matrix_t(img.cols, img.rows, jsfeat.U8_t | jsfeat.C1_t);
     }
 
     // train a pattern: extract corners multiscale, compute descriptor, store result
     // input should be greyscale image
     this.DetectCorners = function (img, corners, descriptors) {
-        InitImage(img);
+        that.InitImage(img);
 
-        jsfeat.imgproc.gaussian_blur(img, _smoothed_img, that.blur_size); // this is more robust
-        var corners_num = detect_keypoints(_smoothed_img, corners, that.max_per_level);
-        jsfeat.orb.describe(_smoothed_img, corners, corners_num, descriptors);
+        jsfeat.imgproc.gaussian_blur(img, that.smoothed_img, that.blur_size); // this is more robust
+        var corners_num = DetectKeypoints(that.smoothed_img, corners, that.max_per_level);
+        jsfeat.orb.describe(that.smoothed_img, corners, corners_num, descriptors);
 
-        console.log("IMtrain " + _smoothed_img.cols + "x" + _smoothed_img.rows + " points: " + corners_num);
+        console.log("IMtrain " + that.smoothed_img.cols + "x" + that.smoothed_img.rows + " points: " + corners_num);
 
         return corners_num;
     };

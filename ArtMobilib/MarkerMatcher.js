@@ -50,7 +50,7 @@ var MarkerMatcher = function () {
     
     var Init = function () {
         // alloc matches
-        that.matches[nb_trained] = [];
+        that.matches = [];
         var i = that.maxMatches;
         while (--i >= 0) {
             that.matches[i] = new match_t();
@@ -138,7 +138,7 @@ var MarkerMatcher = function () {
             var best_idx = -1;
             var best_lev = -1;
 
-            for (lev = 0; lev < num_train_levels; ++lev) {
+            for (lev = 0; lev < pattern_marker.num_train_levels; ++lev) {
                 var lev_descr = pattern_descriptors[lev];
                 var ld_cnt = lev_descr.rows;
                 var ld_i32 = lev_descr.buffer.i32; // cast to integer buffer
