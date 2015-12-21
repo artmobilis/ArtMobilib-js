@@ -1,5 +1,25 @@
+// todo license???
 
-// acquire image from webcam, resize and write it in canvas
+/******************
+
+Acquire image from webcam, resize and write it using a canvas
+resizing_canvas has the video size and canvas the output size (display)
+(Note: the function drawImage is the one able to shrink the image)
+
+Methods
+
+GetNewImage : Capture and resize image, return status
+
+Todo
+- pass output size instead of canvas?
+
+Dependency
+
+None
+
+
+******************/
+// 
 // resizing_canvas has the video size and canvas the output size
 // the function drawImage is the one able to shrink the image
 var WebcamConverter = function (video, canvas) {
@@ -14,17 +34,17 @@ var WebcamConverter = function (video, canvas) {
     var _ctx = canvas.getContext('2d');
 
     // video live Processing
-    this.getVideoData = function (x, y, w, h) {
+    this.GetVideoData = function (x, y, w, h) {
         _resizing_canvas.width = _video.videoWidth;
         _resizing_canvas.height = _video.videoHeight;
         _hctx.drawImage(_video, 0, 0, _video.videoWidth, _video.videoHeight);
         return _hctx.getImageData(x, y, w, h);
     };
 
-    this.getNewImage = function () {
+    this.GetNewImage = function () {
         if (_video) {
             if (_video.videoWidth > 0) {
-                var videoData = that.getVideoData(0, 0, _video.videoWidth, _video.videoHeight);
+                var videoData = that.GetVideoData(0, 0, _video.videoWidth, _video.videoHeight);
                 _ctx.putImageData(videoData, 0, 0);
                 return _ctx.getImageData(0, 0, _canvas.width, _video.height);
             }

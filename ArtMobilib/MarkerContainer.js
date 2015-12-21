@@ -1,7 +1,27 @@
 // todo license???
+/******************
 
-// Marker container
-// contain all marker and the index last marker searched
+Marker container
+contain all marker and the index last marker searched
+
+Properties
+
+Methods
+
+GetCurrent: get last used
+GetNext: get a new one
+Reset: remove all ImageMarkers from te list
+
+Todo
+- test memory management, what whe resetting the container
+
+Dependency
+
+None
+
+******************/
+
+// 
 var MarkerContainer = function () {
 
     /// private data
@@ -17,7 +37,7 @@ var MarkerContainer = function () {
         that.markerContainer.push(marker);
     }
 
-    this.reset = function () {
+    this.Reset = function () {
         that.markerContainer = [];
         currentId = -1;
     }

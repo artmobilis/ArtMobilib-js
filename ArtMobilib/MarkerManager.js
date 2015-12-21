@@ -1,45 +1,84 @@
 // todo license???
 
-// Marker manager is the main interface for Artmobilib
-// it process the image to (1) recognise markers (and (2) track it ---to be done if necessary)
-// it ensures imape processing time
-// it produces marker output for ArtMobilis application: 2D Homography or 3D pose of detected pattern
+/******************
 
-// todo use CornerDetector
-// simplify and use c++ naming convention
+Marker manager is the main interface for Artmobilib
+Add patterns to be detected, then call ProcessVideo() to capture current live image for detection
+The logic to select marker is inside: one different for each image, then loop on the last if detected
+(to be done) 2D Homography or 3D pose of detected pattern is computed
 
 
-var MarkerManager = function () {
+Properties
 
-    /// private data
+imWidth,imHeight: internal pipeline processing size
+
+allocation_corner : number of corners detected in the full image (should be large)
+max_corner : number of selected corners
+
+Methods
+
+ProcessVideo : Capture and search for markers
+ProcessGrayImage : search for markers in the gray image
+
+Todo
+- class design
+- 2D Homography or 3D pose of detected pattern is computed
+- freezing every 5s in firefox: I suspect garbage collector because bad memory management
+- todo acceleration: after recogition, use a fast corner tracking/registration or Gyro+Gps
+
+// acceleration done : Brut force matching so reduce number of corners (500 -> 150 in live and 100/level wit 3 levels in training), can maybe be more reduced
+// detection improvement by reducing nb good corners for acceptance from 20 to 10
+
+Dependency
+
+MarkerContainer.js
+MarkerMatcher.js
+CornerDetector.js
+
+******************/
+
+var stat;
+
+InitProfiler = function () {
+    stat = new profiler();
+    stat.add("grayscale");
+    stat.add("gauss blur");
+    stat.add("keypoints");
+    stat.add("orb descriptors");
+    stat.add("matching");
+    stat.add("match_pattern");
+    stat.add("find_transform");
+    stat.add("Posit");
+    stat.add("update");
+}
+
+InitProfiler();
+
+
+var MarkerManager = function (video, canvas2d) {
+
     var that = this;
 
-    /// public data
-    // intern pipeline size
+    // internal pipeline size
     this.imWidth = 640;
     this.imHeight = 480;
 
-    // output
+    // detection output
     this.found = 0;
     this.nbFocussingMarker = 10;
 
-    // private or public? what is needed for display (matches, corners) and for application
     this.markers = new MarkerContainer();
     this.matcher = new MarkerMatcher();
+    this.cornerdetector = new CornerDetector();
     this.webcamconv;
 
     // corner in screen: we will limit to 150 strongest points
     this.max_corner = 150;
-    this.allocation_corner = 2000; // we eed to allocate a large mber to detect corners in the full image
+    this.allocation_corner = 2000; // we need to allocate a sufficient number of corners to cover corners of the full image
     this.screen_corners = [];
     this.num_corners;
 
-    // some parameters
-    this.blur_size = 5;        // 3 to 9
-    this.lap_thres = 30;       // 1 to 100
-    this.eigen_thres = 25;     // 1 to 100
-
-    // JSfeat Orb detection+matching part
+    // JSfeat Orb detection+matching alloc
     var img_u8 = new jsfeat.matrix_t(that.imWidth, that.imHeight, jsfeat.U8_t | jsfeat.C1_t);
     var img_u8_smooth = new jsfeat.matrix_t(that.imWidth, that.imHeight, jsfeat.U8_t | jsfeat.C1_t);
     this.screen_descriptors = new jsfeat.matrix_t(32, that.max_corner, jsfeat.U8_t | jsfeat.C1_t);
@@ -50,7 +89,6 @@ var MarkerManager = function () {
         this.screen_corners[i] = new jsfeat.keypoint_t(0, 0, 0, 0, -1);
 
     /// public methods
-
     this.AttachVideo = function (video, canvas) {
         that.webcamconv = new WebcamConverter(video, canvas);
     }
@@ -69,7 +107,7 @@ var MarkerManager = function () {
 
     // process a color Html image
     this.ProcessVideo = function () {
-        var image = that.webcamconv.getNewImage();
+        var image = that.webcamconv.GetNewImage();
         if (image) {
             jsfeat.imgproc.grayscale(image.data, that.imWidth, that.imHeight, img_u8);
             return that.Process();
@@ -85,18 +123,8 @@ var MarkerManager = function () {
 
     this.Process = function () {
         // depending on status search for a specific or a marker
-        jsfeat.imgproc.gaussian_blur(img_u8, img_u8_smooth, that.blur_size);
-
-        jsfeat.yape06.laplacian_threshold = that.lap_thres ;
-        jsfeat.yape06.min_eigen_value_threshold = that.eigen_thres;
-
-        stat.start("orb descriptors");
-        that.num_corners = detect_keypoints(img_u8_smooth, that.screen_corners, that.max_corner);
-
-        jsfeat.orb.describe(img_u8_smooth, that.screen_corners, that.num_corners, that.screen_descriptors);
-        stat.stop("orb descriptors");
-
-        //console.log("Screen: " + img_u8_smooth.cols + "x" + img_u8_smooth.rows + " points: " + that.num_corners);
+        that.num_corners = that.cornerdetector.DetectCorners(img_u8, that.screen_corners, that.screen_descriptors);
+        //console.log("Screen: " + img_u8.cols + "x" + img_u8.rows + " points: " + that.num_corners);
 
         if (!that.markers.markerContainer.length || !that.num_corners) return 0;
 
@@ -116,14 +144,14 @@ var MarkerManager = function () {
         }
 
         stat.stop("matching");
-        return that.found>0;
+        return that.found > 0; // or that.found == that.nbFocussingMarker for instantaneous detection
     }
 
     this.reset = function () {
         that.markerContainer = [];
         currentId = -1;
     }
+
+    that.AttachVideo(video, canvas2d);
 };
 
-
-AMmarkerManager = new MarkerManager();

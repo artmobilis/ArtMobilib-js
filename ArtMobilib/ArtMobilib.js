@@ -23,13 +23,14 @@ include('ArtMobilib/aruco/posit1.js');
 include('ArtMobilib/three/three72.js');
 
 // Old ArtMobilib
-include('ArtMobilib/Loading.js');
-include('ArtMobilib/Corners.js');
-include('ArtMobilib/3DPose.js');
-include('ArtMobilib/Display.js');
-include('ArtMobilib/Init.js');
+//include('ArtMobilib/Loading.js');
+//include('ArtMobilib/Corners.js');
+//include('ArtMobilib/3DPose.js');
+//include('ArtMobilib/Display.js');
+//include('ArtMobilib/Init.js');
 
 // ArtMobilib
+include('ArtMobilib/CornerDetector.js');
 include('ArtMobilib/ImageMarkers.js');
 include('ArtMobilib/MarkerContainer.js');
 include('ArtMobilib/MarkerMatcher.js');

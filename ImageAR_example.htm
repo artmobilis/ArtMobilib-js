@@ -17,8 +17,8 @@
             <canvas id="canvas2d" height="480" width="640"></canvas>
             <canvas hidden id="container" width="480" height="640"></canvas>
             <div id="no_rtc" class="alert alert-error" style="display:none;"></div>
-            <div id="log" class="alert alert-info"></div>
         </div>
+        <div id="log" class="alert alert-info"></div>
         <script type="text/javascript">
 
             // some global elements
@@ -50,8 +50,8 @@
             /////////////////////
 
             function main_app() {
-                InitProfiler(); // pt move somewere else
-                AMmarkerManager.AttachVideo(video, canvas2d);
+
+                AMmarkerManager = new MarkerManager(video, canvas2d);
 
                 // we load trained images here, in future read from json
                 AMmarkerManager.AddMarker("data/gvf.jpg");
@@ -63,8 +63,12 @@
             }
 
             function tick() {
-                if (AMmarkerManager.ProcessVideo())
+                if (AMmarkerManager.ProcessVideo()) {
                     console.log("Marker detected");
+                    log.innerHTML = "Marker detected";
+                }
+                else log.innerHTML = "";
+
                 //console.log(AMmarkerManager.matcher.log);
                 compatibility.requestAnimationFrame(tick);
             }
