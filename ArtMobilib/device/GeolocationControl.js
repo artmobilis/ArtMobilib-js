@@ -66,7 +66,6 @@ GeolocationControl = function(object, geoConverter) {
 		_target_position.copy(_coordinates_converter.GetLocalCoordinatesFromDegres(
       pos.coords.latitude, pos.coords.longitude));
 		_to_update = true;
-    console.log(_target_position.x + ' ' + _target_position.z);
 	}
 
 	function OnError(error) {
