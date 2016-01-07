@@ -104,7 +104,7 @@ var CornerDetector = function () {
         var corners_num = DetectKeypoints(that.smoothed_img, corners, that.max_per_level);
         jsfeat.orb.describe(that.smoothed_img, corners, corners_num, descriptors);
 
-        console.log("IMtrain " + that.smoothed_img.cols + "x" + that.smoothed_img.rows + " points: " + corners_num);
+        //console.log("IMtrain " + that.smoothed_img.cols + "x" + that.smoothed_img.rows + " points: " + corners_num);
 
         return corners_num;
     };

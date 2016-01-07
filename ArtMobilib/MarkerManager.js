@@ -96,6 +96,7 @@ var MarkerManager = function (video, canvas2d) {
     // extract corners ad descriptors and add it to the container
     this.AddMarker = function (image) {
         var marker = new ImageMarkers(image);
+        marker.debug = true;
         that.markers.Add(marker);
     }
 
