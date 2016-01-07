@@ -59,9 +59,9 @@ var MarkerMatcher = function () {
 
     /// private data
     var that = this;
-    
+
     /// public data
-    this.nb_homograpy_valid=8;
+    this.nb_homograpy_valid = 8;
     this.nb_matches_valid = 20;
     this.maxMatches = 2000;
     this.match_threshold = 48; // 16 to 128
@@ -73,9 +73,17 @@ var MarkerMatcher = function () {
     // homography coherence validation
     this.homo3x3;
     this.match_mask;
+    this.corners;
 
+    // pose3d
+    this.modelsize = 35; //millimeters
+    this.focal_length = 480; //in pixels
+    this.posit = new POS.Posit(that.modelsize, that.focal_length);
+
+    // debugging
+    this.object3d = new THREE.Object3D();
     this.log = ""; // output log
-    
+
     var Init = function () {
         // alloc matches
         that.matches = [];
@@ -220,6 +228,54 @@ var MarkerMatcher = function () {
     }
 
 
+    // project/transform rectangle corners with 3x3 Matrix
+    function tCorners(M, w, h) {
+        var pt = [{ 'x': 0, 'y': 0 }, { 'x': w, 'y': 0 }, { 'x': w, 'y': h }, { 'x': 0, 'y': h }];
+        var z = 0.0, i = 0, px = 0.0, py = 0.0;
+
+        for (; i < 4; ++i) {
+            px = M[0] * pt[i].x + M[1] * pt[i].y + M[2];
+            py = M[3] * pt[i].x + M[4] * pt[i].y + M[5];
+            z = M[6] * pt[i].x + M[7] * pt[i].y + M[8];
+            pt[i].x = px / z;
+            pt[i].y = py / z;
+        }
+
+        return pt;
+    }
+
+    this.ComputePose = function (pattern_marker) {
+        // get the projected pattern corners
+        var scaleX = canvas2d.width / 640, scaleY = canvas2d.height / 480;
+        that.corners = tCorners(that.homo3x3.data, pattern_marker.sx, pattern_marker.sy);
+
+        for (i = 0; i < that.corners.length; ++i) {
+            var corner = that.corners[i];
+            corner.x = corner.x * scaleX - (canvas2d.width / 2);
+            corner.y = (canvas2d.height / 2) - corner.y * scaleY;
+        }
+
+        that.pose = that.posit.pose(that.corners);
+
+        // debugging
+        var rotation = that.pose.bestRotation
+        var translation = that.pose.bestTranslation
+
+        that.object3d.scale.x = that.modelsize;
+        that.object3d.scale.y = that.modelsize;
+        that.object3d.scale.z = that.modelsize;
+
+        that.object3d.rotation.x = -Math.asin(-rotation[1][2]);
+        that.object3d.rotation.y = -Math.atan2(rotation[0][2], rotation[2][2]);
+        that.object3d.rotation.z = Math.atan2(rotation[1][0], rotation[1][1]);
+
+        that.object3d.position.x = translation[0];
+        that.object3d.position.y = translation[1];
+        that.object3d.position.z = -translation[2];
+    }
+
+
+
     // match with the pattern and test if enough corresponding data trough planar homography
     this.matching = function (screen_corners, screen_descriptors, pattern_marker) {
         var good_matches = 0;
@@ -238,7 +294,13 @@ var MarkerMatcher = function () {
         that.good_matches = find_transform(screen_corners, pattern_marker);
         stat.stop("find_transform");
         that.log += " nbGood : " + that.good_matches + "\n";
-        return (that.good_matches > that.nb_homograpy_valid);
+        if (that.good_matches > that.nb_homograpy_valid) {
+            that.ComputePose(pattern_marker);
+            return true;
+        }
+        else
+            return false;
+
     };
 
     Init();

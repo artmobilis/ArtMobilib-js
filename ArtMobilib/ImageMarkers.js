@@ -14,7 +14,7 @@ _min_pattern_size: min image size after resizing
 
 Methods
 
-LoadImage : Load image and lear corners
+LoadImage : Load image and search 
 
 Todo
 - corners of each level in the same array?
@@ -32,6 +32,8 @@ var ImageMarkers = function (image) {
     /// private data
     var that = this;
 
+    this.debug = false;
+
     // image size resizing use a canvas (image size should be over 512 in one dimension and below 1280)
     var _resizing_canvas = document.createElement('canvas');
     _resizing_canvas.width = 1280;
@@ -40,10 +42,11 @@ var ImageMarkers = function (image) {
     var _ctx = _resizing_canvas.getContext('2d');
     var _max_pattern_size = 1280;
     var _min_pattern_size = 512;
-    var _sx, _sy;
     var _gray; // gray intermediate image
 
     /// public data
+    this.sx;
+    this.sy;
     this.max_per_level = 150;
     this.num_train_levels = 3;
 
@@ -113,8 +116,8 @@ var ImageMarkers = function (image) {
         var ratio = img.width / img.height;
         var need_resize_up = false;
         var need_resize_down = false;
-        _sx = img.width;
-        _sy = img.height;
+        that.sx = img.width;
+        that.sy = img.height;
 
         if (x_is_dominant) {
             need_resize_up = img.width < _max_pattern_size;
@@ -127,50 +130,50 @@ var ImageMarkers = function (image) {
 
         if (need_resize_up) {
             if (x_is_dominant) {
-                _sx = _min_pattern_size;
-                _sy = Math.round(_min_pattern_size / ratio);
+                that.sx = _min_pattern_size;
+                that.sy = Math.round(_min_pattern_size / ratio);
             }
             else {
-                _sx = Math.round(_min_pattern_size * ratio);
-                _sy = _min_pattern_size;
+                that.sx = Math.round(_min_pattern_size * ratio);
+                that.sy = _min_pattern_size;
             }
         }
 
         if (need_resize_down) {
             if (x_is_dominant) {
-                _sx = _max_pattern_size;
-                _sy = Math.round(_max_pattern_size / ratio);
+                that.sx = _max_pattern_size;
+                that.sy = Math.round(_max_pattern_size / ratio);
             }
             else {
-                _sx = Math.round(_max_pattern_size * ratio);
-                _sy = _max_pattern_size;
+                that.sx = Math.round(_max_pattern_size * ratio);
+                that.sy = _max_pattern_size;
             }
         }
 
         // allocate gray image
-        _gray = new jsfeat.matrix_t(_sx, _sy, jsfeat.U8_t | jsfeat.C1_t);
+        _gray = new jsfeat.matrix_t(that.sx, that.sy, jsfeat.U8_t | jsfeat.C1_t);
     }
 
     this.ResizeImage = function (img) {
 
-        _ctx.drawImage(img, 0, 0, _sx, _sy);
-        return _ctx.getImageData(0, 0, _sx, _sy);
+        _ctx.drawImage(img, 0, 0, that.sx, that.sy);
+        return _ctx.getImageData(0, 0, that.sx, that.sy);
     }
 
     LoadImage = function (name) {
         var img = new Image();
         img.onload = function () {
-            console.debug("load " + that.name);
+            if (that.debug) console.debug("load " + that.name);
             that.ComputeImageSize(img);
             var imageData = that.ResizeImage(img);
-            jsfeat.imgproc.grayscale(imageData.data, _sx, _sy, _gray);
-            that.ImageTrainPattern(_gray); // le pattern doit etre plus grand que 512*512 dans au moins une dimension (sinon pas de rescale et rien ne se passe)
+            jsfeat.imgproc.grayscale(imageData.data, that.sx, that.sy, _gray);
+            that.IMtrainpattern(_gray); // le pattern doit etre plus grand que 512*512 dans au moins une dimension (sinon pas de rescale et rien ne se passe)
         }
         img.src = name;
     };
 
     // train a pattern: extract corners multiscale, compute descriptor, store result
-    this.ImageTrainPattern = function (img) {
+    this.IMtrainpattern = function (img) {
         var lev = 0, i = 0;
         var sc = 1.0;
         var sc_inc = Math.sqrt(2.0); // magic number ;)
@@ -179,7 +182,7 @@ var ImageMarkers = function (image) {
         var new_width = img.cols, new_height = img.rows;
         var lev_corners, lev_descr;
 
-        console.debug("Train " + that.name);
+        if (that.debug) console.debug("Train " + that.name);
 
         // prepare preview
         that.pattern_preview = new jsfeat.matrix_t(new_width >> 1, new_height >> 1, jsfeat.U8_t | jsfeat.C1_t);
@@ -203,7 +206,7 @@ var ImageMarkers = function (image) {
         lev_descr = that.pattern_descriptors[0];
 
         that.corners_num = that.cornerdetector.DetectCorners(lev0_img, lev_corners, lev_descr);
-        console.log("IMtrain " + lev_img.cols + "x" + lev_img.rows + " points: " + that.corners_num);
+        if (that.debug) console.log("IMtrain " + lev_img.cols + "x" + lev_img.rows + " points: " + that.corners_num);
 
         sc /= sc_inc;
 
@@ -226,7 +229,7 @@ var ImageMarkers = function (image) {
                 lev_corners[i].y *= 1. / sc;
             }
 
-            console.log("IMtrain " + lev_img.cols + "x" + lev_img.rows + " points: " + that.corners_num);
+            if (that.debug) console.log("IMtrain " + lev_img.cols + "x" + lev_img.rows + " points: " + that.corners_num);
 
             sc /= sc_inc;
         }
