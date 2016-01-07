@@ -57,6 +57,7 @@
                 AMmarkerManager.AddMarker("data/gvf.jpg");
                 AMmarkerManager.AddMarker("data/3Dtricart.jpg");
                 AMmarkerManager.AddMarker("data/vsd.jpg");
+                AMmarkerManager.AddMarker("data/catalogueJPG.jpg");
 
                 compatibility.requestAnimationFrame(tick);
 
@@ -65,7 +66,16 @@
             function tick() {
                 if (AMmarkerManager.ProcessVideo()) {
                     console.log("Marker detected");
-                    log.innerHTML = "Marker detected";
+                    log.innerHTML = "Marker detected<br> Pose: scale " 
+                        + AMmarkerManager.matcher.object3d.scale.x + " "
+                        + AMmarkerManager.matcher.object3d.scale.y + " "
+                        + AMmarkerManager.matcher.object3d.scale.z + "<br>rotation "
+                        + AMmarkerManager.matcher.object3d.rotation.x + " "
+                        + AMmarkerManager.matcher.object3d.rotation.y + " "
+                        + AMmarkerManager.matcher.object3d.rotation.z + "<br>position "
+                        + AMmarkerManager.matcher.object3d.position.x + " "
+                        + AMmarkerManager.matcher.object3d.position.y + " "
+                        + AMmarkerManager.matcher.object3d.position.z ;
                 }
                 else log.innerHTML = "";
 

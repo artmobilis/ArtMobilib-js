@@ -46,7 +46,7 @@ var WebcamConverter = function (video, canvas) {
             if (_video.videoWidth > 0) {
                 var videoData = that.GetVideoData(0, 0, _video.videoWidth, _video.videoHeight);
                 _ctx.putImageData(videoData, 0, 0);
-                return _ctx.getImageData(0, 0, _canvas.width, _video.height);
+                return _ctx.getImageData(0, 0, _canvas.width, _canvas.height);
             }
         }
         return false;
