@@ -10,6 +10,10 @@ and place objects according to geographic coordinates.
 Constructor
 
 Scene(parameters)
+parameters: holds optionnal parameters
+parameters.canvas: canvas used for rendering
+parameters.fov: sets the fov of the camera
+parameters.gps_converter: a GeographicCoordinatesConverter used to import objects with gps coordinates
 
 
 Methods
@@ -112,7 +116,7 @@ Scene = function(parameters) {
 
   this.Stop = function() {
     window.removeEventListener('resize', onWindowResize, false);
-  }
+  };
 
   this.Render = function() {
     _renderer.render(_three_scene, _camera);
@@ -186,7 +190,7 @@ Scene = function(parameters) {
       _obj_loader.Load(url, new OnLoadThreeScene(on_load_assets));
 
     }
-  }
+  };
 
 
   this.GetCamera = function() {
@@ -199,7 +203,7 @@ Scene = function(parameters) {
 
   this.GetScene = function() {
     return _three_scene;
-  }
+  };
 
   this.GetCanvas = function() {
     return _renderer.domElement;
