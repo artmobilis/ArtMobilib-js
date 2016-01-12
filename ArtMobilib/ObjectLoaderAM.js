@@ -698,24 +698,24 @@ ObjectLoaderAM = function ( manager ) {
 
         var url = that.constants.model_path + '/' + data.url;
 
-        manager.itemStart(url);
+        that.manager.itemStart(url);
 
-        obj_loader.load( url, function ( object_cpy, data_cpy, manager_cpy, url_cpy ) {
+        obj_loader.load( url, function ( object, data, manager, url ) {
           return function ( model ) {
 
-            object_cpy.copy(model);
+            object.copy(model);
 
             object.traverse(function(child) {
               if (child.geometry)
                 child.geometry.computeBoundingSphere();
             });
 
-            SetAttributes(object_cpy, data_cpy);
+            SetAttributes(object, data);
 
-            manager_cpy.itemEnd(url_cpy);
+            manager.itemEnd(url);
 
           };
-        }( object, data, manager, url ));
+        }( object, data, that.manager, url ));
 
         return object;
 
@@ -733,27 +733,27 @@ ObjectLoaderAM = function ( manager ) {
         var obj_url = that.constants.model_path + '/' + data.objUrl;
         var mtl_url = that.constants.model_path + '/' + data.mtlUrl;
 
-        manager.itemStart(obj_url);
-        manager.itemStart(mtl_url);
+        that.manager.itemStart(obj_url);
+        that.manager.itemStart(mtl_url);
 
         obj_mtl_loader.load( obj_url, mtl_url,
-          function ( object_cpy, data_cpy, manager_cpy, obj_url_cpy, mtl_url_cpy ) {
+          function ( object, data, manager, obj_url, mtl_url ) {
             return function ( model ) {
 
-              object_cpy.copy(model);
+              object.copy(model);
 
-              object_cpy.traverse(function(child) {
+              object.traverse(function(child) {
                 if (child.geometry)
                   child.geometry.computeBoundingSphere();
               });
 
-              SetAttributes(object_cpy, data_cpy);
+              SetAttributes(object, data);
 
-              manager.itemEnd(obj_url_cpy);
-              manager.itemEnd(mtl_url_cpy);
+              manager.itemEnd(obj_url);
+              manager.itemEnd(mtl_url);
 
             };
-          }( object, data, manager, obj_url, mtl_url ));
+          }( object, data, that.manager, obj_url, mtl_url ));
 
         return object;
 
@@ -770,25 +770,27 @@ ObjectLoaderAM = function ( manager ) {
 
         var url = that.constants.model_path + '/' + data.url;
 
-        manager.itemStart(url);
+        that.manager.itemStart(url);
 
-        collada_loader.load( url, function ( object_cpy, data_cpy, manager_cpy, url_cpy ) {
+        collada_loader.load( url, function ( object, data, manager, url ) {
           return function ( collada ) {
 
             var dae = collada.scene;
 
-            object_cpy.copy(dae);
+            object.copy(dae);
 
-            object_cpy.traverse( function ( child ) {
-              if ( child instanceof THREE.SkinnedMesh ) {
-                var animation = new THREE.Animation( child, child.geometry.animation );
-                animation.play();
-              }
-            } );
+            if (THREE.Animation !== 'undefined') {
+              object.traverse( function ( child ) {
+                if ( child instanceof THREE.SkinnedMesh ) {
+                  var animation = new THREE.Animation( child, child.geometry.animation );
+                  animation.play();
+                }
+              } );
+            }
 
-            SetAttributes(object_cpy, data_cpy);
+            SetAttributes(object, data);
 
-            manager_cpy.itemEnd(url_cpy);
+            manager.itemEnd(url);
           }
         }( object, data, manager, url ));
 

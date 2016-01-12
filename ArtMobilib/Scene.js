@@ -84,10 +84,11 @@ Scene = function(parameters) {
 
   _three_scene.add(_camera_body);
 
-  if (!parameters.canvas)
+  if (!parameters.canvas) {
     _renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(_renderer.domElement);
+  }
   _renderer.setClearColor(0x9999cf, 0);
-  document.body.appendChild(_renderer.domElement);
 
   if (typeof ObjectLoaderAM != 'undefined')
     _obj_loader = new ObjectLoaderAM(_loading_manager);
