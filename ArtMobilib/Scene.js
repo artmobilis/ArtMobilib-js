@@ -92,8 +92,6 @@ Scene = function(parameters) {
 
   if (typeof ObjectLoaderAM != 'undefined')
     _obj_loader = new ObjectLoaderAM(_loading_manager);
-  else
-    console.warn('Scene: ObjectLoaderAM undefined');
 
 
   this.gps_converter = parameters.gps_converter;
@@ -183,6 +181,8 @@ Scene = function(parameters) {
 
       on_load_scene(new_scene);
     }
+    else
+      console.warn('Scene: Parse failed: ObjectLoaderAM undefined');
   };
 
   this.Load = function(url, on_load_assets) {
@@ -191,6 +191,8 @@ Scene = function(parameters) {
       _obj_loader.Load(url, new OnLoadThreeScene(on_load_assets));
 
     }
+    else
+      console.warn('Scene: Load failed: ObjectLoaderAM undefined');
   };
 
 
@@ -228,3 +230,7 @@ Scene = function(parameters) {
   }
   
 };
+
+
+if (typeof(ObjectLoaderAM) == 'undefined')
+  console.warn('Scene: ObjectLoaderAM undefined');
