@@ -18,31 +18,31 @@ parameters.gps_converter: a GeographicCoordinatesConverter used to import object
 
 Methods
 
-Init()
-Init event listerners
+SetFullWindow()
+Resizes the canvas when the window resizes
 
-Stop()
-Clear event listeners
+StopFullWindow()
+Stops resizing the canvas
 
 Render()
 
 Update()
-Update animations and textures (video, gif)
+Updates animations and textures (video, gif)
 
 AddObject(object)
-Add an object to the scene. If possible, place the object occordingly to the geographic coordinates
+Adds an object to the scene. If possible, places the object occordingly to the geographic coordinates
 
 RemoveObject()
 
 Clear()
-Clear the scene.
+Clears the scene.
 
 Parse(json, on_load_assets)
-Load a scene from a JSON structure. no-op if ObjectLoaderAM is unavailable.
+Loads a scene from a JSON structure. no-op if ObjectLoaderAM is unavailable.
 When every asset is loaded and added to the scene, 'on_load_assets' is called.
 
 Load(url, on_load_assets)
-Load a scene from json file. no-op if ObjectLoaderAM is unavailable.
+Loads a scene from json file. no-op if ObjectLoaderAM is unavailable.
 When every asset is loaded and added to the scene, 'on_load_assets' is called.
 
 GetCamera()
@@ -104,7 +104,7 @@ Scene = function(parameters) {
     _three_scene.copy(new THREE.Scene(), false);
   };
 
-  this.Init = function() {
+  this.SetFullWindow = function() {
     function onWindowResize() {
       _camera.aspect = window.innerWidth / window.innerHeight;
       _camera.updateProjectionMatrix();
@@ -115,7 +115,7 @@ Scene = function(parameters) {
     window.addEventListener('resize', onWindowResize, false);
   };
 
-  this.Stop = function() {
+  this.StopFullWindow = function() {
     window.removeEventListener('resize', onWindowResize, false);
   };
 
