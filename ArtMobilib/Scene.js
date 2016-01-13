@@ -53,7 +53,9 @@ Returns the cameraBody, a THREE.Object3D, parent of the camera, and on the scene
 
 GetScene()
 
-GetCanvas()
+GetRenderer()
+
+CameraNeedsUpdate()
 
 
 Dependency
@@ -208,8 +210,12 @@ Scene = function(parameters) {
     return _three_scene;
   };
 
-  this.GetCanvas = function() {
-    return _renderer.domElement;
+  this.GetRenderer = function() {
+    return _renderer;
+  };
+
+  this.CameraNeedsUpdate = function() {
+    _camera.aspect = _renderer.domElement.width / _renderer.domElement.height;
   };
 
   function MoveObjectToGPSCoords(object) {
