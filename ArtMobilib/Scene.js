@@ -10,35 +10,39 @@ and place objects according to geographic coordinates.
 Constructor
 
 Scene(parameters)
+parameters: holds optionnal parameters
+parameters.canvas: canvas used for rendering
+parameters.fov: sets the fov of the camera
+parameters.gps_converter: a GeographicCoordinatesConverter used to import objects with gps coordinates
 
 
 Methods
 
-Init()
-Init event listerners
+SetFullWindow()
+Resizes the canvas when the window resizes
 
-Stop()
-Clear event listeners
+StopFullWindow()
+Stops resizing the canvas
 
 Render()
 
 Update()
-Update animations and textures (video, gif)
+Updates animations and textures (video, gif)
 
 AddObject(object)
-Add an object to the scene. If possible, place the object occordingly to the geographic coordinates
+Adds an object to the scene. If possible, places the object occordingly to the geographic coordinates
 
 RemoveObject()
 
 Clear()
-Clear the scene.
+Clears the scene.
 
 Parse(json, on_load_assets)
-Load a scene from a JSON structure. no-op if ObjectLoaderAM is unavailable.
+Loads a scene from a JSON structure. no-op if ObjectLoaderAM is unavailable.
 When every asset is loaded and added to the scene, 'on_load_assets' is called.
 
 Load(url, on_load_assets)
-Load a scene from json file. no-op if ObjectLoaderAM is unavailable.
+Loads a scene from json file. no-op if ObjectLoaderAM is unavailable.
 When every asset is loaded and added to the scene, 'on_load_assets' is called.
 
 GetCamera()
@@ -49,14 +53,16 @@ Returns the cameraBody, a THREE.Object3D, parent of the camera, and on the scene
 
 GetScene()
 
-GetCanvas()
+GetRenderer()
+
+CameraNeedsUpdate()
 
 
 Dependency
 
 three.js
 
-Optionnal: Math.GeoToCoordsConverter, ObjectLoaderAM
+Optionnal: GeographicCoordinatesConverter, ObjectLoaderAM
 
 **********************/
 
@@ -72,7 +78,6 @@ Scene = function(parameters) {
     _renderer.domElement.width / _renderer.domElement.height, 0.1, 10000);
   var _camera_body = new THREE.Object3D();
   var _update_callbacks = [];
-  var _geo_converter;
   var _obj_loader;
   var _loading_manager = new THREE.LoadingManager();
 
@@ -81,21 +86,17 @@ Scene = function(parameters) {
 
   _three_scene.add(_camera_body);
 
-  if (!parameters.canvas)
+  if (!parameters.canvas) {
     _renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(_renderer.domElement);
+  }
   _renderer.setClearColor(0x9999cf, 0);
-  document.body.appendChild(_renderer.domElement);
-
-  if (typeof Math.GeoToCoordsConverter != 'undefined')
-    _geo_converter = new Math.GeoToCoordsConverter(43.7141516, 7.2889739);
-  else
-    console.warn('Scene: GeoToCoordsConverter undefined');
 
   if (typeof ObjectLoaderAM != 'undefined')
     _obj_loader = new ObjectLoaderAM(_loading_manager);
-  else
-    console.warn('Scene: ObjectLoaderAM undefined');
 
+
+  this.gps_converter = parameters.gps_converter;
 
 
   this.Clear = function() {
@@ -103,7 +104,7 @@ Scene = function(parameters) {
     _three_scene.copy(new THREE.Scene(), false);
   };
 
-  this.Init = function() {
+  this.SetFullWindow = function() {
     function onWindowResize() {
       _camera.aspect = window.innerWidth / window.innerHeight;
       _camera.updateProjectionMatrix();
@@ -114,9 +115,9 @@ Scene = function(parameters) {
     window.addEventListener('resize', onWindowResize, false);
   };
 
-  this.Stop = function() {
+  this.StopFullWindow = function() {
     window.removeEventListener('resize', onWindowResize, false);
-  }
+  };
 
   this.Render = function() {
     _renderer.render(_three_scene, _camera);
@@ -182,6 +183,8 @@ Scene = function(parameters) {
 
       on_load_scene(new_scene);
     }
+    else
+      console.warn('Scene: Parse failed: ObjectLoaderAM undefined');
   };
 
   this.Load = function(url, on_load_assets) {
@@ -190,7 +193,9 @@ Scene = function(parameters) {
       _obj_loader.Load(url, new OnLoadThreeScene(on_load_assets));
 
     }
-  }
+    else
+      console.warn('Scene: Load failed: ObjectLoaderAM undefined');
+  };
 
 
   this.GetCamera = function() {
@@ -203,20 +208,24 @@ Scene = function(parameters) {
 
   this.GetScene = function() {
     return _three_scene;
-  }
-
-  this.GetCanvas = function() {
-    return _renderer.domElement;
   };
 
-  function MoveObjectToGPSCoords() {
-    if (_geo_converter) {
+  this.GetRenderer = function() {
+    return _renderer;
+  };
+
+  this.CameraNeedsUpdate = function() {
+    _camera.aspect = _renderer.domElement.width / _renderer.domElement.height;
+  };
+
+  function MoveObjectToGPSCoords(object) {
+    if (that.gps_converter) {
 
       if (object.userData !== undefined && object.position !== undefined) {
         var data = object.userData;
 
         if (data.latitude !== undefined && data.longitude !== undefined) {
-          object.position.copy(_geo_converter.getCoords(data.latitude, data.longitude));
+          object.position.copy(that.gps_converter.GetLocalCoordinatesFromDegres(data.latitude, data.longitude));
         }
         if (data.altitude !== undefined) {
           object.position.y = data.altitude;
@@ -227,3 +236,7 @@ Scene = function(parameters) {
   }
   
 };
+
+
+if (typeof(ObjectLoaderAM) == 'undefined')
+  console.warn('Scene: ObjectLoaderAM undefined');
