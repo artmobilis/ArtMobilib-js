@@ -40,16 +40,16 @@ CornerDetector.js
 var stat;
 
 InitProfiler = function () {
-    stat = new profiler();
-    stat.add("grayscale");
-    stat.add("gauss blur");
-    stat.add("keypoints");
-    stat.add("orb descriptors");
-    stat.add("matching");
-    stat.add("match_pattern");
-    stat.add("find_transform");
-    stat.add("Posit");
-    stat.add("update");
+  stat = new profiler();
+  stat.add("grayscale");
+  stat.add("gauss blur");
+  stat.add("keypoints");
+  stat.add("orb descriptors");
+  stat.add("matching");
+  stat.add("match_pattern");
+  stat.add("find_transform");
+  stat.add("Posit");
+  stat.add("update");
 }
 
 InitProfiler();
@@ -57,102 +57,148 @@ InitProfiler();
 
 var MarkerManager = function (video, canvas2d) {
 
-    var that = this;
+  var that = this;
 
-    // internal pipeline size
-    this.imWidth = 640;
-    this.imHeight = 480;
+  // internal pipeline size
+  this.imWidth = 640;
+  this.imHeight = 480;
 
-    // detection output
-    this.found = 0;
-    this.nbFocussingMarker = 10;
+  // detection output
+  this.found = 0;
+  this.nbFocussingMarker = 10;
 
-    this.markers = new MarkerContainer();
-    this.matcher = new MarkerMatcher();
-    this.cornerdetector = new CornerDetector();
-    this.webcamconv;
+  // pose3d
+  this.model_size = 35; //millimeters
+  this.focal_length = 480; //in pixels
 
-    // corner in screen: we will limit to 150 strongest points
-    this.max_corner = 150;
-    this.allocation_corner = 2000; // we need to allocate a sufficient number of corners to cover corners of the full image
-    this.screen_corners = [];
-    this.num_corners;
+  this.markers = new MarkerContainer();
+  this.matcher = new MarkerMatcher();
+  this.cornerdetector = new CornerDetector();
+  this.webcamconv;
+  this.canvas = canvas2d;
+  this.context = canvas2d.getContext('2d');
 
-    // JSfeat Orb detection+matching alloc
-    var img_u8 = new jsfeat.matrix_t(that.imWidth, that.imHeight, jsfeat.U8_t | jsfeat.C1_t);
-    var img_u8_smooth = new jsfeat.matrix_t(that.imWidth, that.imHeight, jsfeat.U8_t | jsfeat.C1_t);
-    this.screen_descriptors = new jsfeat.matrix_t(32, that.max_corner, jsfeat.U8_t | jsfeat.C1_t);
+  // corner in screen: we will limit to 150 strongest points
+  this.max_corner = 150;
+  this.allocation_corner = 2000; // we need to allocate a sufficient number of corners to cover corners of the full image
+  this.screen_corners = [];
+  this.num_corners;
 
-    // live displayed corners
-    var i = this.allocation_corner;
-    while (--i >= 0)
-        this.screen_corners[i] = new jsfeat.keypoint_t(0, 0, 0, 0, -1);
+  // JSfeat Orb detection+matching alloc
+  var img_u8 = new jsfeat.matrix_t(that.imWidth, that.imHeight, jsfeat.U8_t | jsfeat.C1_t);
+  var img_u8_smooth = new jsfeat.matrix_t(that.imWidth, that.imHeight, jsfeat.U8_t | jsfeat.C1_t);
+  this.screen_descriptors = new jsfeat.matrix_t(32, that.max_corner, jsfeat.U8_t | jsfeat.C1_t);
 
-    /// public methods
-    this.AttachVideo = function (video, canvas) {
-        that.webcamconv = new WebcamConverter(video, canvas);
+  // live displayed corners
+  var i = this.allocation_corner;
+  while (--i >= 0)
+    this.screen_corners[i] = new jsfeat.keypoint_t(0, 0, 0, 0, -1);
+
+  /// public methods
+  this.AttachVideo = function (video, canvas) {
+    that.webcamconv = new WebcamConverter(video, canvas);
+  }
+
+  // extract corners ad descriptors and add it to the container
+  this.AddMarker = function (image) {
+    var marker = new ImageMarkers(image);
+    marker.debug = true;
+    that.markers.Add(marker);
+  }
+
+  // process a color Html image
+  this.ProcessImage = function (Image) {
+    // get imageData from videoElement
+    that.context.drawImage(Image, 0, 0, that.imWidth, that.imHeight);
+    var imageData = that.context.getImageData(0, 0, that.imWidth, that.imHeight);
+
+    jsfeat.imgproc.grayscale(imageData.data, that.imWidth, that.imHeight, img_u8);
+    return that.Process();
+  }
+
+  // capture and process a webcam image
+  this.ProcessVideo = function () {
+    var image = that.webcamconv.GetNewImage();
+    if (image) {
+      jsfeat.imgproc.grayscale(image.data, that.imWidth, that.imHeight, img_u8);
+      return that.Process();
+    }
+    return that.found > 0;
+  }
+
+  // process a jsfeat gray image
+  this.ProcessGrayImage = function (image) {
+    img_u8 = image;
+    return that.Process();
+  }
+
+  this.Process = function () {
+    // depending on status search for a specific or a marker
+    that.num_corners = that.cornerdetector.DetectCorners(img_u8, that.screen_corners, that.screen_descriptors);
+    //console.log("Screen: " + img_u8.cols + "x" + img_u8.rows + " points: " + that.num_corners);
+
+    if (!that.markers.markerContainer.length || !that.num_corners) return 0;
+
+    // search the same marker while it is detected or one different at each image
+    stat.start("matching");
+    if (that.found > 0) { // if one has already been detected
+      if (that.matcher.matching(that.screen_corners, that.screen_descriptors, that.markers.GetCurrent()))
+        that.found = that.nbFocussingMarker;
+      else
+        that.found--;
+    }
+    else { // no detection before, search for new marker
+      if (that.matcher.matching(that.screen_corners, that.screen_descriptors, that.markers.GetNext()))
+        that.found = that.nbFocussingMarker;
+      else
+        that.found--;
     }
 
-    // extract corners ad descriptors and add it to the container
-    this.AddMarker = function (image) {
-        var marker = new ImageMarkers(image);
-        marker.debug = true;
-        that.markers.Add(marker);
+    stat.stop("matching");
+    return that.found > 0; // or that.found == that.nbFocussingMarker for instantaneous detection
+  }
+
+  this.reset = function () {
+    that.markerContainer = [];
+    currentId = -1;
+  }
+
+
+  this.markerToObject3D = function (object3d) {
+    // convert corners coordinate - not sure why
+    var corners = []//marker.corners;
+    for (var i = 0; i < that.matcher.corners.length; ++i) {
+      corners.push({
+        x: that.matcher.corners[i].x - (that.canvas.width / 2),
+        y: (that.canvas.height / 2)  - that.matcher.corners[i].y,
+      })
     }
+    // compute the pose from the canvas
+    var posit = new POS.Posit(that.model_size, that.canvas.width);
+    var pose = posit.pose(corners);
+    // console.assert(pose !== null)
+    if (pose === null) return;
 
-    // process a color Html image
-    this.ProcessHtmlImage = function (htmlImage) {
-        jsfeat.imgproc.grayscale(HtmlImage.data, that.imWidth, that.imHeight, img_u8);
-        return that.Process();
-    }
+    //////////////////////////////////////////////////////////////////////////////////
+    //		Translate pose to THREE.Object3D
+    //////////////////////////////////////////////////////////////////////////////////
+    var rotation = pose.bestRotation
+    var translation = pose.bestTranslation
 
-    // process a color Html image
-    this.ProcessVideo = function () {
-        var image = that.webcamconv.GetNewImage();
-        if (image) {
-            jsfeat.imgproc.grayscale(image.data, that.imWidth, that.imHeight, img_u8);
-            return that.Process();
-        }
-        return that.found > 0;
-    }
+    object3d.scale.x = that.model_size;
+    object3d.scale.y = that.model_size;
+    object3d.scale.z = that.model_size;
 
-    // process a jsfeat gray image
-    this.ProcessGrayImage = function (image) {
-        img_u8 = image;
-        return that.Process();
-    }
+    object3d.rotation.x = -Math.asin(-rotation[1][2]);
+    object3d.rotation.y = -Math.atan2(rotation[0][2], rotation[2][2]);
+    object3d.rotation.z = Math.atan2(rotation[1][0], rotation[1][1]);
 
-    this.Process = function () {
-        // depending on status search for a specific or a marker
-        that.num_corners = that.cornerdetector.DetectCorners(img_u8, that.screen_corners, that.screen_descriptors);
-        //console.log("Screen: " + img_u8.cols + "x" + img_u8.rows + " points: " + that.num_corners);
+    object3d.position.x = translation[0];
+    object3d.position.y = translation[1];
+    object3d.position.z = -translation[2];
+  }
 
-        if (!that.markers.markerContainer.length || !that.num_corners) return 0;
 
-        // search the same marker while it is detected or one different at each image
-        stat.start("matching");
-        if (that.found > 0) { // if one has already been detected
-            if (that.matcher.matching(that.screen_corners, that.screen_descriptors, that.markers.GetCurrent()))
-                that.found = that.nbFocussingMarker;
-            else
-                that.found--;
-        }
-        else { // no detection before, search for new marker
-            if (that.matcher.matching(that.screen_corners, that.screen_descriptors, that.markers.GetNext()))
-                that.found = that.nbFocussingMarker;
-            else
-                that.found--;
-        }
-
-        stat.stop("matching");
-        return that.found > 0; // or that.found == that.nbFocussingMarker for instantaneous detection
-    }
-
-    this.reset = function () {
-        that.markerContainer = [];
-        currentId = -1;
-    }
-
-    that.AttachVideo(video, canvas2d);
+  that.AttachVideo(video, canvas2d);
 };
 
