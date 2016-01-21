@@ -32,7 +32,7 @@ Updates animations and textures (video, gif)
 AddObject(object)
 Adds an object to the scene. If possible, places the object occordingly to the geographic coordinates
 
-RemoveObject()
+RemoveObject(object)
 
 Clear()
 Clears the scene.
@@ -55,8 +55,8 @@ GetScene()
 
 GetRenderer()
 
-CameraNeedsUpdate()
-
+ResizeRenderer()
+Resizes the renderer, and updates the camera
 
 Dependency
 
@@ -214,9 +214,11 @@ Scene = function(parameters) {
     return _renderer;
   };
 
-  this.CameraNeedsUpdate = function() {
+  this.ResizeRenderer = function(width, height) {
+    _renderer.setSize(width, height);
     _camera.aspect = _renderer.domElement.width / _renderer.domElement.height;
-  };
+    _camera.updateProjectionMatrix();
+  }
 
   function MoveObjectToGPSCoords(object) {
     if (that.gps_converter) {
