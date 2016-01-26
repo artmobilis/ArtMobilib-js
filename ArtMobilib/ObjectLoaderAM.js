@@ -761,7 +761,7 @@ ObjectLoaderAM = function ( manager ) {
 
         case 'Collada':
 
-        if (typeof collada_loader == 'undefined') {
+        if (typeof collada_loader === 'undefined') {
           console.warn('ObjectLoaderAM: failed to load ' + data.uuid + ': THREE.ColladaLoader is undefined');
           return undefined;
         }
@@ -779,7 +779,7 @@ ObjectLoaderAM = function ( manager ) {
 
             object.copy(dae);
 
-            if (THREE.Animation !== 'undefined') {
+            if (typeof(THREE.Animation) !== 'undefined') {
               object.traverse( function ( child ) {
                 if ( child instanceof THREE.SkinnedMesh ) {
                   var animation = new THREE.Animation( child, child.geometry.animation );
