@@ -27,7 +27,7 @@ CornerDetector.js
 
 
 // Multilevel Image marker
-var ImageMarkers = function (image) {
+var ImageMarkers = function (image, id) {
 
     /// private data
     var that = this;
@@ -44,7 +44,8 @@ var ImageMarkers = function (image) {
     var _min_pattern_size = 512;
     var _gray; // gray intermediate image
 
-    /// public data
+  /// public data
+    this.id = id;
     this.sx;
     this.sy;
     this.max_per_level = 150;

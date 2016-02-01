@@ -76,7 +76,7 @@ var MarkerMatcher = function () {
   this.corners;
 
   // debugging
-
+  this.debug = true;
   this.log = ""; // output log
 
   var Init = function () {
@@ -255,6 +255,7 @@ var MarkerMatcher = function () {
     that.log = ""
     that.num_matches = match_pattern(screen_descriptors, pattern_marker);
     that.log += pattern_marker.name + " nbMatches : " + that.num_matches;
+    if (that.debug) console.log(pattern_marker.name + " nbMatches : " + that.num_matches);
     if (that.num_matches < that.nb_matches_valid)
       return false;
 
@@ -262,6 +263,7 @@ var MarkerMatcher = function () {
     that.good_matches = find_transform(screen_corners, pattern_marker);
     stat.stop("find_transform");
     that.log += " nbGood : " + that.good_matches + "\n";
+    if (that.debug) console.log(" nbGood : " + that.good_matches + "\n");
     if (that.good_matches > that.nb_homograpy_valid) {
       that.ComputePatternCorners(pattern_marker);
       return true;
