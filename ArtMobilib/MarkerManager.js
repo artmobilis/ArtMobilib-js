@@ -55,7 +55,7 @@ InitProfiler = function () {
 InitProfiler();
 
 
-var MarkerManager = function (video, canvas2d) {
+var MarkerManager = function (video, canvas3d) {
 
   var that = this;
 
@@ -65,6 +65,7 @@ var MarkerManager = function (video, canvas2d) {
   this.internal_canvas = document.createElement('canvas');
   this.internal_canvas.width = that.imWidth;
   this.internal_canvas.height = that.imHeight;
+  this.context = this.internal_canvas.getContext("2d");
 
   // detection output
   this.found = 0;
@@ -78,8 +79,7 @@ var MarkerManager = function (video, canvas2d) {
   this.matcher = new MarkerMatcher();
   this.cornerdetector = new CornerDetector();
   this.webcamconv;
-  this.canvas = canvas2d;
-  this.context = canvas2d.getContext('2d');
+  this.canvas3d = canvas3d;
 
   // corner in screen: we will limit to 150 strongest points
   this.max_corner = 150;
@@ -183,7 +183,7 @@ var MarkerManager = function (video, canvas2d) {
       })
     }
     // compute the pose from the canvas
-    var posit = new POS.Posit(that.model_size, that.canvas.width);
+    var posit = new POS.Posit(that.model_size, that.canvas3d.width);
     var pose = posit.pose(corners);
     // console.assert(pose !== null)
     if (pose === null) return;
