@@ -55,13 +55,17 @@ InitProfiler = function () {
 InitProfiler();
 
 
-var MarkerManager = function (video, canvas2d) {
+var MarkerManager = function (video, canvas3d) {
 
   var that = this;
 
   // internal pipeline size
   this.imWidth = 640;
   this.imHeight = 480;
+  this.internal_canvas = document.createElement('canvas');
+  this.internal_canvas.width = that.imWidth;
+  this.internal_canvas.height = that.imHeight;
+  this.context = this.internal_canvas.getContext("2d");
 
   // detection output
   this.found = 0;
@@ -75,8 +79,7 @@ var MarkerManager = function (video, canvas2d) {
   this.matcher = new MarkerMatcher();
   this.cornerdetector = new CornerDetector();
   this.webcamconv;
-  this.canvas = canvas2d;
-  this.context = canvas2d.getContext('2d');
+  this.canvas3d = canvas3d;
 
   // corner in screen: we will limit to 150 strongest points
   this.max_corner = 150;
@@ -99,9 +102,14 @@ var MarkerManager = function (video, canvas2d) {
     that.webcamconv = new WebcamConverter(video, canvas);
   }
 
+  // Get id of detected image marker
+  this.GetId = function () {
+    return that.markers.GetCurrent().id;
+  }
+
   // extract corners ad descriptors and add it to the container
-  this.AddMarker = function (image) {
-    var marker = new ImageMarkers(image);
+  this.AddMarker = function (image, id) {
+    var marker = new ImageMarkers(image, id);
     marker.debug = true;
     that.markers.Add(marker);
   }
@@ -131,6 +139,7 @@ var MarkerManager = function (video, canvas2d) {
     img_u8 = image;
     return that.Process();
   }
+
 
   this.Process = function () {
     // depending on status search for a specific or a marker
@@ -169,12 +178,12 @@ var MarkerManager = function (video, canvas2d) {
     var corners = []//marker.corners;
     for (var i = 0; i < that.matcher.corners.length; ++i) {
       corners.push({
-        x: that.matcher.corners[i].x - (that.canvas.width / 2),
-        y: (that.canvas.height / 2)  - that.matcher.corners[i].y,
+        x: that.matcher.corners[i].x - (that.internal_canvas.width / 2),
+        y: (that.internal_canvas.height / 2) - that.matcher.corners[i].y,
       })
     }
     // compute the pose from the canvas
-    var posit = new POS.Posit(that.model_size, that.canvas.width);
+    var posit = new POS.Posit(that.model_size, that.canvas3d.width);
     var pose = posit.pose(corners);
     // console.assert(pose !== null)
     if (pose === null) return;
@@ -199,6 +208,6 @@ var MarkerManager = function (video, canvas2d) {
   }
 
 
-  that.AttachVideo(video, canvas2d);
+  that.AttachVideo(video, that.internal_canvas);
 };
 
