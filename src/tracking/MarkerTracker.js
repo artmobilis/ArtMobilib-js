@@ -46,7 +46,9 @@ AM.MarkerTracker = function() {
   var _params = {
     match_min : 8
   }
-
+  
+  var _debug =false; 
+  
   var _profiler = new AM.Profiler();
   _profiler.add('filter');
   _profiler.add('detection');
@@ -93,6 +95,7 @@ AM.MarkerTracker = function() {
       var count = _matching.GetNumMatches();
 
       _match_found = (count >= _params.match_min);
+      if (_debug) console.log("nbMatches : " + count);
       if (!_match_found)
         continue;
 
@@ -100,6 +103,7 @@ AM.MarkerTracker = function() {
         _detection.GetCorners(), trained_image.GetCornersLevels());
       _match_found = (good_count >= _params.match_min);
 
+      if (_debug) console.log(" goodMatches : " + good_count);
       if (_match_found) {
         _matching_image = trained_image;
         break;

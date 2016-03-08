@@ -2149,6 +2149,7 @@ AM.Detection = function() {
         border_size: 15,
         fast_threshold: 20
     };
+    var _debug = true;
     var _screen_corners = [];
     var _num_corners = 0;
     var _screen_descriptors = new jsfeat.matrix_t(32, _params.detection_corners_max, jsfeat.U8_t | jsfeat.C1_t);
@@ -2164,6 +2165,7 @@ AM.Detection = function() {
         AllocateCorners(img.cols, img.rows);
         _num_corners = AM.DetectKeypointsYape06(img, _screen_corners, _params.detection_corners_max, _params.laplacian_threshold, _params.eigen_threshold, _params.border_size);
         jsfeat.orb.describe(img, _screen_corners, _num_corners, _screen_descriptors);
+        if (_debug) console.log("Learn : " + _num_corners + " corners");
     };
     this.SetParameters = function(params) {
         for (name in params) {
@@ -2277,6 +2279,7 @@ AM.MarkerTracker = function() {
     var _params = {
         match_min: 8
     };
+    var _debug = true;
     var _profiler = new AM.Profiler();
     _profiler.add("filter");
     _profiler.add("detection");
@@ -2302,9 +2305,11 @@ AM.MarkerTracker = function() {
             _matching.Match(trained_image.GetDescriptorsLevels());
             var count = _matching.GetNumMatches();
             _match_found = count >= _params.match_min;
+            if (_debug) console.log("nbMatches : " + count);
             if (!_match_found) continue;
             var good_count = _pose.Pose(_matching.GetMatches(), count, _detection.GetCorners(), trained_image.GetCornersLevels());
             _match_found = good_count >= _params.match_min;
+            if (_debug) console.log(" goodMatches : " + good_count);
             if (_match_found) {
                 _matching_image = trained_image;
                 break;
