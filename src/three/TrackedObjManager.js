@@ -61,7 +61,14 @@ var AMTHREE = AMTHREE || {};
 
 if (typeof THREE !== 'undefined') {
 
-
+  /**
+  * 
+  * @class
+  * @param {object} parameters - An object holding parameters
+  * @param {THREE.Camera} parameters.camera
+  * @param {number} [parameters.lerp_factor=0.2] - 0 - 1
+  * @param {number} [parameters.timeout=6] Time before an object enabled gets disabled, in seconds.
+  */
   AMTHREE.TrackedObjManager = function(parameters) {
     parameters = parameters || {};
 
@@ -71,55 +78,86 @@ if (typeof THREE !== 'undefined') {
 
     var _holder = new AMTHREE.TrackedObjManager.prototype.Holder();
 
+    function LerpObjectsTransforms(src, dst, factor) {
+      src.position.lerp(dst.position, factor);
+      src.quaternion.slerp(dst.quaternion, factor);
+      src.scale.lerp(dst.scale, factor);
+    }
 
-    this.camera = parameters.camera;
-
-    this.lerp_factor = parameters.lerp_factor || 0.2;
-
-    this.timeout = parameters.timeout || 6;
-
-    this.UpdateLerpMethod = function() {
+    function UpdateLerpMethod() {
       _holder.ForEach(function(elem) {
 
-        if (elem.enabled) {
-
-          var obj = elem.object;
-          var target = elem.target;
-
-          obj.position.lerp(target.position, that.lerp_factor);
-          obj.quaternion.slerp(target.quaternion, that.lerp_factor);
-          obj.scale.lerp(target.scale, that.lerp_factor);
-
-        }
+        if (elem.enabled)
+          LerpObjectsTransforms(elem.object, elem.target, that.lerp_factor);
 
       });
     };
 
-    this.update_method = this.UpdateLerpMethod;
+    var _update_method = UpdateLerpMethod;
 
+    /**
+     * @property {THREE.Camera} camera
+     * @property {number} lerp_factor
+     * @property {number} timeout
+     */
+    this.camera = parameters.camera;
+
+    this.lerp_factor = parameters.lerp_factor || 0.8;
+
+    this.timeout = parameters.timeout || 6;
+
+    /**
+     * Adds an object
+     * @inner
+     * @param {THREE.Object3D} object - Starts disabled.
+     * @param {value} uuid
+     * @param {function} [on_enable] - Function called when the object is tracked and was disabled before.
+     * @param {function} [on_disable] - Function called when the object isnt tracked for "timeout" seconds.
+     */
     this.Add = function(object, uuid, on_enable, on_disable) {
       _holder.Add(object, uuid, on_enable, on_disable);
     };
 
+    /**
+     * Remove an object
+     * @inner
+     * @param {value}
+     */
     this.Remove = function(uuid) {
       _holder.Remove(uuid);
     };
 
+    /**
+     * Clear all the objects
+     * @inner
+     */
     this.Clear = function() {
       _holder.Clear();
     };
 
+    /**
+     * Updates the objects tranforms
+     * @inner
+     */
     this.Update = function() {
 
       _holder.UpdateElapsed(_clock.getDelta());
       _holder.CheckTimeout(that.timeout);
 
-      that.update_method();
+      _update_method();
     };
 
+    /**
+     * Sets a tracked object transform
+     * @inner
+     * @function
+     * @param {value} uuid
+     * @param {THREE.Matrix4} matrix
+     */
     this.Track = function() {
 
       var new_matrix = new THREE.Matrix4();
+      var obj_tmp = new THREE.Object3D();
 
       return function(uuid, matrix) {
 
@@ -132,9 +170,12 @@ if (typeof THREE !== 'undefined') {
             new_matrix.copy(that.camera.matrixWorld);
             new_matrix.multiply(matrix);
 
-            new_matrix.decompose(target.position, target.quaternion, target.scale);
-
-            if (!elem.enabled) {
+            if (elem.enabled) {
+              new_matrix.decompose(obj_tmp.position, obj_tmp.quaternion, obj_tmp.scale);
+              LerpObjectsTransforms(target, obj_tmp, that.lerp_factor);
+            }
+            else {
+              new_matrix.decompose(target.position, target.quaternion, target.scale);
               new_matrix.decompose(elem.object.position, elem.object.quaternion, elem.object.scale);
             }
 
@@ -153,6 +194,15 @@ if (typeof THREE !== 'undefined') {
       };
     }();
 
+    /**
+     * Sets a tracked object transform
+     * @inner
+     * @function
+     * @param {value} uuid
+     * @param {THREE.Vector3} position
+     * @param {THREE.Quaternion} quaternion
+     * @param {THREE.Vector3} scale
+     */
     this.TrackCompose = function() {
 
       var matrix = new THREE.Matrix4();
@@ -165,6 +215,15 @@ if (typeof THREE !== 'undefined') {
       }
     }();
 
+    /**
+     * Sets a tracked object transform
+     * @inner
+     * @function
+     * @param {value} uuid
+     * @param {number[]} translation_pose
+     * @param {number[][]} rotation_pose
+     * @param {number} model_size
+     */
     this.TrackComposePosit = function() {
 
       var position = new THREE.Vector3();
@@ -192,6 +251,11 @@ if (typeof THREE !== 'undefined') {
       };
     }();
 
+    /**
+     * Returns an object held by this
+     * @inner
+     * @param {value} uuid
+     */
     this.GetObject = function(uuid) {
       var elem = _holder.get(uuid);
       if (elem) {
@@ -291,5 +355,8 @@ if (typeof THREE !== 'undefined') {
 
 
 }
-else
-  console.warn('TrackedObjManager.js: THREE undefined');
+else {
+  AMTHREE.TrackedObjManager = function() {
+    console.warn('TrackedObjManager.js: THREE undefined');
+  };
+}

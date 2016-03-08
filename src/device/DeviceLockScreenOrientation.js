@@ -26,10 +26,15 @@ cordova plugin add cordova-plugin-screen-orientation
 
 *************/
 
-
 var AM = AM || {};
 
 
+/**
+ * Wrapper class for the Cordova plugin
+ * <br><br>Requires 'Cordova Screen Orientation Plugin'
+ * <br>cordova plugin add cordova-plugin-screen-orientation
+ * @class
+ */
 AM.DeviceLockScreenOrientation = function() {
 
   var _ready = false;
@@ -75,14 +80,23 @@ AM.DeviceLockScreenOrientation = function() {
     screen.unlockOrientation();
   }
 
+  /**
+   * @inner
+   */
   this.LockLandscape = function() {
     Command(LockLandscapeDoit);
   }
 
+  /**
+   * @inner
+   */
   this.LockPortrait = function() {
     Command(LockPortraitDoit);
   }
 
+  /**
+   * @inner
+   */
   this.Unlock = function() {
     Command(UnlockDoit);
   }

@@ -26,6 +26,10 @@ params.training_corners_max
 
 var AM = AM || {};
 
+
+/**
+ * @class
+ */
 AM.MarkerTracker = function() {
 
   var _training = new AM.Training();
@@ -43,12 +47,18 @@ AM.MarkerTracker = function() {
     match_min : 8
   }
 
-  var _profiler = new profiler();
+  var _profiler = new AM.Profiler();
   _profiler.add('filter');
   _profiler.add('detection');
   _profiler.add('matching');
   _profiler.add('pose');
 
+
+  /**
+  * Computes the corners and descriptors
+  * @inner
+  * @param {ImageData} image_data
+  */
   this.ComputeImage = function(image_data) {
     _profiler.new_frame();
     _profiler.start('filter');
@@ -59,6 +69,9 @@ AM.MarkerTracker = function() {
     _profiler.stop('detection');
   };
 
+  /**
+   *
+   */
   this.Match = function() {
     _profiler.start('matching');
 
@@ -149,7 +162,7 @@ AM.MarkerTracker = function() {
   };
 
   this.Log = function() {
-    console.log(_profiler.log());
+    console.log(_profiler.log() + ((_match_found) ? '<br/>match found' : ''));
   };
 
   this.SetParameters = function(params) {

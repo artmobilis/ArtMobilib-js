@@ -7,23 +7,23 @@ A class to convert GPS coordinates to flat (x, z) coordinates.
 
 Constructor
 
-GeographicCoordinatesConverter(latitude, longitude)
+GeographicCoordinatesConverter(latitude: float, longitude: float)
 Sets the origin. The coordinates should be in radiants.
 
 
 Methods
 
-GetLocalCoordinates(latitude, longitude)
+GetLocalCoordinates(latitude: float, longitude: float) -> THREE.Vector3
 Returns a THREE.Vector3 containing the new coordinates in 'x' and 'z' properties.
 'latitude' and 'longitude' should be in radiants.
 
-GetLocalCoordinatesFromDegres(latitude, longitude)
+GetLocalCoordinatesFromDegres(latitude: float, longitude: float) -> THREE.Vector3
 Same as above, with coordinates in degres.
 
-SetOrigin(latitude, longitude)
+SetOrigin(latitude: float, longitude: float)
 Sets the origin. The coordinates should be in radiants.
 
-SetOriginFromDegres(latitude, longitude)
+SetOriginFromDegres(latitude: float, longitude: float)
 Same as above, with coordinates in degres.
 
 GetOrigin()
@@ -38,15 +38,40 @@ Threejs
 ********************/
 
 
-
 var AM = AM || {};
 
 
+/**
+ * This class converts GPS coordinates to flat (x, z) coordinates.
+ * @class
+ * @param {number} latitude - latitude of the origin
+ * @param {number} longitude - longitude of the origin
+ */
 AM.GeographicCoordinatesConverter = function(latitude, longitude) {
   var that = this;
 
   var _origin = { latitude: 0, longitude: 0 };
 
+  /**
+   * @typedef Point2D
+   * @type {Object}
+   * @property {number} x
+   * @property {number} y
+   */
+
+  /**
+   * @typedef Coordinates
+   * @type {Object}
+   * @property {number} longitude
+   * @property {number} latitude
+   */
+
+  /**
+   * @inner
+   * @param {number} latitude - latitude in radians
+   * @param {number} longitude - longitude in radians
+   * @returns {Point2D}
+   */
   this.GetLocalCoordinates = function(latitude, longitude) {
 
     var medium_latitude = (_origin.latitude + latitude) / 2;
@@ -59,20 +84,40 @@ AM.GeographicCoordinatesConverter = function(latitude, longitude) {
     return pos;
   };
 
+  /**
+   * @inner
+   * @param {number} latitude - latitude in degres
+   * @param {number} longitude - longitude in degres
+   * @returns {Point2D}
+   */
   this.GetLocalCoordinatesFromDegres = function(latitude, longitude) {
     return that.GetLocalCoordinates(THREE.Math.degToRad(latitude), THREE.Math.degToRad(longitude));
   }
 
+  /**
+   * @inner
+   * @param {number} latitude - latitude in radians
+   * @param {number} longitude - longitude in radians
+   */
   this.SetOrigin = function(latitude, longitude) {
     _origin.latitude = latitude;
     _origin.longitude = longitude;
   }
 
+  /**
+   * @inner
+   * @param {number} latitude - latitude in degres
+   * @param {number} longitude - longitude in degres
+   */
   this.SetOriginFromDegres = function(latitude, longitude) {
     _origin.latitude = THREE.Math.degToRad(latitude);
     _origin.longitude = THREE.Math.degToRad(longitude);
   }
 
+  /**
+   * @inner
+   * @returns {Coordinates} The origin in radians
+   */
   this.GetOrigin = function() {
     return _origin;
   }

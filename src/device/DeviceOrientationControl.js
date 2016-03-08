@@ -7,8 +7,7 @@ Orient a THREE.Object3D using the gyroscope
 
 Constructor
 
-DeviceOrientationControl(object)
-Sets the THREE.Object3D to rotate
+DeviceOrientationControl(object: THREE.Object3D)
 
 
 Methods
@@ -19,9 +18,6 @@ Listen to the orientation events
 Update()
 Sets the rotation of the object accordingly to the last orientation event
 
-Connect()
-Add the listeners
-
 Disconnect()
 Remove the listeners
 
@@ -29,9 +25,15 @@ Remove the listeners
 *******************/
 
 
+/** @namespace */
 var AM = AM || {};
 
 
+/**
+ * Wrapper class for the Cordova plugin
+ * @class
+ * @param {Object3D}
+ */
 AM.DeviceOrientationControl = function(object) {
 	var that = this;
 
@@ -61,7 +63,10 @@ AM.DeviceOrientationControl = function(object) {
 
   // The angles alpha, beta and gamma form a set of intrinsic Tait-Bryan angles of type Z-X'-Y''
 
-
+  /**
+   * Listen to the orientation events
+   * @inner
+   */
   this.Connect = function() {
     OnScreenOrientationChangeEvent();
 
@@ -69,6 +74,10 @@ AM.DeviceOrientationControl = function(object) {
     window.addEventListener('deviceorientation', OnDeviceOrientationChangeEvent, false);
   };
 
+  /**
+   * Listen to the orientation events
+   * @inner
+   */
   this.Disconnect = function() {
     window.removeEventListener('orientationchange', OnScreenOrientationChangeEvent, false);
     window.removeEventListener('deviceorientation', OnDeviceOrientationChangeEvent, false);
@@ -76,6 +85,10 @@ AM.DeviceOrientationControl = function(object) {
     _enabled = false;
   };
 
+  /**
+   * Sets the rotation of the object accordingly to the last orientation event
+   * @inner
+   */
   this.Update = function () {
 
     var SetObjectQuaternion = function () {
@@ -121,12 +134,12 @@ AM.DeviceOrientationControl.prototype.PowerMethod = function() {
   };
 
   function power_lerp_rad(a, b, power) {
-    var diff = DeviceOrientationControl.prototype.Mod2Pi(b - a);
+    var diff = AM.DeviceOrientationControl.prototype.Mod2Pi(b - a);
     var sign = Math.sign(diff);
     var coef = Math.abs(diff / Math.PI);
     coef = Math.pow(coef, power);
 
-    return DeviceOrientationControl.prototype.Mod2Pi(a + coef * Math.PI * sign);
+    return AM.DeviceOrientationControl.prototype.Mod2Pi(a + coef * Math.PI * sign);
   }
 
   this.Update = function() {
@@ -153,7 +166,7 @@ AM.DeviceOrientationControl.prototype.CoefMethod = function() {
   }
 
   function lerp_rad(a, b, coef) {
-    return a + DeviceOrientationControl.prototype.Mod2Pi(b - a) * coef;
+    return a + AM.DeviceOrientationControl.prototype.Mod2Pi(b - a) * coef;
   }
 
   this.Update = function() {
@@ -193,9 +206,9 @@ AM.DeviceOrientationControl.prototype.AverageMethod = function() {
 
     if (that.history.length != 0) {
       for (var i = 0, c = that.history.length; i < c; i++) {
-        alpha += DeviceOrientationControl.prototype.Mod360(that.history[i].alpha);
-        beta += DeviceOrientationControl.prototype.Mod360(that.history[i].beta);
-        gamma += DeviceOrientationControl.prototype.Mod360(that.history[i].gamma);
+        alpha += AM.DeviceOrientationControl.prototype.Mod360(that.history[i].alpha);
+        beta += AM.DeviceOrientationControl.prototype.Mod360(that.history[i].beta);
+        gamma += AM.DeviceOrientationControl.prototype.Mod360(that.history[i].gamma);
       }
       alpha /= that.history.length;
       beta /= that.history.length;

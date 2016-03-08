@@ -72,6 +72,14 @@ var AMTHREE = AMTHREE || {};
 if (typeof THREE !== 'undefined') {
 
 
+  /**
+   * A utility class to load a THREE.Scene, and render on a canvas
+   * @class
+   * @param {object} parameters - An object of optionnal parameters
+   * @param {number} parameters.fov - The fov of the THREE.Camera
+   * @param {canvas} parameters.canvas - A canvas to be used by the THREE.Renderer
+   * @param {AM.GeographicCoordinatesConverter} parameters.gps_converter - Used to convert coordinates to scene position
+   */
   AMTHREE.Scene = function(parameters) {
     if (typeof AMTHREE.ObjectLoader === 'undefined')
       console.warn('AMTHREE.Scene: AMTHREE.ObjectLoader undefined');
@@ -106,6 +114,10 @@ if (typeof THREE !== 'undefined') {
     this.gps_converter = parameters.gps_converter;
 
 
+    /**
+     * Empties the THREE.Scene
+     * @inner
+     */
     this.Clear = function() {
       _three_scene.children = [];
       _three_scene.copy(new THREE.Scene(), false);
@@ -118,47 +130,64 @@ if (typeof THREE !== 'undefined') {
       _renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
+    /**
+     * Adds listeners to resize the renderer, the canvas, and the camera's aspect ratio.
+     * @inner
+     */
     this.SetFullWindow = function() {
       window.addEventListener('resize', OnWindowResize, false);
       OnWindowResize();
     };
 
+    /**
+     * Removes the listeners.
+     * @inner
+     * @see #SetFullWindow
+     */
     this.StopFullWindow = function() {
       window.removeEventListener('resize', OnWindowResize, false);
     };
 
+    /**
+     * Renders the scene.
+     * @inner
+     */
     this.Render = function() {
       _renderer.render(_three_scene, _camera);
     };
 
+    /**
+     * Updates animations and animated textures.
+     * @inner
+     */
     this.Update = function() {
 
       var clock = new THREE.Clock();
 
       return function() {
 
-        var update_callbacks = _obj_loader.GetOnUpdateCallbacks();
-        for (var i = 0, c = update_callbacks.length; i < c; ++i)
-          update_callbacks[i]();
-
         if (THREE.AnimationHandler)
           THREE.AnimationHandler.update(clock.getDelta());
 
-        _three_scene.traverse(function(o) {
-          if (o instanceof THREE.Mesh) {
-            if (o.material && o.material.map && o.material.map.update) {
-              o.material.map.update();
-            }
-          }
-        });
+        AMTHREE.UpdateAnimatedTextures(_three_scene);
       }
     }();
 
+    /**
+     * Adds an object to the scene
+     * @inner
+     * @param {THREE.Object3D} object
+     */
     this.AddObject = function(object) {
       MoveObjectToGPSCoords(object);
       _three_scene.add(object);
     };
 
+    /**
+     * Removes an object of the scene
+     * @inner
+     * @param {THREE.Object3D} object
+     */
     this.RemoveObject = function(object) {
       _three_scene.remove(object);
     };
@@ -189,6 +218,12 @@ if (typeof THREE !== 'undefined') {
       };
     };
 
+    /**
+     * Parses a JSON object describing a THREE.Scene.
+     * @inner
+     * @param {object} json
+     * @param {function} on_load_assets - A function to be called when all the assets are loaded and added to the scene.
+     */
     this.Parse = function(json, on_load_assets) {
       if (_obj_loader) {
 
@@ -202,6 +237,12 @@ if (typeof THREE !== 'undefined') {
         console.warn('AMTHREE.Scene: Parse failed: AMTHREE.ObjectLoader undefined');
     };
 
+    /**
+     * Load a JSON file describing a THREE.Scene.
+     * @inner
+     * @param {string} url
+     * @param {function} on_load_assets - A function to be called when all the assets are loaded and added to the scene.
+     */
     this.Load = function(url, on_load_assets) {
       if (_obj_loader)
         _obj_loader.Load(url, new OnLoadThreeScene(on_load_assets));
@@ -209,23 +250,47 @@ if (typeof THREE !== 'undefined') {
         console.warn('AMTHREE.Scene: Load failed: AMTHREE.ObjectLoader undefined');
     };
 
-
+    /**
+     * Returns the camera.
+     * @inner
+     * @returns {THREE.PerspectiveCamera}
+     */
     this.GetCamera = function() {
       return _camera;
     };
 
+    /**
+     * The camera is a child of this object. Returns this object.
+     * @inner
+     * @returns {THREE.Object3D}
+     */
     this.GetCameraBody = function() {
       return _camera_body;
     };
 
+    /**
+     * Returns the scene.
+     * @inner
+     * @returns {THREE.Scene}
+     */
     this.GetScene = function() {
       return _three_scene;
     };
 
+    /**
+     * Returns the renderer.
+     * @returns {THREE.WebGLRenderer}
+     */
     this.GetRenderer = function() {
       return _renderer;
     };
 
+    /**
+     * Resizes the renderer, the canvas and sets the camera's aspect ratio.
+     * @inner
+     * @param {number} width
+     * @param {number} height
+     */
     this.ResizeRenderer = function(width, height) {
       _renderer.setSize(width, height);
       _camera.aspect = _renderer.domElement.width / _renderer.domElement.height;
@@ -256,5 +321,8 @@ if (typeof THREE !== 'undefined') {
 
 
 }
-else
-  console.warn('Scene.js: THREE undefined');
+else {
+  AMTHREE.Scene = function() {
+    console.warn('Scene.js: THREE undefined');
+  };
+}

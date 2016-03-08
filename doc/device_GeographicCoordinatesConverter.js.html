@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: device/GeographicCoordinatesConverter.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: device/GeographicCoordinatesConverter.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/********************
+
+
+GeographicCoordinatesConverter
+A class to convert GPS coordinates to flat (x, z) coordinates.
+
+
+Constructor
+
+GeographicCoordinatesConverter(latitude: float, longitude: float)
+Sets the origin. The coordinates should be in radiants.
+
+
+Methods
+
+GetLocalCoordinates(latitude: float, longitude: float) -> THREE.Vector3
+Returns a THREE.Vector3 containing the new coordinates in 'x' and 'z' properties.
+'latitude' and 'longitude' should be in radiants.
+
+GetLocalCoordinatesFromDegres(latitude: float, longitude: float) -> THREE.Vector3
+Same as above, with coordinates in degres.
+
+SetOrigin(latitude: float, longitude: float)
+Sets the origin. The coordinates should be in radiants.
+
+SetOriginFromDegres(latitude: float, longitude: float)
+Same as above, with coordinates in degres.
+
+GetOrigin()
+Returns the origin as object with the properties 'latitude' and 'longitude' in radiant.
+
+
+Dependency
+
+Threejs
+
+
+********************/
+
+
+var AM = AM || {};
+
+
+/**
+ * This class converts GPS coordinates to flat (x, z) coordinates.
+ * @class
+ * @param {number} latitude - latitude of the origin
+ * @param {number} longitude - longitude of the origin
+ */
+AM.GeographicCoordinatesConverter = function(latitude, longitude) {
+  var that = this;
+
+  var _origin = { latitude: 0, longitude: 0 };
+
+  /**
+   * @typedef Point2D
+   * @type {Object}
+   * @property {number} x
+   * @property {number} y
+   */
+
+  /**
+   * @typedef Coordinates
+   * @type {Object}
+   * @property {number} longitude
+   * @property {number} latitude
+   */
+
+  /**
+   * @inner
+   * @param {number} latitude - latitude in radians
+   * @param {number} longitude - longitude in radians
+   * @returns {Point2D}
+   */
+  this.GetLocalCoordinates = function(latitude, longitude) {
+
+    var medium_latitude = (_origin.latitude + latitude) / 2;
+
+    var pos = { x: 0, y: 0 };
+
+    pos.x = (longitude - _origin.longitude) * that.EARTH_RADIUS * Math.cos(medium_latitude);
+    pos.y = (latitude - _origin.latitude) * -that.EARTH_RADIUS;
+
+    return pos;
+  };
+
+  /**
+   * @inner
+   * @param {number} latitude - latitude in degres
+   * @param {number} longitude - longitude in degres
+   * @returns {Point2D}
+   */
+  this.GetLocalCoordinatesFromDegres = function(latitude, longitude) {
+    return that.GetLocalCoordinates(THREE.Math.degToRad(latitude), THREE.Math.degToRad(longitude));
+  }
+
+  /**
+   * @inner
+   * @param {number} latitude - latitude in radians
+   * @param {number} longitude - longitude in radians
+   */
+  this.SetOrigin = function(latitude, longitude) {
+    _origin.latitude = latitude;
+    _origin.longitude = longitude;
+  }
+
+  /**
+   * @inner
+   * @param {number} latitude - latitude in degres
+   * @param {number} longitude - longitude in degres
+   */
+  this.SetOriginFromDegres = function(latitude, longitude) {
+    _origin.latitude = THREE.Math.degToRad(latitude);
+    _origin.longitude = THREE.Math.degToRad(longitude);
+  }
+
+  /**
+   * @inner
+   * @returns {Coordinates} The origin in radians
+   */
+  this.GetOrigin = function() {
+    return _origin;
+  }
+
+  this.SetOrigin(latitude || 0, longitude || 0);
+
+};
+
+AM.GeographicCoordinatesConverter.prototype.EARTH_RADIUS = 6371000;</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AM.Detection.html">Detection</a></li><li><a href="AM.DeviceLockScreenOrientation.html">DeviceLockScreenOrientation</a></li><li><a href="AM.DeviceOrientationControl.html">DeviceOrientationControl</a></li><li><a href="AM.GeographicCoordinatesConverter.html">GeographicCoordinatesConverter</a></li><li><a href="AM.GeolocationControl.html">GeolocationControl</a></li><li><a href="AM.ImageFilter.html">ImageFilter</a></li><li><a href="AM.MarkerTracker.html">MarkerTracker</a></li><li><a href="AM.match_t.html">match_t</a></li><li><a href="AM.Matching.html">Matching</a></li><li><a href="AM.Pose.html">Pose</a></li><li><a href="AM.PosePosit.html">PosePosit</a></li><li><a href="AM.PoseThree.html">PoseThree</a></li><li><a href="AM.TrainedImage.html">TrainedImage</a></li><li><a href="AM.Training.html">Training</a></li><li><a href="AMTHREE.GifTexture.html">GifTexture</a></li><li><a href="AMTHREE.ObjectLoader.html">ObjectLoader</a></li><li><a href="AMTHREE.Scene.html">Scene</a></li><li><a href="AMTHREE.Sound.html">Sound</a></li><li><a href="AMTHREE.TrackedObjManager.html">TrackedObjManager</a></li><li><a href="AMTHREE.VideoTexture.html">VideoTexture</a></li></ul><h3>Namespaces</h3><ul><li><a href="AM.html">AM</a></li><li><a href="AMTHREE.html">AMTHREE</a></li></ul><h3>Global</h3><ul><li><a href="global.html#compatibility">compatibility</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Tue Mar 08 2016 16:47:14 GMT+0100 (Paris, Madrid)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

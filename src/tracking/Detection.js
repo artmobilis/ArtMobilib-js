@@ -1,20 +1,22 @@
 var AM = AM || {};
 
+
+/**
+ * Detects corners in an image using FAST, and descriptors using ORB.
+ * @class
+ */
 AM.Detection = function() {
 
   var _params = {
     laplacian_threshold: 30,
     eigen_threshold: 25,
     detection_corners_max: 500,
-    border_size: 3,
-    fast_threshold: 40
+    border_size: 15,
+    fast_threshold: 20
   }
 
   var _screen_corners = [];
   var _num_corners = 0;
-
-  var _width = 0;
-  var _height = 0;
 
   var _screen_descriptors = new jsfeat.matrix_t(32, _params.detection_corners_max, jsfeat.U8_t | jsfeat.C1_t);
 
@@ -23,22 +25,39 @@ AM.Detection = function() {
 
     if (i > _screen_corners.length) {
       while (--i >= 0) {
-        _screen_corners[i] = new jsfeat.keypoint_t(0, 0, 0, 0, -1);
+        _screen_corners[i] = new jsfeat.keypoint_t();
       }
     }
   }
 
+  /**
+   * Computes the image corners and descriptors and saves them internally.
+   * <br>Use {@link ImageFilter} first to filter an Image.
+   * @inner
+   * @param {jsfeat.matrix_t} img
+   */
   this.Detect = function(img) {
-    _width = img.cols;
-    _height = img.rows;
-    AllocateCorners(_width, _height);
+    AllocateCorners(img.cols, img.rows);
 
     _num_corners = AM.DetectKeypointsYape06(img, _screen_corners, _params.detection_corners_max,
-      _params.laplacian_threshold, _params.eigen_threshold);
+      _params.laplacian_threshold, _params.eigen_threshold, _params.border_size);
+    
+    // _num_corners = AM.DetectKeypointsFast(img, _screen_corners, _params.detection_corners_max,
+    //   _params.fast_threshold, _params.border_size);
 
     jsfeat.orb.describe(img, _screen_corners, _num_corners, _screen_descriptors);
   };
 
+  /**
+   * Sets the params used during the detection
+   * @inner
+   * @param {object} params
+   * @param {number} [params.laplacian_threshold=30] - 0 - 100
+   * @param {number} [params.eigen_threshold=25] - 0 - 100
+   * @param {number} [params.detection_corners_max=500] - 100 - 1000
+   * @param {number} [params.border_size=3]
+   * @param {number} [params.fast_threshold=48] - 0 - 10
+   */
   this.SetParameters = function(params) {
     for (name in params) {
       if (typeof _params[name] !== 'undefined')
@@ -46,24 +65,31 @@ AM.Detection = function() {
     }
   };
 
+  /**
+   * Returns the last computed descriptors
+   * @inner
+   * @returns {jsfeat.matrix_t} Descriptors
+   */
   this.GetDescriptors = function() {
     return _screen_descriptors;
   };
 
+  /**
+   * Returns the count of the last computed corners
+   * @inner
+   * @returns {number}
+   */
   this.GetNumCorners = function() {
     return _num_corners;
   };
 
+  /**
+   * Returns the last computed corners
+   * @inner
+   * @returns {jsfeat.keypoint_t[]}
+   */
   this.GetCorners = function() {
     return _screen_corners;
-  };
-
-  this.GetImageWidth = function() {
-    return _width;
-  };
-
-  this.GetImageHeight = function() {
-    return _height;
   };
 
 
@@ -71,6 +97,7 @@ AM.Detection = function() {
 
 AM.IcAngle = (function() {
   var u_max = new Int32Array( [ 15, 15, 15, 15, 14, 14, 14, 13, 13, 12, 11, 10, 9, 8, 6, 3, 0 ] );
+  var half_pi = Math.PI / 2;
 
   return function(img, px, py) {
     var half_k = 15; // half patch size
@@ -97,9 +124,17 @@ AM.IcAngle = (function() {
       m_01 += v * v_sum;
     }
 
-    return Math.atan2(m_01, m_10);
+    // return Math.atan2(m_01, m_10);
+    return AM.DiamondAngle(m_01, m_10) * half_pi;
   }
 })();
+
+AM.DiamondAngle = function(y, x) {
+  if (y >= 0)
+    return (x >= 0 ? y / (x + y) : 1 - x / (-x + y)); 
+  else
+    return (x < 0 ? 2 - y / (-x - y) : 3 + x / (x - y));
+}
 
 AM.DetectKeypointsPostProc = function(img, corners, count, max_allowed) {
 
@@ -120,13 +155,13 @@ AM.DetectKeypointsPostProc = function(img, corners, count, max_allowed) {
 }
 
 AM.DetectKeypointsYape06 = function(img, corners, max_allowed,
-  laplacian_threshold, eigen_threshold) {
+  laplacian_threshold, eigen_threshold, border_size) {
 
   jsfeat.yape06.laplacian_threshold = laplacian_threshold;
   jsfeat.yape06.min_eigen_value_threshold = eigen_threshold;
 
   // detect features
-  var count = jsfeat.yape06.detect(img, corners, 17);
+  var count = jsfeat.yape06.detect(img, corners, border_size);
 
   count = AM.DetectKeypointsPostProc(img, corners, count, max_allowed);
 

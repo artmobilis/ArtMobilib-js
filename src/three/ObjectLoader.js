@@ -36,7 +36,10 @@ var AMTHREE = AMTHREE || {};
 
 if (typeof THREE !== 'undefined') {
 
-
+  /**
+   * A loader for loading a JSON resource.
+   * @class
+   */
   AMTHREE.ObjectLoader = function (manager) {
 
     var that = this;
@@ -57,9 +60,12 @@ if (typeof THREE !== 'undefined') {
     this.root;
 
 
-    var _on_update_callbacks = [];
-
-
+    /**
+     * Load a JSON file
+     * @param {string} url
+     * @param {function} on_load_object - function called when loading ends
+     * @inner
+     */
     this.Load = function ( url, on_load_object ) {
 
       var loader = new THREE.XHRLoader( that.manager );
@@ -76,6 +82,11 @@ if (typeof THREE !== 'undefined') {
       }(on_load_object));
     };
 
+    /**
+     * Parse a JSON object
+     * @param {object} json
+     * @inner
+     */
     this.Parse = function ( json ) {
       that.json = json;
 
@@ -245,14 +256,6 @@ if (typeof THREE !== 'undefined') {
 
               var texture = new AMTHREE.GifTexture(image.src);
 
-              var updateTexture = function(texture) {
-                return function() {
-                  texture.needsUpdate = true;
-                }
-              }(texture);
-
-              _on_update_callbacks.push(updateTexture);
-
             } else {
               var texture = new THREE.Texture( image );
               texture.needsUpdate = true;
@@ -274,14 +277,6 @@ if (typeof THREE !== 'undefined') {
               loop: data.loop,
               autoplay: data.autoplay
             } );
-
-            var UpdateVideoTexture = function(texture) {
-              return function() {
-                texture.update();
-              }
-            }(texture);
-
-            _on_update_callbacks.push(UpdateVideoTexture);
           }
 
           texture.uuid = data.uuid;
@@ -785,7 +780,19 @@ if (typeof THREE !== 'undefined') {
 
           case 'Sound':
 
-          object = new AMTHREE.Sound(data.src);
+          object = new AMTHREE.Sound(data.url);
+
+          break;
+
+          case 'ImagePlane':
+
+          var url;
+          if (that.constants.image_path)
+            url = that.constants.image_path + '/' + data.url;
+          else
+            url = data.url;
+
+          object = new AMTHREE.ImagePlane(url);
 
           break;
 
@@ -834,13 +841,12 @@ if (typeof THREE !== 'undefined') {
       }
     }();
 
-    this.GetOnUpdateCallbacks = function() {
-      return _on_update_callbacks;
-    };
-
 
   };
 
 }
-else
-  console.warn('ObjectLoader.js: THREE undefined');
+else {
+  AMTHREE.ObjectLoader = function() {
+    console.warn('ObjectLoader.js: THREE undefined');
+  };
+}
