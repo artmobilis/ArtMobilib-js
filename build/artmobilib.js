@@ -497,11 +497,11 @@ AM.DeviceOrientationControl.prototype.PowerMethod = function() {
         _event = e;
     };
     function power_lerp_rad(a, b, power) {
-        var diff = DeviceOrientationControl.prototype.Mod2Pi(b - a);
+        var diff = AM.DeviceOrientationControl.prototype.Mod2Pi(b - a);
         var sign = Math.sign(diff);
         var coef = Math.abs(diff / Math.PI);
         coef = Math.pow(coef, power);
-        return DeviceOrientationControl.prototype.Mod2Pi(a + coef * Math.PI * sign);
+        return AM.DeviceOrientationControl.prototype.Mod2Pi(a + coef * Math.PI * sign);
     }
     this.Update = function() {
         that.alpha = power_lerp_rad(that.alpha, THREE.Math.degToRad(_event.alpha), _power);
@@ -521,7 +521,7 @@ AM.DeviceOrientationControl.prototype.CoefMethod = function() {
         _event = e;
     };
     function lerp_rad(a, b, coef) {
-        return a + DeviceOrientationControl.prototype.Mod2Pi(b - a) * coef;
+        return a + AM.DeviceOrientationControl.prototype.Mod2Pi(b - a) * coef;
     }
     this.Update = function() {
         if (_event) {
@@ -552,9 +552,9 @@ AM.DeviceOrientationControl.prototype.AverageMethod = function() {
         var gamma = 0;
         if (that.history.length != 0) {
             for (var i = 0, c = that.history.length; i < c; i++) {
-                alpha += DeviceOrientationControl.prototype.Mod360(that.history[i].alpha);
-                beta += DeviceOrientationControl.prototype.Mod360(that.history[i].beta);
-                gamma += DeviceOrientationControl.prototype.Mod360(that.history[i].gamma);
+                alpha += AM.DeviceOrientationControl.prototype.Mod360(that.history[i].alpha);
+                beta += AM.DeviceOrientationControl.prototype.Mod360(that.history[i].beta);
+                gamma += AM.DeviceOrientationControl.prototype.Mod360(that.history[i].gamma);
             }
             alpha /= that.history.length;
             beta /= that.history.length;
@@ -709,7 +709,42 @@ if (typeof THREE !== "undefined") {
         this.gifCanvas = this.anim.get_canvas();
         this.gifCanvas.style.display = "none";
     };
-} else console.warn("GifTexture.js: THREE undefined");
+} else {
+    AMTHREE.GifTexture = function() {
+        console.warn("GifTexture.js: THREE undefined");
+    };
+}
+
+var AMTHREE = AMTHREE || {};
+
+if (typeof THREE !== "undefined") {
+    AMTHREE.ImagePlane = function(url) {
+        THREE.Mesh.call(this);
+        this.geometry = new THREE.PlaneGeometry(1, 1);
+        this.material = new THREE.MeshBasicMaterial({
+            side: 2
+        });
+        if (url) this.setUrl(url);
+    };
+    AMTHREE.ImagePlane.prototype = Object.create(THREE.Mesh.prototype);
+    AMTHREE.ImagePlane.prototype.constructor = AMTHREE.ImagePlane;
+    AMTHREE.ImagePlane.prototype.clone = function() {
+        var clone = new this.constructor(this.src).copy(this);
+        clone.material.map = this.material.map.clone();
+        return clone;
+    };
+    AMTHREE.ImagePlane.prototype.setUrl = function(url) {
+        this.url = url;
+        this.material.map = new THREE.TextureLoader().load(url, function(texture) {
+            texture.minFilter = THREE.NearestMipMapLinearFilter;
+            texture.needsUpdate = true;
+        });
+    };
+} else {
+    AMTHREE.ImagePlane = function() {
+        console.warn("ImagePlane.js: THREE undefined");
+    };
+}
 
 var AMTHREE = AMTHREE || {};
 
@@ -726,7 +761,6 @@ if (typeof THREE !== "undefined") {
         this.textures = {};
         this.json = {};
         this.root;
-        var _on_update_callbacks = [];
         this.Load = function(url, on_load_object) {
             var loader = new THREE.XHRLoader(that.manager);
             loader.load(url, function(on_load_object) {
@@ -833,12 +867,6 @@ if (typeof THREE !== "undefined") {
                         if (data.animated !== undefined && data.animated) {
                             if (typeof SuperGif == "undefined") continue;
                             var texture = new AMTHREE.GifTexture(image.src);
-                            var updateTexture = function(texture) {
-                                return function() {
-                                    texture.needsUpdate = true;
-                                };
-                            }(texture);
-                            _on_update_callbacks.push(updateTexture);
                         } else {
                             var texture = new THREE.Texture(image);
                             texture.needsUpdate = true;
@@ -856,12 +884,6 @@ if (typeof THREE !== "undefined") {
                             loop: data.loop,
                             autoplay: data.autoplay
                         });
-                        var UpdateVideoTexture = function(texture) {
-                            return function() {
-                                texture.update();
-                            };
-                        }(texture);
-                        _on_update_callbacks.push(UpdateVideoTexture);
                     }
                     texture.uuid = data.uuid;
                     if (data.name !== undefined) texture.name = data.name;
@@ -1135,7 +1157,13 @@ if (typeof THREE !== "undefined") {
                     }(object, data, manager, url));
 
                   case "Sound":
-                    object = new AMTHREE.Sound(data.src);
+                    object = new AMTHREE.Sound(data.url);
+                    break;
+
+                  case "ImagePlane":
+                    var url;
+                    if (that.constants.image_path) url = that.constants.image_path + "/" + data.url; else url = data.url;
+                    object = new AMTHREE.ImagePlane(url);
                     break;
 
                   default:
@@ -1164,11 +1192,12 @@ if (typeof THREE !== "undefined") {
                 return object;
             };
         }();
-        this.GetOnUpdateCallbacks = function() {
-            return _on_update_callbacks;
-        };
     };
-} else console.warn("ObjectLoader.js: THREE undefined");
+} else {
+    AMTHREE.ObjectLoader = function() {
+        console.warn("ObjectLoader.js: THREE undefined");
+    };
+}
 
 var AMTHREE = AMTHREE || {};
 
@@ -1217,16 +1246,8 @@ if (typeof THREE !== "undefined") {
         this.Update = function() {
             var clock = new THREE.Clock();
             return function() {
-                var update_callbacks = _obj_loader.GetOnUpdateCallbacks();
-                for (var i = 0, c = update_callbacks.length; i < c; ++i) update_callbacks[i]();
                 if (THREE.AnimationHandler) THREE.AnimationHandler.update(clock.getDelta());
-                _three_scene.traverse(function(o) {
-                    if (o instanceof THREE.Mesh) {
-                        if (o.material && o.material.map && o.material.map.update) {
-                            o.material.map.update();
-                        }
-                    }
-                });
+                AMTHREE.UpdateAnimatedTextures(_three_scene);
             };
         }();
         this.AddObject = function(object) {
@@ -1296,7 +1317,11 @@ if (typeof THREE !== "undefined") {
             }
         }
     };
-} else console.warn("Scene.js: THREE undefined");
+} else {
+    AMTHREE.Scene = function() {
+        console.warn("Scene.js: THREE undefined");
+    };
+}
 
 var AMTHREE = AMTHREE || {};
 
@@ -1350,7 +1375,11 @@ if (typeof THREE !== "undefined") {
     AMTHREE.StopSounds = function(object) {
         AMTHREE.SoundsCall(object, "stop");
     };
-} else console.warn("Sound.js: THREE undefined");
+} else {
+    AMTHREE.Sound = function() {
+        console.warn("Sound.js: THREE undefined");
+    };
+}
 
 var AMTHREE = AMTHREE || {};
 
@@ -1360,21 +1389,20 @@ if (typeof THREE !== "undefined") {
         var that = this;
         var _clock = new THREE.Clock(true);
         var _holder = new AMTHREE.TrackedObjManager.prototype.Holder();
-        this.camera = parameters.camera;
-        this.lerp_factor = parameters.lerp_factor || .2;
-        this.timeout = parameters.timeout || 6;
-        this.UpdateLerpMethod = function() {
+        function LerpObjectsTransforms(src, dst, factor) {
+            src.position.lerp(dst.position, factor);
+            src.quaternion.slerp(dst.quaternion, factor);
+            src.scale.lerp(dst.scale, factor);
+        }
+        function UpdateLerpMethod() {
             _holder.ForEach(function(elem) {
-                if (elem.enabled) {
-                    var obj = elem.object;
-                    var target = elem.target;
-                    obj.position.lerp(target.position, that.lerp_factor);
-                    obj.quaternion.slerp(target.quaternion, that.lerp_factor);
-                    obj.scale.lerp(target.scale, that.lerp_factor);
-                }
+                if (elem.enabled) LerpObjectsTransforms(elem.object, elem.target, that.lerp_factor);
             });
-        };
-        this.update_method = this.UpdateLerpMethod;
+        }
+        var _update_method = UpdateLerpMethod;
+        this.camera = parameters.camera;
+        this.lerp_factor = parameters.lerp_factor || .8;
+        this.timeout = parameters.timeout || 6;
         this.Add = function(object, uuid, on_enable, on_disable) {
             _holder.Add(object, uuid, on_enable, on_disable);
         };
@@ -1387,10 +1415,11 @@ if (typeof THREE !== "undefined") {
         this.Update = function() {
             _holder.UpdateElapsed(_clock.getDelta());
             _holder.CheckTimeout(that.timeout);
-            that.update_method();
+            _update_method();
         };
         this.Track = function() {
             var new_matrix = new THREE.Matrix4();
+            var obj_tmp = new THREE.Object3D();
             return function(uuid, matrix) {
                 if (that.camera) {
                     var elem = _holder.Get(uuid);
@@ -1398,8 +1427,11 @@ if (typeof THREE !== "undefined") {
                         var target = elem.target;
                         new_matrix.copy(that.camera.matrixWorld);
                         new_matrix.multiply(matrix);
-                        new_matrix.decompose(target.position, target.quaternion, target.scale);
-                        if (!elem.enabled) {
+                        if (elem.enabled) {
+                            new_matrix.decompose(obj_tmp.position, obj_tmp.quaternion, obj_tmp.scale);
+                            LerpObjectsTransforms(target, obj_tmp, that.lerp_factor);
+                        } else {
+                            new_matrix.decompose(target.position, target.quaternion, target.scale);
                             new_matrix.decompose(elem.object.position, elem.object.quaternion, elem.object.scale);
                         }
                         _holder.Track(uuid);
@@ -1501,51 +1533,57 @@ if (typeof THREE !== "undefined") {
             return _objects[uuid];
         };
     };
-} else console.warn("TrackedObjManager.js: THREE undefined");
+} else {
+    AMTHREE.TrackedObjManager = function() {
+        console.warn("TrackedObjManager.js: THREE undefined");
+    };
+}
 
 var AMTHREE = AMTHREE || {};
 
-if (typeof THREE !== "undefined") {
-    AMTHREE.AnimatedTextureCall = function(object, fun) {
-        object.traverse(function(s) {
-            if (s.material && s.material.map && s.material.map[fun]) s.material.map[fun]();
-        });
+AMTHREE.AnimatedTextureCall = function(object, fun) {
+    object.traverse(function(s) {
+        if (s.material && s.material.map && s.material.map[fun]) s.material.map[fun]();
+    });
+};
+
+AMTHREE.PlayAnimatedTextures = function(object) {
+    AMTHREE.AnimatedTextureCall(object, "play");
+};
+
+AMTHREE.StopAnimatedTextures = function(object) {
+    AMTHREE.AnimatedTextureCall(object, "stop");
+};
+
+AMTHREE.PauseAnimatedTextures = function(object) {
+    AMTHREE.AnimatedTextureCall(object, "pause");
+};
+
+AMTHREE.UpdateAnimatedTextures = function(object) {
+    AMTHREE.AnimatedTextureCall(object, "update");
+};
+
+AMTHREE.WorldToCanvasPosition = function(position, camera, canvas) {
+    var vec = new THREE.Vector3();
+    vec.copy(position);
+    vec.project(camera);
+    var x = Math.round((vec.x + 1) * canvas.width / 2);
+    var y = Math.round((-vec.y + 1) * canvas.height / 2);
+    return {
+        x: x,
+        y: y,
+        z: vec.z
     };
-    AMTHREE.PlayAnimatedTextures = function(object) {
-        AMTHREE.AnimatedTextureCall(object, "play");
-    };
-    AMTHREE.StopAnimatedTextures = function(object) {
-        AMTHREE.AnimatedTextureCall(object, "stop");
-    };
-    AMTHREE.PauseAnimatedTextures = function(object) {
-        AMTHREE.AnimatedTextureCall(object, "pause");
-    };
-    AMTHREE.UpdateAnimatedTextures = function(object) {
-        AMTHREE.AnimatedTextureCall(object, "update");
-    };
-    AMTHREE.WorldToCanvasPosition = function() {
-        var vec = new THREE.Vector3();
-        return function(position, camera, canvas) {
-            vec.copy(position);
-            vec.project(camera);
-            var x = Math.round((vec.x + 1) * canvas.width / 2);
-            var y = Math.round((-vec.y + 1) * canvas.height / 2);
-            return {
-                x: x,
-                y: y,
-                z: vec.z
-            };
-        };
-    }();
-    AMTHREE.PlayAnimations = function(object) {
-        object.traverse(function(child) {
-            if (child instanceof THREE.SkinnedMesh) {
-                var animation = new THREE.Animation(child, child.geometry.animation);
-                animation.play();
-            }
-        });
-    };
-} else console.warn("utility.js: THREE undefined");
+};
+
+AMTHREE.PlayAnimations = function(object) {
+    object.traverse(function(child) {
+        if (child instanceof THREE.SkinnedMesh) {
+            var animation = new THREE.Animation(child, child.geometry.animation);
+            animation.play();
+        }
+    });
+};
 
 var AMTHREE = AMTHREE || {};
 
@@ -1579,6 +1617,7 @@ if (typeof THREE !== "undefined") {
             if (!this.paused) {
                 this.videoElement.src = this.src;
             }
+            this.videoElement.setAttribute("crossorigin", "anonymous");
             this.videoElement.play();
             this.image = this.videoElement;
             this.playing = true;
@@ -1615,7 +1654,11 @@ if (typeof THREE !== "undefined") {
         this.playing = false;
         if (this.videoElement.autoplay) this.play();
     };
-} else console.warn("VideoTexture.js: THREE undefined");
+} else {
+    AMTHREE.VideoTexture = function() {
+        console.warn("VideoTexture.js: THREE undefined");
+    };
+}
 
 var AM = AM || {};
 
@@ -1624,27 +1667,23 @@ AM.Detection = function() {
         laplacian_threshold: 30,
         eigen_threshold: 25,
         detection_corners_max: 500,
-        border_size: 3,
-        fast_threshold: 40
+        border_size: 15,
+        fast_threshold: 20
     };
     var _screen_corners = [];
     var _num_corners = 0;
-    var _width = 0;
-    var _height = 0;
     var _screen_descriptors = new jsfeat.matrix_t(32, _params.detection_corners_max, jsfeat.U8_t | jsfeat.C1_t);
     function AllocateCorners(width, height) {
         var i = width * height;
         if (i > _screen_corners.length) {
             while (--i >= 0) {
-                _screen_corners[i] = new jsfeat.keypoint_t(0, 0, 0, 0, -1);
+                _screen_corners[i] = new jsfeat.keypoint_t();
             }
         }
     }
     this.Detect = function(img) {
-        _width = img.cols;
-        _height = img.rows;
-        AllocateCorners(_width, _height);
-        _num_corners = AM.DetectKeypointsYape06(img, _screen_corners, _params.detection_corners_max, _params.laplacian_threshold, _params.eigen_threshold);
+        AllocateCorners(img.cols, img.rows);
+        _num_corners = AM.DetectKeypointsYape06(img, _screen_corners, _params.detection_corners_max, _params.laplacian_threshold, _params.eigen_threshold, _params.border_size);
         jsfeat.orb.describe(img, _screen_corners, _num_corners, _screen_descriptors);
     };
     this.SetParameters = function(params) {
@@ -1661,16 +1700,11 @@ AM.Detection = function() {
     this.GetCorners = function() {
         return _screen_corners;
     };
-    this.GetImageWidth = function() {
-        return _width;
-    };
-    this.GetImageHeight = function() {
-        return _height;
-    };
 };
 
 AM.IcAngle = function() {
     var u_max = new Int32Array([ 15, 15, 15, 15, 14, 14, 14, 13, 13, 12, 11, 10, 9, 8, 6, 3, 0 ]);
+    var half_pi = Math.PI / 2;
     return function(img, px, py) {
         var half_k = 15;
         var m_01 = 0, m_10 = 0;
@@ -1689,9 +1723,13 @@ AM.IcAngle = function() {
             }
             m_01 += v * v_sum;
         }
-        return Math.atan2(m_01, m_10);
+        return AM.DiamondAngle(m_01, m_10) * half_pi;
     };
 }();
+
+AM.DiamondAngle = function(y, x) {
+    if (y >= 0) return x >= 0 ? y / (x + y) : 1 - x / (-x + y); else return x < 0 ? 2 - y / (-x - y) : 3 + x / (x - y);
+};
 
 AM.DetectKeypointsPostProc = function(img, corners, count, max_allowed) {
     if (count > max_allowed) {
@@ -1706,10 +1744,10 @@ AM.DetectKeypointsPostProc = function(img, corners, count, max_allowed) {
     return count;
 };
 
-AM.DetectKeypointsYape06 = function(img, corners, max_allowed, laplacian_threshold, eigen_threshold) {
+AM.DetectKeypointsYape06 = function(img, corners, max_allowed, laplacian_threshold, eigen_threshold, border_size) {
     jsfeat.yape06.laplacian_threshold = laplacian_threshold;
     jsfeat.yape06.min_eigen_value_threshold = eigen_threshold;
-    var count = jsfeat.yape06.detect(img, corners, 17);
+    var count = jsfeat.yape06.detect(img, corners, border_size);
     count = AM.DetectKeypointsPostProc(img, corners, count, max_allowed);
     return count;
 };
@@ -1725,7 +1763,6 @@ var AM = AM || {};
 
 AM.ImageFilter = function() {
     var _img_u8;
-    var _img_u8_smooth;
     var _params = {
         blur_size: 3,
         blur: true
@@ -1734,18 +1771,11 @@ AM.ImageFilter = function() {
         var width = image_data.width;
         var height = image_data.height;
         if (_img_u8) _img_u8.resize(width, height, jsfeat.U8_t | jsfeat.C1_t); else _img_u8 = new jsfeat.matrix_t(width, height, jsfeat.U8_t | jsfeat.C1_t);
-        if (_img_u8_smooth) _img_u8_smooth.resize(width, height, jsfeat.U8_t | jsfeat.C1_t); else _img_u8_smooth = new jsfeat.matrix_t(width, height, jsfeat.U8_t | jsfeat.C1_t);
         jsfeat.imgproc.grayscale(image_data.data, width, height, _img_u8);
-        if (_params.blur) jsfeat.imgproc.gaussian_blur(_img_u8, _img_u8_smooth, _params.blur_size);
-    };
-    this.SetMaxImageSize = function(value) {
-        _image_size_max = value;
-    };
-    this.SetBlurSize = function(value) {
-        _blur_size = value;
+        if (_params.blur) jsfeat.imgproc.gaussian_blur(_img_u8, _img_u8, _params.blur_size);
     };
     this.GetFilteredImage = function() {
-        if (_params.blur) return _img_u8_smooth; else return _img_u8;
+        return _img_u8;
     };
     this.SetParameters = function(params) {
         for (name in params) {
@@ -1768,7 +1798,7 @@ AM.MarkerTracker = function() {
     var _params = {
         match_min: 8
     };
-    var _profiler = new profiler();
+    var _profiler = new AM.Profiler();
     _profiler.add("filter");
     _profiler.add("detection");
     _profiler.add("matching");
@@ -1846,7 +1876,7 @@ AM.MarkerTracker = function() {
         return _detection.GetNumCorners();
     };
     this.Log = function() {
-        console.log(_profiler.log());
+        console.log(_profiler.log() + (_match_found ? "<br/>match found" : ""));
     };
     this.SetParameters = function(params) {
         for (name in params) {
@@ -1872,59 +1902,85 @@ AM.Matching = function() {
         _screen_descriptors = screen_descriptors;
     };
     this.Match = function(pattern_descriptors) {
-        function popcnt32(n) {
-            n -= n >> 1 & 1431655765;
-            n = (n & 858993459) + (n >> 2 & 858993459);
-            return (n + (n >> 4) & 252645135) * 16843009 >> 24;
-        }
-        function MatchPattern(screen_descriptors, pattern_descriptors) {
-            var q_cnt = screen_descriptors.rows;
-            var query_u32 = screen_descriptors.buffer.i32;
-            var qd_off = 0;
-            var num_matches = 0;
-            _matches.length = 0;
-            for (var qidx = 0; qidx < q_cnt; ++qidx) {
-                var best_dist = 256;
-                var best_dist2 = 256;
-                var best_idx = -1;
-                var best_lev = -1;
-                for (var lev = 0; lev < pattern_descriptors.length; ++lev) {
-                    var lev_descr = pattern_descriptors[lev];
-                    var ld_cnt = lev_descr.rows;
-                    var ld_i32 = lev_descr.buffer.i32;
-                    var ld_off = 0;
-                    for (var pidx = 0; pidx < ld_cnt; ++pidx) {
-                        var curr_d = 0;
-                        for (var k = 0; k < 8; ++k) {
-                            curr_d += popcnt32(query_u32[qd_off + k] ^ ld_i32[ld_off + k]);
-                        }
-                        if (curr_d < best_dist) {
-                            best_dist2 = best_dist;
-                            best_dist = curr_d;
-                            best_lev = lev;
-                            best_idx = pidx;
-                        } else if (curr_d < best_dist2) {
-                            best_dist2 = curr_d;
-                        }
-                        ld_off += 8;
-                    }
-                }
-                if (best_dist < _params.match_threshold) {
-                    while (_matches.length <= num_matches) {
-                        _matches.push(new AM.match_t());
-                    }
-                    _matches[num_matches].screen_idx = qidx;
-                    _matches[num_matches].pattern_lev = best_lev;
-                    _matches[num_matches].pattern_idx = best_idx;
-                    num_matches++;
-                }
-                qd_off += 8;
-            }
-            return num_matches;
-        }
         _num_matches = MatchPattern(_screen_descriptors, pattern_descriptors);
         return _num_matches;
     };
+    function popcnt32(n) {
+        n -= n >> 1 & 1431655765;
+        n = (n & 858993459) + (n >> 2 & 858993459);
+        return (n + (n >> 4) & 252645135) * 16843009 >> 24;
+    }
+    var popcnt32_2 = function() {
+        var v2b = [ 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8 ];
+        var m8 = 255;
+        return function(n) {
+            var r = v2b[n & m8];
+            n = n >> 8;
+            r += v2b[n & m8];
+            n = n >> 8;
+            r += v2b[n & m8];
+            n = n >> 8;
+            r += v2b[n & m8];
+            return r;
+        };
+    }();
+    var popcnt32_3 = function() {
+        var v2b = [];
+        for (i = 0; i < 256 * 256; ++i) v2b.push(popcnt32(i));
+        var m16 = 65535;
+        return function(n) {
+            var r = v2b[n & m16];
+            n = n >> 16;
+            r += v2b[n & m16];
+            return r;
+        };
+    }();
+    function MatchPattern(screen_descriptors, pattern_descriptors) {
+        var q_cnt = screen_descriptors.rows;
+        var query_u32 = screen_descriptors.buffer.i32;
+        var qd_off = 0;
+        var num_matches = 0;
+        _matches = [];
+        for (var qidx = 0; qidx < q_cnt; ++qidx) {
+            var best_dist = 256;
+            var best_dist2 = 256;
+            var best_idx = -1;
+            var best_lev = -1;
+            for (var lev = 0, lev_max = pattern_descriptors.length; lev < lev_max; ++lev) {
+                var lev_descr = pattern_descriptors[lev];
+                var ld_cnt = lev_descr.rows;
+                var ld_i32 = lev_descr.buffer.i32;
+                var ld_off = 0;
+                for (var pidx = 0; pidx < ld_cnt; ++pidx) {
+                    var curr_d = 0;
+                    for (var k = 0; k < 8; ++k) {
+                        curr_d += popcnt32_3(query_u32[qd_off + k] ^ ld_i32[ld_off + k]);
+                    }
+                    if (curr_d < best_dist) {
+                        best_dist2 = best_dist;
+                        best_dist = curr_d;
+                        best_lev = lev;
+                        best_idx = pidx;
+                    } else if (curr_d < best_dist2) {
+                        best_dist2 = curr_d;
+                    }
+                    ld_off += 8;
+                }
+            }
+            if (best_dist < _params.match_threshold) {
+                while (_matches.length <= num_matches) {
+                    _matches.push(new AM.match_t());
+                }
+                _matches[num_matches].screen_idx = qidx;
+                _matches[num_matches].pattern_lev = best_lev;
+                _matches[num_matches].pattern_idx = best_idx;
+                num_matches++;
+            }
+            qd_off += 8;
+        }
+        _matches.length = num_matches;
+        return num_matches;
+    }
     this.GetMatches = function() {
         return _matches;
     };
@@ -1938,15 +1994,12 @@ AM.Matching = function() {
     };
 };
 
-AM.match_t = function() {
-    function match_t(screen_idx, pattern_lev, pattern_idx, distance) {
-        this.screen_idx = screen_idx || 0;
-        this.pattern_lev = pattern_lev || 0;
-        this.pattern_idx = pattern_idx || 0;
-        this.distance = distance || 0;
-    }
-    return match_t;
-}();
+AM.match_t = function(screen_idx, pattern_lev, pattern_idx, distance) {
+    this.screen_idx = screen_idx || 0;
+    this.pattern_lev = pattern_lev || 0;
+    this.pattern_idx = pattern_idx || 0;
+    this.distance = distance || 0;
+};
 
 var AM = AM || {};
 
@@ -2130,7 +2183,7 @@ AM.TrainedImage = function(uuid) {
     this.Active = function(bool) {
         _active = bool === true;
     };
-    this.IsActive = function(bool) {
+    this.IsActive = function() {
         return _active;
     };
 };
@@ -2211,12 +2264,6 @@ AM.Training = function() {
             scale /= _scale_increment;
             TrainLevel(img, level_img, level, scale);
         }
-    };
-    this.SetBlurSize = function(value) {
-        _params.blur_size = value;
-    };
-    this.SetMaxImageSize = function(value) {
-        _params.image_size_max = value;
     };
     this.SetResultToTrainedImage = function(trained_image) {
         trained_image.Set(_corners_levels, _descriptors_levels, _width, _height);

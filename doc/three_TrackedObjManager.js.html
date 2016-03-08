@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: three/TrackedObjManager.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: three/TrackedObjManager.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/******************
+
+TrackedObjManager
+A class that moves objects on the scene relatively to the camera,
+smoothly using linear interpolation
+
+
+Constructor
+
+TrackedObjManager(parameters)
+
+parameters: an object holding the parameters 'camera', 'lerp_factor', and 'timeout'
+to set their respectives properties
+
+
+Properties
+
+camera: the origin, a 'THREE.Object3D'. Tracked objects are set has children of this object.
+
+lerp_factor: a number in [0, 1], 0.2 by default.
+The higher, the faster tracked objects will converge toward the camera.
+
+timeout: time in seconds, 3 by default.
+If an object isn't tracked for 'timeout' seconds, on_disable() is called,
+and the object is disabled.
+
+
+Methods
+
+Add(object, uuid, on_enable, on_disable)
+Add an object to track, and set the optionnal callbacks.
+The object is disabled until Track() or TrackCompose() are called.
+
+Remove(uuid)
+Remove an object. If the object is enabled, on_disable is called before removal.
+
+Update()
+
+Track(uuid, matrix)
+Sets a new position for a previously added object.
+If the object is disabled, on_enable() is called and the object is enabled
+
+TrackCompose(uuid, position, quaternion, scale)
+For convenience. Calls Track().
+
+TrackComposePosit(uuid, translation_pose, rotation_pose, model_size)
+For convenience. Calls TrackCompose().
+
+GetObject(uuid)
+
+
+Dependency
+
+three.js
+
+
+******************/
+
+
+var AMTHREE = AMTHREE || {};
+
+if (typeof THREE !== 'undefined') {
+
+  /**
+  * 
+  * @class
+  * @param {object} parameters - An object holding parameters
+  * @param {THREE.Camera} parameters.camera
+  * @param {number} [parameters.lerp_factor=0.2] - 0 - 1
+  * @param {number} [parameters.timeout=6] Time before an object enabled gets disabled, in seconds.
+  */
+  AMTHREE.TrackedObjManager = function(parameters) {
+    parameters = parameters || {};
+
+    var that = this;
+
+    var _clock = new THREE.Clock(true);
+
+    var _holder = new AMTHREE.TrackedObjManager.prototype.Holder();
+
+    function LerpObjectsTransforms(src, dst, factor) {
+      src.position.lerp(dst.position, factor);
+      src.quaternion.slerp(dst.quaternion, factor);
+      src.scale.lerp(dst.scale, factor);
+    }
+
+    function UpdateLerpMethod() {
+      _holder.ForEach(function(elem) {
+
+        if (elem.enabled)
+          LerpObjectsTransforms(elem.object, elem.target, that.lerp_factor);
+
+      });
+    };
+
+    var _update_method = UpdateLerpMethod;
+
+    /**
+     * @property {THREE.Camera} camera
+     * @property {number} lerp_factor
+     * @property {number} timeout
+     */
+    this.camera = parameters.camera;
+
+    this.lerp_factor = parameters.lerp_factor || 0.8;
+
+    this.timeout = parameters.timeout || 6;
+
+    /**
+     * Adds an object
+     * @inner
+     * @param {THREE.Object3D} object - Starts disabled.
+     * @param {value} uuid
+     * @param {function} [on_enable] - Function called when the object is tracked and was disabled before.
+     * @param {function} [on_disable] - Function called when the object isnt tracked for "timeout" seconds.
+     */
+    this.Add = function(object, uuid, on_enable, on_disable) {
+      _holder.Add(object, uuid, on_enable, on_disable);
+    };
+
+    /**
+     * Remove an object
+     * @inner
+     * @param {value}
+     */
+    this.Remove = function(uuid) {
+      _holder.Remove(uuid);
+    };
+
+    /**
+     * Clear all the objects
+     * @inner
+     */
+    this.Clear = function() {
+      _holder.Clear();
+    };
+
+    /**
+     * Updates the objects tranforms
+     * @inner
+     */
+    this.Update = function() {
+
+      _holder.UpdateElapsed(_clock.getDelta());
+      _holder.CheckTimeout(that.timeout);
+
+      _update_method();
+    };
+
+    /**
+     * Sets a tracked object transform
+     * @inner
+     * @function
+     * @param {value} uuid
+     * @param {THREE.Matrix4} matrix
+     */
+    this.Track = function() {
+
+      var new_matrix = new THREE.Matrix4();
+      var obj_tmp = new THREE.Object3D();
+
+      return function(uuid, matrix) {
+
+        if (that.camera) {
+
+          var elem = _holder.Get(uuid);
+          if (elem) {
+            var target = elem.target;
+
+            new_matrix.copy(that.camera.matrixWorld);
+            new_matrix.multiply(matrix);
+
+            if (elem.enabled) {
+              new_matrix.decompose(obj_tmp.position, obj_tmp.quaternion, obj_tmp.scale);
+              LerpObjectsTransforms(target, obj_tmp, that.lerp_factor);
+            }
+            else {
+              new_matrix.decompose(target.position, target.quaternion, target.scale);
+              new_matrix.decompose(elem.object.position, elem.object.quaternion, elem.object.scale);
+            }
+
+            _holder.Track(uuid);
+
+            return true;
+
+          }
+          else
+            console.warn('TrackedObjManager: object ' + uuid + ' not found');
+        }
+        else
+          console.warn('TrackedObjManager: camera is undefined');
+
+        return false;
+      };
+    }();
+
+    /**
+     * Sets a tracked object transform
+     * @inner
+     * @function
+     * @param {value} uuid
+     * @param {THREE.Vector3} position
+     * @param {THREE.Quaternion} quaternion
+     * @param {THREE.Vector3} scale
+     */
+    this.TrackCompose = function() {
+
+      var matrix = new THREE.Matrix4();
+
+      return function(uuid, position, quaternion, scale) {
+
+        matrix.compose(position, quaternion, scale);
+
+        return that.Track(uuid, matrix);
+      }
+    }();
+
+    /**
+     * Sets a tracked object transform
+     * @inner
+     * @function
+     * @param {value} uuid
+     * @param {number[]} translation_pose
+     * @param {number[][]} rotation_pose
+     * @param {number} model_size
+     */
+    this.TrackComposePosit = function() {
+
+      var position = new THREE.Vector3();
+      var euler = new THREE.Euler();
+      var quaternion = new THREE.Quaternion();
+      var scale = new THREE.Vector3();
+
+      return function(uuid, translation_pose, rotation_pose, model_size) {
+
+        position.x = translation_pose[0];
+        position.y = translation_pose[1];
+        position.z = -translation_pose[2];
+
+        euler.x = -Math.asin(-rotation_pose[1][2]);
+        euler.y = -Math.atan2(rotation_pose[0][2], rotation_pose[2][2]);
+        euler.z = Math.atan2(rotation_pose[1][0], rotation_pose[1][1]);
+
+        scale.x = model_size;
+        scale.y = model_size;
+        scale.z = model_size;
+
+        quaternion.setFromEuler(euler);
+
+        return that.TrackCompose(uuid, position, quaternion, scale);
+      };
+    }();
+
+    /**
+     * Returns an object held by this
+     * @inner
+     * @param {value} uuid
+     */
+    this.GetObject = function(uuid) {
+      var elem = _holder.get(uuid);
+      if (elem) {
+        return elem.object;
+      }
+      return undefined;
+    };
+
+
+  };
+
+
+  AMTHREE.TrackedObjManager.prototype.Holder = function() {
+    var that = this;
+
+    var _objects = {};
+
+    this.Add = function(object, uuid, on_enable, on_disable) {
+
+      _objects[uuid] =
+      {
+        object: object,
+        target:
+        {
+          position: object.position.clone(),
+          quaternion: object.quaternion.clone(),
+          scale: object.scale.clone(),
+        },
+        elapsed: 0,
+        on_enable: on_enable,
+        on_disable: on_disable,
+        enabled: false
+      };
+    };
+
+    this.Remove = function(uuid) {
+      var elem = _objects[uuid];
+
+      if (elem.enabled) {
+        if (elem.on_disable)
+          elem.on_disable(elem.object);
+      }
+      delete _objects[uuid];
+    };
+
+    this.Clear = function() {
+      for (uuid in _objects)
+        that.Remove(uuid);
+    };
+
+    this.Track = function(uuid) {
+
+      var elem = _objects[uuid];
+
+      elem.elapsed = 0;
+
+      if (!elem.enabled) {
+        elem.enabled = true;
+        if (elem.on_enable)
+          elem.on_enable(elem.object);
+      }
+    };
+
+    this.UpdateElapsed = function(elapsed) {
+      for (uuid in _objects) {
+
+        _objects[uuid].elapsed += elapsed;
+      }
+    };
+
+    this.CheckTimeout = function(timeout) {
+
+      for (uuid in _objects) {
+
+        var elem = _objects[uuid];
+
+        if (elem.enabled &amp;&amp; elem.elapsed > timeout) {
+          if (elem.on_disable)
+            elem.on_disable(elem.object);
+          elem.enabled = false;
+        }
+      }
+    };
+
+    this.ForEach = function(fun) {
+      for (uuid in _objects) {
+        fun(_objects[uuid]);
+      }
+    };
+
+    this.Get = function(uuid) {
+      return _objects[uuid];
+    };
+
+
+  };
+
+
+}
+else {
+  AMTHREE.TrackedObjManager = function() {
+    console.warn('TrackedObjManager.js: THREE undefined');
+  };
+}</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AM.Detection.html">Detection</a></li><li><a href="AM.DeviceLockScreenOrientation.html">DeviceLockScreenOrientation</a></li><li><a href="AM.DeviceOrientationControl.html">DeviceOrientationControl</a></li><li><a href="AM.GeographicCoordinatesConverter.html">GeographicCoordinatesConverter</a></li><li><a href="AM.GeolocationControl.html">GeolocationControl</a></li><li><a href="AM.ImageFilter.html">ImageFilter</a></li><li><a href="AM.MarkerTracker.html">MarkerTracker</a></li><li><a href="AM.match_t.html">match_t</a></li><li><a href="AM.Matching.html">Matching</a></li><li><a href="AM.Pose.html">Pose</a></li><li><a href="AM.PosePosit.html">PosePosit</a></li><li><a href="AM.PoseThree.html">PoseThree</a></li><li><a href="AM.TrainedImage.html">TrainedImage</a></li><li><a href="AM.Training.html">Training</a></li><li><a href="AMTHREE.GifTexture.html">GifTexture</a></li><li><a href="AMTHREE.ObjectLoader.html">ObjectLoader</a></li><li><a href="AMTHREE.Scene.html">Scene</a></li><li><a href="AMTHREE.Sound.html">Sound</a></li><li><a href="AMTHREE.TrackedObjManager.html">TrackedObjManager</a></li><li><a href="AMTHREE.VideoTexture.html">VideoTexture</a></li></ul><h3>Namespaces</h3><ul><li><a href="AM.html">AM</a></li><li><a href="AMTHREE.html">AMTHREE</a></li></ul><h3>Global</h3><ul><li><a href="global.html#compatibility">compatibility</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Tue Mar 08 2016 16:47:14 GMT+0100 (Paris, Madrid)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

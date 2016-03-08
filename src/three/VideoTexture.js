@@ -3,6 +3,10 @@ var AMTHREE = AMTHREE || {};
 if (typeof THREE !== 'undefined') {
 
 
+  /**
+   * @class
+   * @augments THREE.Texture
+   */
   AMTHREE.VideoTexture = function(params) {
     THREE.Texture.call(this);
 
@@ -16,6 +20,10 @@ if (typeof THREE !== 'undefined') {
   AMTHREE.VideoTexture.prototype = Object.create(THREE.Texture.prototype);
   AMTHREE.VideoTexture.prototype.constructor = AMTHREE.VideoTexture;
 
+  /**
+   * Copies source in this.
+   * @param {AMTHREE.VideoTexture} source
+   */
   AMTHREE.VideoTexture.prototype.copy = function(source) {
     THREE.Texture.prototype.copy.call(this, source);
 
@@ -35,21 +43,32 @@ if (typeof THREE !== 'undefined') {
     return this;
   };
 
+  /**
+  * Clones this.
+  * @returns {AMTHREE.VideoTexture}
+  */
   AMTHREE.VideoTexture.prototype.clone = function () {
     return new this.constructor().copy( this );
   };
 
+  /**
+   * Plays the animated texture.
+   */
   AMTHREE.VideoTexture.prototype.play = function() {
     if (this.videoElement && !this.playing) {
       if (!this.paused) {
         this.videoElement.src = this.src;
       }
+      this.videoElement.setAttribute('crossorigin', 'anonymous');
       this.videoElement.play();
       this.image = this.videoElement;
       this.playing = true;
     }
   };
 
+  /**
+   * Updates the animated texture.
+   */
   AMTHREE.VideoTexture.prototype.update = function() {
     if (this.videoElement
       && this.videoElement.readyState == this.videoElement.HAVE_ENOUGH_DATA) {
@@ -57,6 +76,9 @@ if (typeof THREE !== 'undefined') {
     }
   };
 
+  /**
+   * Pauses the animated texture.
+   */
   AMTHREE.VideoTexture.prototype.pause = function() {
     if (this.videoElement && !this.videoElement.paused) {
       this.videoElement.pause();
@@ -64,6 +86,9 @@ if (typeof THREE !== 'undefined') {
     }
   };
 
+  /**
+   * Stops the animated texture.
+   */
   AMTHREE.VideoTexture.prototype.stop = function() {
     if (this.videoElement) {
       this.pause();
@@ -73,6 +98,9 @@ if (typeof THREE !== 'undefined') {
     }
   };
 
+  /**
+   * Sets the source video of the texture.
+   */
   AMTHREE.VideoTexture.prototype.setVideo = function(params) {
 
     this.stop();
@@ -94,5 +122,8 @@ if (typeof THREE !== 'undefined') {
 
 
 }
-else
-  console.warn('VideoTexture.js: THREE undefined');
+else {
+  AMTHREE.VideoTexture = function() {
+    console.warn('VideoTexture.js: THREE undefined');
+  };
+}

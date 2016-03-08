@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: tracking/MarkerTracker.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: tracking/MarkerTracker.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/*************************
+
+
+
+
+
+
+
+SetParameters(params)
+
+params.match_min
+params.laplacian_threshold
+params.eigen_threshold
+params.detection_corners_max
+params.blur
+params.blur_size
+params.match_threshold
+params.num_train_levels
+params.image_size_max
+params.training_corners_max
+
+
+
+*************************/
+
+
+var AM = AM || {};
+
+
+/**
+ * @class
+ */
+AM.MarkerTracker = function() {
+
+  var _training = new AM.Training();
+  var _trained_images = {};
+
+  var _image_filter = new AM.ImageFilter();
+  var _detection = new AM.Detection();
+  var _matching = new AM.Matching();
+  var _pose = new AM.Pose();
+
+  var _match_found = false;
+  var _matching_image;
+
+  var _params = {
+    match_min : 8
+  }
+
+  var _profiler = new AM.Profiler();
+  _profiler.add('filter');
+  _profiler.add('detection');
+  _profiler.add('matching');
+  _profiler.add('pose');
+
+
+  /**
+  * Computes the corners and descriptors
+  * @inner
+  * @param {ImageData} image_data
+  */
+  this.ComputeImage = function(image_data) {
+    _profiler.new_frame();
+    _profiler.start('filter');
+    _image_filter.Filter(image_data);
+    _profiler.stop('filter');
+    _profiler.start('detection');
+    _detection.Detect(_image_filter.GetFilteredImage());
+    _profiler.stop('detection');
+  };
+
+  /**
+   *
+   */
+  this.Match = function() {
+    _profiler.start('matching');
+
+    _match_found = false;
+    _matching_image = undefined;
+
+    _matching.SetScreenDescriptors(_detection.GetDescriptors());
+
+    for(uuid in _trained_images) {
+      var trained_image = _trained_images[uuid];
+
+      if (!trained_image.IsActive())
+        continue;
+
+      _matching.Match(trained_image.GetDescriptorsLevels());
+
+      var count = _matching.GetNumMatches();
+
+      _match_found = (count >= _params.match_min);
+      if (!_match_found)
+        continue;
+
+      var good_count = _pose.Pose(_matching.GetMatches(), count,
+        _detection.GetCorners(), trained_image.GetCornersLevels());
+      _match_found = (good_count >= _params.match_min);
+
+      if (_match_found) {
+        _matching_image = trained_image;
+        break;
+      }
+
+    }
+
+    _profiler.stop('matching');
+
+    return _match_found;
+  };
+
+  this.GetMatchUuid = function() {
+    return _matching_image.GetUuid();
+  };
+
+  this.GetPose = function() {
+    if (_match_found) {
+      _profiler.start('pose');
+      var pose = _pose.GetPoseCorners(_matching_image.GetWidth(), _matching_image.GetHeight());
+      _profiler.stop('pose');
+      return pose;
+    }
+    return undefined;
+  };
+
+  this.AddMarker = function(image_data, uuid) {
+    _training.Train(image_data);
+    var trained_image = new AM.TrainedImage(uuid);
+    _training.SetResultToTrainedImage(trained_image);
+    _training.Empty();
+    _trained_images[uuid] = trained_image;
+  };
+
+  this.RemoveMarker = function(uuid) {
+    if (_trained_images[uuid]) {
+      delete _trained_images[uuid];
+    }
+  };
+
+  this.ActiveMarker = function(uuid, bool) {
+    if (_trained_images[uuid])
+      _trained_images[uuid].Active(bool);
+  };
+
+  this.ActiveAllMarkers = function(bool) {
+    for (uuid in _trained_images) {
+      _trained_images[uuid].Active(bool);
+    }
+  };
+
+  this.ClearMarkers = function() {
+    _trained_images = {};
+  };
+
+  this.GetScreenCorners = function() {
+    return _detection.GetCorners();
+  };
+
+  this.GetNumScreenCorners = function() {
+    return _detection.GetNumCorners();
+  };
+
+  this.Log = function() {
+    console.log(_profiler.log() + ((_match_found) ? '&lt;br/>match found' : ''));
+  };
+
+  this.SetParameters = function(params) {
+    for (name in params) {
+      if (typeof _params[name] !== 'undefined')
+        _params[name] = params[name];
+    }
+
+    _training.SetParameters(params);
+    _image_filter.SetParameters(params);
+    _detection.SetParameters(params);
+    _matching.SetParameters(params);
+  };
+};</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AM.Detection.html">Detection</a></li><li><a href="AM.DeviceLockScreenOrientation.html">DeviceLockScreenOrientation</a></li><li><a href="AM.DeviceOrientationControl.html">DeviceOrientationControl</a></li><li><a href="AM.GeographicCoordinatesConverter.html">GeographicCoordinatesConverter</a></li><li><a href="AM.GeolocationControl.html">GeolocationControl</a></li><li><a href="AM.ImageFilter.html">ImageFilter</a></li><li><a href="AM.MarkerTracker.html">MarkerTracker</a></li><li><a href="AM.match_t.html">match_t</a></li><li><a href="AM.Matching.html">Matching</a></li><li><a href="AM.Pose.html">Pose</a></li><li><a href="AM.PosePosit.html">PosePosit</a></li><li><a href="AM.PoseThree.html">PoseThree</a></li><li><a href="AM.TrainedImage.html">TrainedImage</a></li><li><a href="AM.Training.html">Training</a></li><li><a href="AMTHREE.GifTexture.html">GifTexture</a></li><li><a href="AMTHREE.ObjectLoader.html">ObjectLoader</a></li><li><a href="AMTHREE.Scene.html">Scene</a></li><li><a href="AMTHREE.Sound.html">Sound</a></li><li><a href="AMTHREE.TrackedObjManager.html">TrackedObjManager</a></li><li><a href="AMTHREE.VideoTexture.html">VideoTexture</a></li></ul><h3>Namespaces</h3><ul><li><a href="AM.html">AM</a></li><li><a href="AMTHREE.html">AMTHREE</a></li></ul><h3>Global</h3><ul><li><a href="global.html#compatibility">compatibility</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Tue Mar 08 2016 16:47:14 GMT+0100 (Paris, Madrid)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

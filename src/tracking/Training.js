@@ -1,5 +1,10 @@
 var AM = AM || {};
 
+
+/**
+ * Trains an image, by computing its corners and descriptors on multiple scales
+ * @class
+*/
 AM.Training = function() {
 
   var _descriptors_levels;
@@ -76,6 +81,11 @@ AM.Training = function() {
     }
   }
 
+  /**
+   * Trains an image, saves the result internally
+   * @inner
+   * @param {ImageData} image_data
+   */
   this.Train = function(image_data) {
     var level = 0;
     var scale = 1.0;
@@ -108,30 +118,46 @@ AM.Training = function() {
 
       TrainLevel(img, level_img, level, scale);
     }
-
   };
 
-  this.SetBlurSize = function(value) {
-    _params.blur_size = value;
-  };
-
-  this.SetMaxImageSize = function(value) {
-    _params.image_size_max = value;
-  };
-
+  /**
+   * Sets the result of the previous {@link AM.Training#Train} call to a {@link AM.TrainedImage}
+   * @inner
+   * @param {AM.TrainedImage} trained_image
+   */
   this.SetResultToTrainedImage = function(trained_image) {
     trained_image.Set(_corners_levels, _descriptors_levels, _width, _height);
   };
 
+  /**
+   * Returns false if this object contains a result
+   * @inner
+   * @returns {bool}
+   */
   this.IsEmpty = function() {
     return (!_descriptors_levels || !_corners_levels);
   };
 
+  /**
+   * Empties results stored
+   * @inner
+   */
   this.Empty = function() {
     _descriptors_levels = undefined;
     _corners_levels = undefined;
   };
 
+  /**
+   * Sets parameters of the training
+   * @inner
+   * @param {object} params
+   * @params {number} [params.num_train_levels=3]
+   * @params {number} [params.blur_size=3]
+   * @params {number} [params.image_size_max=512]
+   * @params {number} [params.training_corners_max=200]
+   * @params {number} [params.laplacian_threshold=30]
+   * @params {number} [params.eigen_threshold=25]
+   */
   this.SetParameters = function(params) {
     for (name in params) {
       if (typeof _params[name] !== 'undefined')

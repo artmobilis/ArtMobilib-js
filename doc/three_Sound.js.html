@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: three/Sound.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: three/Sound.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>var AMTHREE = AMTHREE || {};
+
+
+if (typeof THREE !== 'undefined') {
+
+  /**
+   * 
+   * @class
+   * @augments {THREE.Object3D}
+   * @param {string} src - url of the sound
+   */
+  AMTHREE.Sound = function(src) {
+    THREE.Object3D.call(this);
+
+    this.src = src;
+    this.audio = new Audio();
+    this.audio.loop = true;
+    this.playing = false;
+  };
+
+  AMTHREE.Sound.prototype = Object.create(THREE.Object3D.prototype);
+  AMTHREE.Sound.prototype.constructor = AMTHREE.Sound;
+
+  /**
+   * Plays the sound.
+   * @inner
+   */
+  AMTHREE.Sound.prototype.play = function() {
+    this.playing = true;
+    this.audio.src = this.src;
+    this.audio.play();
+  };
+
+  /**
+   * Stops the sound.
+   * @inner
+   */
+  AMTHREE.Sound.prototype.stop = function() {
+    this.audio.src = '';
+    this.playing = false;
+  };
+
+  /**
+   * Pauses the sound.
+   * @inner
+   */
+  AMTHREE.Sound.prototype.pause = function() {
+    this.audio.pause();
+    this.playing = false;
+  };
+
+  /**
+   * Sets the sound's url.
+   * @inner
+   * @param {string} src
+   */
+  AMTHREE.Sound.prototype.setSrc = function(src) {
+    this.src = src;
+    if (this.isPlaying())
+      this.play();
+  };
+
+  /**
+   * Returns whether the sound is played.
+   * @inner
+   * @returns {bool}
+   */
+  AMTHREE.Sound.prototype.isPlaying = function() {
+    return this.playing;
+  };
+
+  /**
+   * Returns a clone of this.
+   * @inner
+   * @returns {AMTHREE.Sound}
+   */
+  AMTHREE.Sound.prototype.clone = function() {
+    return new AMTHREE.Sound(this.src);
+  };
+
+  /**
+   * Copies the parameter.
+   * @inner
+   * @param {AMTHREE.Sound}
+   */
+  AMTHREE.Sound.prototype.copy = function(sound) {
+    this.setSrc(sound.src)
+  };
+
+
+  AMTHREE.SoundsCall = function(object, fun) {
+    object.traverse(function(s) {
+      if (s instanceof AMTHREE.Sound &amp;&amp; s[fun])
+        s[fun]();
+    });
+  };
+
+  /**
+  * Recursively plays the sounds of this object and all his children
+  * @function
+  * @param {THREE.Object3D} object
+  */
+  AMTHREE.PlaySounds = function(object) {
+    AMTHREE.SoundsCall(object, 'play');
+  };
+
+  /**
+  * Recursively pauses the sounds of this object and all his children
+  * @function
+  * @param {THREE.Object3D} object
+  */
+  AMTHREE.PauseSounds = function(object) {
+    AMTHREE.SoundsCall(object, 'pause');
+  };
+
+  /**
+  * Recursively stops the sounds of this object and all his children
+  * @function
+  * @param {THREE.Object3D} object
+  */
+  AMTHREE.StopSounds = function(object) {
+    AMTHREE.SoundsCall(object, 'stop');
+  };
+
+
+}
+else {
+  AMTHREE.Sound = function() {
+    console.warn('Sound.js: THREE undefined');
+  };
+}</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AM.Detection.html">Detection</a></li><li><a href="AM.DeviceLockScreenOrientation.html">DeviceLockScreenOrientation</a></li><li><a href="AM.DeviceOrientationControl.html">DeviceOrientationControl</a></li><li><a href="AM.GeographicCoordinatesConverter.html">GeographicCoordinatesConverter</a></li><li><a href="AM.GeolocationControl.html">GeolocationControl</a></li><li><a href="AM.ImageFilter.html">ImageFilter</a></li><li><a href="AM.MarkerTracker.html">MarkerTracker</a></li><li><a href="AM.match_t.html">match_t</a></li><li><a href="AM.Matching.html">Matching</a></li><li><a href="AM.Pose.html">Pose</a></li><li><a href="AM.PosePosit.html">PosePosit</a></li><li><a href="AM.PoseThree.html">PoseThree</a></li><li><a href="AM.TrainedImage.html">TrainedImage</a></li><li><a href="AM.Training.html">Training</a></li><li><a href="AMTHREE.GifTexture.html">GifTexture</a></li><li><a href="AMTHREE.ObjectLoader.html">ObjectLoader</a></li><li><a href="AMTHREE.Scene.html">Scene</a></li><li><a href="AMTHREE.Sound.html">Sound</a></li><li><a href="AMTHREE.TrackedObjManager.html">TrackedObjManager</a></li><li><a href="AMTHREE.VideoTexture.html">VideoTexture</a></li></ul><h3>Namespaces</h3><ul><li><a href="AM.html">AM</a></li><li><a href="AMTHREE.html">AMTHREE</a></li></ul><h3>Global</h3><ul><li><a href="global.html#compatibility">compatibility</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Tue Mar 08 2016 16:47:14 GMT+0100 (Paris, Madrid)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

@@ -1,5 +1,10 @@
 var AM = AM || {};
 
+
+/**
+ * Computes the pose and remove bad matches using RANSAC
+ * @class
+ */
 AM.Pose = function() {
 
   var _good_count = 0;
@@ -71,15 +76,35 @@ AM.Pose = function() {
     return pt;
   }
 
+  /**
+   *
+   * @inner
+   * @param {AM.match_t[]} matches
+   * @param {number} count - The matches count.
+   * @param {jsfeat.keypoint_t[]} screen_corners
+   * @param {jsfeat.keypoint_t[][]} pattern_corners
+   */
   this.Pose = function(matches, count, screen_corners, pattern_corners) {
     _good_count = find_transform(matches, count, _homo3x3, _match_mask, screen_corners, pattern_corners);
     return _good_count;
   };
 
+  /**
+   * Returns the count of good matches, computed using RANSAC by {@link AM.Pose#Pose}
+   * @inner
+   * @returns {number}
+   */
   this.GetGoodCount = function() {
     return _good_count;
   };
 
+  /**
+   * Computes the 4 corners of the pose
+   * @inner
+   * @param {number} marker_width
+   * @param {number} marker_height
+   * @returns {Point2D[]} The corners
+   */
   this.GetPoseCorners = function(marker_width, marker_height) {
     return tCorners(_homo3x3.data, marker_width, marker_height);
   };
@@ -88,12 +113,34 @@ AM.Pose = function() {
 };
 
 
+/**
+ * Computes the posit pose, based on the corners
+ * @class
+ */
 AM.PosePosit = function() {
+
+  /**
+   * @typedef {object} PositPose
+   * @property {number[]} pose.bestTranslation
+   * @property {number[][]} pose.bestRotation
+   */
+
+  /**
+   * @property {PositPose} pose
+   */
 
   this.posit = new POS.Posit(10, 1);
   this.pose;
 };
 
+/**
+ * Computes the pose
+ * @inner
+ * @param {Point2D[]} corners
+ * @param {number} [model_size=35] The size of the real model.
+ * @param {number} image_width
+ * @param {number} image_height
+ */
 AM.PosePosit.prototype.Set = function(corners, model_size, image_width, image_height) {
   model_size = model_size || 35;
 
@@ -108,11 +155,20 @@ AM.PosePosit.prototype.Set = function(corners, model_size, image_width, image_he
   this.pose = this.posit.pose(corners2);
 };
 
+/**
+ * Sets the focal's length
+ * @inner
+ * @param {number} value
+ */
 AM.PosePosit.prototype.SetFocalLength = function(value) {
   this.posit.focalLength = value;
 };
 
 
+/**
+ * Computes the threejs pose, based on the posit pose
+ * @class
+ */
 AM.PoseThree = function() {
   this.position = new THREE.Vector3();
   this.rotation = new THREE.Euler();
@@ -120,6 +176,12 @@ AM.PoseThree = function() {
   this.scale = new THREE.Vector3();
 };
 
+/**
+ * Computes the pose
+ * @inner
+ * @param {PositPose} posit_pose
+ * @param {number} model_size
+ */
 AM.PoseThree.prototype.Set = function(posit_pose, model_size) {
   model_size = model_size || 35;
 

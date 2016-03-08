@@ -32,7 +32,7 @@ Connect()
 listen to the geolocation events
 
 Update()
-move smoothly the that.object towards the last known _target_position
+move smoothly the object towards the last known position
 
 Disconnect()
 remove the listeners
@@ -51,6 +51,12 @@ GeographicCoordinatesConverter
 var AM = AM || {};
 
 
+/**
+ * Place a THREE.Object3D using the gyroscope.
+ * @class
+ * @param {THREE.Object3D} object
+ * @param {AM.GeographicCoordinatesConverter} geoConverter
+ */
 AM.GeolocationControl = function(object, geoConverter) {
 
 	var that = this;
@@ -76,15 +82,27 @@ AM.GeolocationControl = function(object, geoConverter) {
     window.setTimeout(that.Connect, that.retry_connection_ms);
 	}
 
+  /**
+  * Listen to the geolocation events.
+  * @inner
+  */
 	this.Connect = function() {
 		_watch_id = navigator.geolocation.watchPosition(OnSuccess, OnError);
 	};
 
+  /**
+  * Remove the listeners.
+  * @inner
+  */
 	this.Disconnect = function() {
 		navigator.geolocation.clearWatch(_watch_id);
     _to_update = false;
 	};
 
+  /**
+  * Move smoothly the object towards the last known position.
+  * @inner
+  */
 	this.Update = function() {
 		if (_to_update) {
 
