@@ -70,7 +70,9 @@ AM.MarkerTracker = function() {
   };
 
   /**
-   *
+   * Matches the last computed ImageData and every active trained image.
+   * @inner
+   * @returns {bool} true if a match if found.
    */
   this.Match = function() {
     _profiler.start('matching');
@@ -110,10 +112,19 @@ AM.MarkerTracker = function() {
     return _match_found;
   };
 
+  /**
+   * Returns the id of the last match
+   * @inner
+   */
   this.GetMatchUuid = function() {
     return _matching_image.GetUuid();
   };
 
+  /**
+   * Computes and returns the pose of the last match
+   * @inner
+   * @returns {Point2D[]} The corners
+   */
   this.GetPose = function() {
     if (_match_found) {
       _profiler.start('pose');
@@ -124,6 +135,12 @@ AM.MarkerTracker = function() {
     return undefined;
   };
 
+  /**
+   * Trains a marker
+   * @inner
+   * @param {ImageData} image_data - The marker, has to be a square (same width and height).
+   * @param {value} uuid - The identifier of the marker.
+   */
   this.AddMarker = function(image_data, uuid) {
     _training.Train(image_data);
     var trained_image = new AM.TrainedImage(uuid);
@@ -132,39 +149,84 @@ AM.MarkerTracker = function() {
     _trained_images[uuid] = trained_image;
   };
 
+  /**
+   * Removes a marker
+   * @inner
+   * @param {value} uuid - The identifier of the marker.
+   */
   this.RemoveMarker = function(uuid) {
     if (_trained_images[uuid]) {
       delete _trained_images[uuid];
     }
   };
 
+  /**
+   * Activates or desactivates a marker.
+   * <br>A marker inactive will be ignored during the matching.
+   * @inner
+   * @param {value} uuid - The identifier of the marker.
+   * @param {bool} bool - Sets active if true, inactive if false.
+   */
   this.ActiveMarker = function(uuid, bool) {
     if (_trained_images[uuid])
       _trained_images[uuid].Active(bool);
   };
 
+  /**
+   * Sets active or inactive all the markers
+   * @inner
+   * @param {bool} bool - Sets all active if true, inactive if false.
+   */
   this.ActiveAllMarkers = function(bool) {
     for (uuid in _trained_images) {
       _trained_images[uuid].Active(bool);
     }
   };
 
+  /**
+   * Removes all the markers
+   * @inner
+   */
   this.ClearMarkers = function() {
     _trained_images = {};
   };
 
+  /**
+   * Returns the corners of the last computed image
+   * @inner
+   * @returns {jsfeat.keypoint_t[]}
+   */
   this.GetScreenCorners = function() {
     return _detection.GetCorners();
   };
 
+  /**
+   * Returns the count of corners of the last computed image
+   * @inner
+   * @returns {number}
+   */
   this.GetNumScreenCorners = function() {
     return _detection.GetNumCorners();
   };
 
+  /**
+   * Puts the log to the console
+   * @inner
+   */
   this.Log = function() {
     console.log(_profiler.log() + ((_match_found) ? '<br/>match found' : ''));
   };
 
+  /**
+   * Sets optionnals parameters
+   * @inner
+   * @param {object} params
+   * @param {number} [match_min=8] minimum number of matching corners necessary for a match to be valid.
+   * @see AM.ImageFilter
+   * @see AM.Detection
+   * @see AM.Matching
+   * @see AM.Training
+   */
   this.SetParameters = function(params) {
     for (name in params) {
       if (typeof _params[name] !== 'undefined')
