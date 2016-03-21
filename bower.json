@@ -1,0 +1,26 @@
+{
+  "name": "ArtMobilib",
+  "version" : "0.0.1",
+  "description" : "The ArtMobilis javascript library",
+  "author" : "Association Le Hublot (http://www.lehublot.net/)",
+  "main" : "build/artmobilib-min.js",
+  "licence": "GNU GPL v3",
+  "ignore": [
+    "doc",
+    "src",
+    "build.ps1",
+    "gulpfile.js",
+    "gen_doc.ps1",
+    "bower.json",
+    ".bowerrc",
+    ".gitignore",
+    "package.json",
+    "utils"
+  ],
+  "dependencies": {
+    "js-aruco": "https://github.com/jcmellado/js-aruco.git",
+    "jsfeat": "^0.0.8",
+    "libgif-js": "https://github.com/buzzfeed/libgif-js.git",
+    "three.js": "threejs#*"
+  }
+}
