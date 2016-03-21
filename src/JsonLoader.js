@@ -12,7 +12,7 @@ AM.JsonLoader = function() {
 
   var _xhr;
 
-  function OnEnd(callback) {
+  function OnEnd(callback, param) {
     _loading = false;
     _on_progress = undefined;
     _on_error = undefined;
@@ -21,7 +21,7 @@ AM.JsonLoader = function() {
     _url = undefined;
     that.progress = 0;
     if (callback)
-      callback();
+      callback(param);
   }
 
   function OnLoad() {
@@ -33,13 +33,15 @@ AM.JsonLoader = function() {
     catch(e)
     {
       that.json = {};
-      OnEnd(_on_error);
+      OnEnd(_on_error, 'failed to parse file: ' + _url);
     }
   }
 
   function OnError(e) {
-    console.log('JsonLoader failed to open file: ' + url);
-    OnEnd(_on_error);
+    var msg = 'JsonLoader failed to open file: ' + _url;
+
+    console.log(msg);
+    OnEnd(_on_error, msg);
   }
 
   function OnProgress(e) {
@@ -73,4 +75,13 @@ AM.JsonLoader = function() {
       _xhr.send(null);
     }
   };
+};
+
+AM.LoadJson = function(url) {
+  return new Promise(function(resolve, reject) {
+    var loader = new AM.JsonLoader();
+    loader.Load(url, function() {
+      resolve(loader.json);
+    }, reject);
+  });
 };
