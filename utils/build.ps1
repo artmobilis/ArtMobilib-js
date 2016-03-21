@@ -1,9 +1,9 @@
-$src_path = "./src"
+$src_path = "../src"
 $src_list = get-childitem $src_path -rec -filter *.js -name
 $list = $src_list | % {join-path $src_path $_ }
 
 
-$build_path = "build/"
+$build_path = "../build/"
 $buildname = $build_path + "artmobilib"
 $libname = $buildname + ".js"
 $libminname = $buildname + ".min.js"
