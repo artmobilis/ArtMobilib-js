@@ -213,6 +213,34 @@ AM.MarkerTracker = function() {
     return _detection.GetNumCorners();
   };
 
+ /**
+   * Returns the buffer of matches ()
+   * @inner
+   * @returns {AM.match_t[]}
+   */
+  this.Getmatches = function () {
+    return _matching.GetMatches();
+  };
+
+/**
+   * Returns the timings of matching function()
+   * @inner
+   * @returns {pair[]}
+   */
+  this.GetProfiler = function () {
+    return _profiler.GetProfiler();
+  };
+
+/**
+   * Returns corners of trained image
+   * @inner
+   * @returns {jsfeat.keypoint_t[]}
+   */
+  this.GetTrainedCorners = function () {
+    var trained_image = _trained_images[uuid];
+    return trained_image.GetCornersLevels();
+  };
+
   /**
    * Puts the log to the console
    * @inner
