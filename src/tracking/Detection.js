@@ -15,6 +15,8 @@ AM.Detection = function() {
     fast_threshold: 20
   }
 
+  var _debug =false;
+
   var _screen_corners = [];
   var _num_corners = 0;
 
@@ -46,6 +48,8 @@ AM.Detection = function() {
     //   _params.fast_threshold, _params.border_size);
 
     jsfeat.orb.describe(img, _screen_corners, _num_corners, _screen_descriptors);
+
+    if (_debug) console.log("Learn : " + _num_corners + " corners");
   };
 
   /**
