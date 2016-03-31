@@ -14,7 +14,7 @@ AM.ImageDebugger = function() {
   var _debugMatches;
 
 
-  this.DrawCorners = function(marker_corners) {
+  this.DrawCorners = function(marker_corners, ratio) {
     if(!_debugMatches) return;
     if(!marker_corners) return;
 
@@ -29,7 +29,7 @@ AM.ImageDebugger = function() {
       var sc = _screen_corners[i];
 
       _context2d.beginPath();
-      _context2d.arc(sc.x, sc.y, 5, 0, 2 * Math.PI);
+      _context2d.arc(sc.x*ratio, sc.y*ratio, 5, 0, 2 * Math.PI);
      _context2d.fill();
     }
 
