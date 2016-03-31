@@ -152,6 +152,10 @@ var profiler = (function() {
         return str;
     }
 
+    profiler.prototype.GetProfiler = function (){
+        return { fps: this.fps, timers: this.timers };
+    }
+
     return profiler;
 })();
 
