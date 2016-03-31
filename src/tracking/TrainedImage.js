@@ -38,7 +38,7 @@ AM.TrainedImage = function(uuid) {
    * @returns {jsfeat.matrix_t}
    */
   this.GetDescriptors = function(level) {
-    return _corners_levels[level];
+    return _descriptors_levels[level];
   };
 
   /**
