@@ -208,7 +208,7 @@ AM.ImageDebugger = function() {
   var _profiler;
   var _uuid;
 
-  var _debugMatches;
+  var _debugMatches=false;
 
 
   this.DrawCorners = function(marker_corners, ratio) {
@@ -226,7 +226,7 @@ AM.ImageDebugger = function() {
       var sc = _screen_corners[i];
 
       _context2d.beginPath();
-      _context2d.arc(sc.x*ratio, sc.y*ratio, 5, 0, 2 * Math.PI);
+      _context2d.arc(sc.x*ratio, sc.y*ratio, 3, 0, 2 * Math.PI);
      _context2d.fill();
     }
 
@@ -249,6 +249,10 @@ AM.ImageDebugger = function() {
 
   this.SetData = function ( context2d, debugMatches) {
     _context2d=context2d;
+    _debugMatches=debugMatches || false;
+  };
+
+  this.SetDebug = function ( debugMatches ) {
     _debugMatches=debugMatches || false;
   };
 
@@ -1213,1269 +1217,6 @@ AM.GeolocationControl = function(object, geoConverter) {
 
 		};
 	};
-
-};
-var AM = AM || {};
-
-
-/**
- * Detects corners in an image using FAST, and descriptors using ORB.
- * @class
- */
-AM.Detection = function() {
-
-  var _params = {
-    laplacian_threshold: 30,
-    eigen_threshold: 25,
-    detection_corners_max: 500,
-    border_size: 15,
-    fast_threshold: 20
-  }
-
-  var _debug =false;
-
-  var _screen_corners = [];
-  var _num_corners = 0;
-
-  var _screen_descriptors = new jsfeat.matrix_t(32, _params.detection_corners_max, jsfeat.U8_t | jsfeat.C1_t);
-
-  function AllocateCorners(width, height) {
-    var i = width * height;
-
-    if (i > _screen_corners.length) {
-      while (--i >= 0) {
-        _screen_corners[i] = new jsfeat.keypoint_t();
-      }
-    }
-  }
-
-  /**
-   * Computes the image corners and descriptors and saves them internally.
-   * <br>Use {@link ImageFilter} first to filter an Image.
-   * @inner
-   * @param {jsfeat.matrix_t} img
-   */
-  this.Detect = function(img) {
-    AllocateCorners(img.cols, img.rows);
-
-    _num_corners = AM.DetectKeypointsYape06(img, _screen_corners, _params.detection_corners_max,
-      _params.laplacian_threshold, _params.eigen_threshold, _params.border_size);
-    
-    // _num_corners = AM.DetectKeypointsFast(img, _screen_corners, _params.detection_corners_max,
-    //   _params.fast_threshold, _params.border_size);
-
-    jsfeat.orb.describe(img, _screen_corners, _num_corners, _screen_descriptors);
-
-    if (_debug) console.log("Learn : " + _num_corners + " corners");
-  };
-
-  /**
-   * Sets the params used during the detection
-   * @inner
-   * @param {object} params
-   * @param {number} [params.laplacian_threshold=30] - 0 - 100
-   * @param {number} [params.eigen_threshold=25] - 0 - 100
-   * @param {number} [params.detection_corners_max=500] - 100 - 1000
-   * @param {number} [params.border_size=3]
-   * @param {number} [params.fast_threshold=48] - 0 - 10
-   */
-  this.SetParameters = function(params) {
-    for (name in params) {
-      if (typeof _params[name] !== 'undefined')
-        _params[name] = params[name];
-    }
-  };
-
-  /**
-   * Returns the last computed descriptors
-   * @inner
-   * @returns {jsfeat.matrix_t} Descriptors
-   */
-  this.GetDescriptors = function() {
-    return _screen_descriptors;
-  };
-
-  /**
-   * Returns the count of the last computed corners
-   * @inner
-   * @returns {number}
-   */
-  this.GetNumCorners = function() {
-    return _num_corners;
-  };
-
-  /**
-   * Returns the last computed corners
-   * @inner
-   * @returns {jsfeat.keypoint_t[]}
-   */
-  this.GetCorners = function() {
-    return _screen_corners;
-  };
-
-
-};
-
-AM.IcAngle = (function() {
-  var u_max = new Int32Array( [ 15, 15, 15, 15, 14, 14, 14, 13, 13, 12, 11, 10, 9, 8, 6, 3, 0 ] );
-  var half_pi = Math.PI / 2;
-
-  return function(img, px, py) {
-    var half_k = 15; // half patch size
-    var m_01 = 0, m_10 = 0;
-    var src = img.data, step = img.cols;
-    var u = 0, v = 0, center_off = (py * step + px) | 0;
-    var v_sum = 0, d = 0, val_plus = 0, val_minus = 0;
-
-    // Treat the center line differently, v=0
-    for (u = -half_k; u <= half_k; ++u)
-      m_10 += u * src[center_off + u];
-
-    // Go line by line in the circular patch
-    for (v = 1; v <= half_k; ++v) {
-      // Proceed over the two lines
-      v_sum = 0;
-      d = u_max[v];
-      for (u = -d; u <= d; ++u) {
-        val_plus = src[center_off + u + v * step];
-        val_minus = src[center_off + u - v * step];
-        v_sum += (val_plus - val_minus);
-        m_10 += u * (val_plus + val_minus);
-      }
-      m_01 += v * v_sum;
-    }
-
-    // return Math.atan2(m_01, m_10);
-    return AM.DiamondAngle(m_01, m_10) * half_pi;
-  }
-})();
-
-AM.DiamondAngle = function(y, x) {
-  if (y >= 0)
-    return (x >= 0 ? y / (x + y) : 1 - x / (-x + y)); 
-  else
-    return (x < 0 ? 2 - y / (-x - y) : 3 + x / (x - y));
-}
-
-AM.DetectKeypointsPostProc = function(img, corners, count, max_allowed) {
-
-  // sort by score and reduce the count if needed
-  if(count > max_allowed) {
-    jsfeat.math.qsort(corners, 0, count - 1, function(a, b) {
-      return (b.score < a.score);
-    } );
-    count = max_allowed;
-  }
-
-  // calculate dominant orientation for each keypoint
-  for(var i = 0; i < count; ++i) {
-    corners[i].angle = AM.IcAngle(img, corners[i].x, corners[i].y);
-  }
-
-  return count;
-}
-
-AM.DetectKeypointsYape06 = function(img, corners, max_allowed,
-  laplacian_threshold, eigen_threshold, border_size) {
-
-  jsfeat.yape06.laplacian_threshold = laplacian_threshold;
-  jsfeat.yape06.min_eigen_value_threshold = eigen_threshold;
-
-  // detect features
-  var count = jsfeat.yape06.detect(img, corners, border_size);
-
-  count = AM.DetectKeypointsPostProc(img, corners, count, max_allowed);
-
-  return count;
-};
-
-AM.DetectKeypointsFast = function(img, corners, max_allowed, threshold, border_size) {
-  jsfeat.fast_corners.set_threshold(threshold);
-
-  var count = jsfeat.fast_corners.detect(img, corners, border_size || 3);
-
-  count = AM.DetectKeypointsPostProc(img, corners, count, max_allowed);
-
-  return count;
-};
-var AM = AM || {};
-
-
-/**
- * Filters images so the result can be used by {@link Detection}
- * @class
- */
-AM.ImageFilter = function() {
-
-  var _img_u8;
-
-  var _params = {
-    blur_size: 3,
-    blur: true
-  }
-
-  /**
-   * Filters the image and saves the result internally
-   * @inner
-   * @param {ImageData} image_data
-   */
-  this.Filter = function(image_data) {
-    var width = image_data.width;
-    var height = image_data.height;
-
-    if (_img_u8) _img_u8.resize(width, height, jsfeat.U8_t | jsfeat.C1_t);
-    else _img_u8 = new jsfeat.matrix_t(width, height, jsfeat.U8_t | jsfeat.C1_t);
-
-    jsfeat.imgproc.grayscale(image_data.data, width, height, _img_u8);
-
-    if (_params.blur)
-      jsfeat.imgproc.gaussian_blur(_img_u8, _img_u8, _params.blur_size);
-  };
-
-  /**
-   * Returns the last filtered image
-   * @inner
-   * @returns {jsfeat.matrix_t}
-   */
-  this.GetFilteredImage = function() {
-    return _img_u8;
-  };
-
-  /**
-   * Sets parameters, all optionnal
-   * @inner
-   * @param {object} params
-   * @param {number} [params.blur_size=3]
-   * @param {bool} [params.blur=true] - compute blur ?
-   */
-  this.SetParameters = function(params) {
-    for (name in params) {
-      if (typeof _params[name] !== 'undefined')
-        _params[name] = params[name];
-    }
-  };
-
-
-}
-/*************************
-
-
-
-
-
-
-
-SetParameters(params)
-
-params.match_min
-params.laplacian_threshold
-params.eigen_threshold
-params.detection_corners_max
-params.blur
-params.blur_size
-params.match_threshold
-params.num_train_levels
-params.image_size_max
-params.training_corners_max
-
-
-
-*************************/
-
-
-var AM = AM || {};
-
-
-/**
- * @class
- */
-AM.MarkerTracker = function() {
-
-  var _training = new AM.Training();
-  var _trained_images = {};
-
-  var _image_filter = new AM.ImageFilter();
-  var _detection = new AM.Detection();
-  var _matching = new AM.Matching();
-  var _pose = new AM.Pose();
-
-  var _match_found = false;
-  var _matching_image;
-
-  var _params = {
-    match_min : 8
-  }
-  
-  var _debug =false; 
-  
-  var _profiler = new AM.Profiler();
-  _profiler.add('filter');
-  _profiler.add('detection');
-  _profiler.add('matching');
-  _profiler.add('pose');
-
-
-  /**
-  * Computes the corners and descriptors
-  * @inner
-  * @param {ImageData} image_data
-  */
-  this.ComputeImage = function(image_data) {
-    _profiler.new_frame();
-    _profiler.start('filter');
-    _image_filter.Filter(image_data);
-    _profiler.stop('filter');
-    _profiler.start('detection');
-    _detection.Detect(_image_filter.GetFilteredImage());
-    _profiler.stop('detection');
-  };
-
-  /**
-   * Matches the last computed ImageData and every active trained image.
-   * @inner
-   * @returns {bool} true if a match if found.
-   */
-  this.Match = function() {
-    _profiler.start('matching');
-
-    _match_found = false;
-    _matching_image = undefined;
-
-    _matching.SetScreenDescriptors(_detection.GetDescriptors());
-
-    for(uuid in _trained_images) {
-      var trained_image = _trained_images[uuid];
-
-      if (!trained_image.IsActive())
-        continue;
-
-      _matching.Match(trained_image.GetDescriptorsLevels());
-
-      var count = _matching.GetNumMatches();
-
-      _match_found = (count >= _params.match_min);
-      if (_debug) console.log("nbMatches : " + count);
-      if (!_match_found)
-        continue;
-
-      var good_count = _pose.Pose(_matching.GetMatches(), count,
-        _detection.GetCorners(), trained_image.GetCornersLevels());
-      _match_found = (good_count >= _params.match_min);
-
-      if (_debug) console.log(" goodMatches : " + good_count);
-      if (_match_found) {
-        _matching_image = trained_image;
-        break;
-      }
-
-    }
-
-    _profiler.stop('matching');
-
-    return _match_found;
-  };
-
-  /**
-   * Returns the id of the last match
-   * @inner
-   */
-  this.GetMatchUuid = function() {
-    return _matching_image.GetUuid();
-  };
-
-  /**
-   * Computes and returns the pose of the last match
-   * @inner
-   * @returns {Point2D[]} The corners
-   */
-  this.GetPose = function() {
-    if (_match_found) {
-      _profiler.start('pose');
-      var pose = _pose.GetPoseCorners(_matching_image.GetWidth(), _matching_image.GetHeight());
-      _profiler.stop('pose');
-      return pose;
-    }
-    return undefined;
-  };
-
-  /**
-   * Trains a marker
-   * @inner
-   * @param {ImageData} image_data - The marker, has to be a square (same width and height).
-   * @param {value} uuid - The identifier of the marker.
-   */
-  this.AddMarker = function(image_data, uuid) {
-    _training.Train(image_data);
-    var trained_image = new AM.TrainedImage(uuid);
-    _training.SetResultToTrainedImage(trained_image);
-    _training.Empty();
-    _trained_images[uuid] = trained_image;
-  };
-
-  /**
-   * Removes a marker
-   * @inner
-   * @param {value} uuid - The identifier of the marker.
-   */
-  this.RemoveMarker = function(uuid) {
-    if (_trained_images[uuid]) {
-      delete _trained_images[uuid];
-    }
-  };
-
-  /**
-   * Activates or desactivates a marker.
-   * <br>A marker inactive will be ignored during the matching.
-   * @inner
-   * @param {value} uuid - The identifier of the marker.
-   * @param {bool} bool - Sets active if true, inactive if false.
-   */
-  this.ActiveMarker = function(uuid, bool) {
-    if (_trained_images[uuid])
-      _trained_images[uuid].Active(bool);
-  };
-
-  /**
-   * Sets active or inactive all the markers
-   * @inner
-   * @param {bool} bool - Sets all active if true, inactive if false.
-   */
-  this.ActiveAllMarkers = function(bool) {
-    for (uuid in _trained_images) {
-      _trained_images[uuid].Active(bool);
-    }
-  };
-
-  /**
-   * Removes all the markers
-   * @inner
-   */
-  this.ClearMarkers = function() {
-    _trained_images = {};
-  };
-
-  /**
-   * Returns the corners of the last computed image
-   * @inner
-   * @returns {jsfeat.keypoint_t[]}
-   */
-  this.GetScreenCorners = function() {
-    return _detection.GetCorners();
-  };
-
-  /**
-   * Returns the count of corners of the last computed image
-   * @inner
-   * @returns {number}
-   */
-  this.GetNumScreenCorners = function() {
-    return _detection.GetNumCorners();
-  };
-
- /**
-   * Returns the buffer of matches ()
-   * @inner
-   * @returns {AM.match_t[]}
-   */
-  this.Getmatches = function () {
-    return _matching.GetMatches();
-  };
-
-/**
-   * Returns the timings of matching function()
-   * @inner
-   * @returns {pair[]}
-   */
-  this.GetProfiler = function () {
-    return _profiler.GetProfiler();
-  };
-
-/**
-   * Returns corners of trained image
-   * @inner
-   * @returns {jsfeat.keypoint_t[]}
-   */
-  this.GetTrainedCorners = function () {
-    var trained_image = _trained_images[uuid];
-    return trained_image.GetCornersLevels();
-  };
-
-  /**
-   * Puts the log to the console
-   * @inner
-   */
-  this.Log = function() {
-    console.log(_profiler.log() + ((_match_found) ? '<br/>match found' : ''));
-  };
-
-  /**
-   * Sets optionnals parameters
-   * @inner
-   * @param {object} params
-   * @param {number} [match_min=8] minimum number of matching corners necessary for a match to be valid.
-   * @see AM.ImageFilter
-   * @see AM.Detection
-   * @see AM.Matching
-   * @see AM.Training
-   */
-  this.SetParameters = function(params) {
-    for (name in params) {
-      if (typeof _params[name] !== 'undefined')
-        _params[name] = params[name];
-    }
-
-    _training.SetParameters(params);
-    _image_filter.SetParameters(params);
-    _detection.SetParameters(params);
-    _matching.SetParameters(params);
-  };
-};
-var AM = AM || {};
-
-
-/**
- * Matches descriptors
- * @class
- */
-AM.Matching = function() {
-
-  var _screen_descriptors;
-
-  var _num_matches;
-  var _matches = [];
-
-  var _params = {
-    match_threshold: 48
-  }
-
-  /**
-   *
-   * @inner
-   * @param {jsfeat.matrix_t} screen_descriptors
-   */
-  this.SetScreenDescriptors = function(screen_descriptors) {
-    _screen_descriptors = screen_descriptors;
-  };
-
-  /**
-   * Computes the matching.
-   * @inner
-   * @param {jsfeat.matrix_t[]} pattern_descriptors - The descriptors of a trained image.
-   * @returns {number} The number of matches of the best match if there is a match, 0 otherwise.
-   */
-  this.Match = function(pattern_descriptors) {
-    _num_matches = MatchPattern(_screen_descriptors, pattern_descriptors);
-    return _num_matches;
-  };
-
-  function popcnt32(n) {
-    n -= ((n >> 1) & 0x55555555);
-    n = (n & 0x33333333) + ((n >> 2) & 0x33333333);
-    return (((n + (n >> 4))& 0xF0F0F0F)* 0x1010101) >> 24;
-  }
-
-  var popcnt32_2 = function() {
-    var v2b = [
-      0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
-      1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
-      1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
-      2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
-      1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
-      2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
-      2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
-      3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
-      1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
-      2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
-      2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
-      3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
-      2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
-      3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
-      3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
-      4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8,
-    ];
-
-    var m8 = 0x000000ff;
-
-    return function(n) {
-      var r = v2b[n & m8];
-      n = n >> 8;
-      r += v2b[n & m8];
-      n = n >> 8;
-      r += v2b[n & m8];
-      n = n >> 8;
-      r += v2b[n & m8];
-      return r;
-    }
-  }();
-
-  var popcnt32_3 = function() {
-
-    var v2b = [];
-    for (i = 0; i < 256 * 256; ++i)
-      v2b.push(popcnt32(i));
-
-    var m16 = 0x0000ffff;
-
-    return function(n) {
-      var r = v2b[n & m16];
-      n = n >> 16;
-      r += v2b[n & m16];
-      return r;
-    }
-  }();
-
-  function MatchPattern(screen_descriptors, pattern_descriptors) {
-    var q_cnt = screen_descriptors.rows;
-    var query_u32 = screen_descriptors.buffer.i32; // cast to integer buffer
-    var qd_off = 0;
-    var num_matches = 0;
-
-    _matches = [];
-
-    for (var qidx = 0; qidx < q_cnt; ++qidx) {
-      var best_dist = 256;
-      var best_dist2 = 256;
-      var best_idx = -1;
-      var best_lev = -1;
-
-      for (var lev = 0, lev_max = pattern_descriptors.length; lev < lev_max; ++lev) {
-        var lev_descr = pattern_descriptors[lev];
-        var ld_cnt = lev_descr.rows;
-        var ld_i32 = lev_descr.buffer.i32; // cast to integer buffer
-        var ld_off = 0;
-
-        for (var pidx = 0; pidx < ld_cnt; ++pidx) {
-
-          var curr_d = 0;
-          // our descriptor is 32 bytes so we have 8 Integers
-          for (var k = 0; k < 8; ++k) {
-            curr_d += popcnt32_3(query_u32[qd_off + k] ^ ld_i32[ld_off + k]);
-          }
-
-          if (curr_d < best_dist) {
-            best_dist2 = best_dist;
-            best_dist = curr_d;
-            best_lev = lev;
-            best_idx = pidx;
-          } else if (curr_d < best_dist2) {
-            best_dist2 = curr_d;
-          }
-
-          ld_off += 8; // next descriptor
-        }
-      }
-
-      // filter out by some threshold
-      if (best_dist < _params.match_threshold) {
-
-        while (_matches.length <= num_matches) {
-          _matches.push(new AM.match_t());
-        }
-
-        _matches[num_matches].screen_idx = qidx;
-        _matches[num_matches].pattern_lev = best_lev;
-        _matches[num_matches].pattern_idx = best_idx;
-        num_matches++;
-      }
-
-      // filter using the ratio between 2 closest matches
-      /*if(best_dist < 0.8*best_dist2) {
-        while (_matches.length <= num_matches) {
-          _matches.push(new AM.match_t());
-        }
-        _matches[num_matches].screen_idx = qidx;
-        _matches[num_matches].pattern_lev = best_lev;
-        _matches[num_matches].pattern_idx = best_idx;
-        num_matches++;
-      }*/
-      
-
-      qd_off += 8; // next query descriptor
-    }
-
-    _matches.length = num_matches;
-    return num_matches;
-  }
-
-  /**
-   * Returns the matches
-   * @inner
-   * @returns {AM.match_t[]} The buffer of matches
-   */
-  this.GetMatches = function() {
-    return _matches;
-  };
-
-  /**
-   * Returns the number of matches
-   * @inner
-   * @returns {number}
-   */
-  this.GetNumMatches = function() {
-    return _num_matches;
-  };
-
-  /**
-   * Sets parameters of the matching
-   * @inner
-   * @param {object} params
-   * @param {number} [params.match_threshold=48] 16 - 128
-   */
-  this.SetParameters = function(params) {
-    for (name in params) {
-      if (typeof _params[name] !== 'undefined')
-        _params[name] = params[name];
-    }
-  };
-
-
-};
-
-/**
- *
- * @class
- * @param {number} screen_idx
- * @param {number} pattern_lev
- * @param {number} pattern_idx
- * @param {number} distance
- */ 
-AM.match_t = function (screen_idx, pattern_lev, pattern_idx, distance) {
-  this.screen_idx = screen_idx || 0;
-  this.pattern_lev = pattern_lev || 0;
-  this.pattern_idx = pattern_idx || 0;
-  this.distance = distance || 0;
-};
-var AM = AM || {};
-
-
-/**
- * Computes the pose and remove bad matches using RANSAC
- * @class
- */
-AM.Pose = function() {
-
-  var _good_count = 0;
-  var _homo3x3 = new jsfeat.matrix_t(3, 3, jsfeat.F32C1_t);
-  var _match_mask = new jsfeat.matrix_t(500, 1, jsfeat.U8C1_t);
-
-
-  // estimate homography transform between matched points
-  function find_transform(matches, count, homo3x3, match_mask, screen_corners, pattern_corners) {
-    // motion kernel
-    var mm_kernel = new jsfeat.motion_model.homography2d();
-    // ransac params
-    var num_model_points = 4;
-    var reproj_threshold = 3;
-    var ransac_param = new jsfeat.ransac_params_t(num_model_points,
-                                                  reproj_threshold, 0.5, 0.99);
-
-    var pattern_xy = [];
-    var screen_xy = [];
-
-    // construct correspondences
-    for(var i = 0; i < count; ++i) {
-      var m = matches[i];
-      var s_kp = screen_corners[m.screen_idx];
-      var p_kp = pattern_corners[m.pattern_lev][m.pattern_idx];
-      pattern_xy[i] = { x: p_kp.x, y: p_kp.y };
-      screen_xy[i] =  { x: s_kp.x, y: s_kp.y };
-    }
-
-    // estimate motion
-    var ok = false;
-    ok = jsfeat.motion_estimator.ransac(ransac_param, mm_kernel,
-                                        pattern_xy, screen_xy, count, homo3x3, match_mask, 1000);
-
-    // extract good matches and re-estimate
-    var good_cnt = 0;
-    if (ok) {
-      for(var i = 0; i < count; ++i) {
-        if(match_mask.data[i]) {
-          pattern_xy[good_cnt].x = pattern_xy[i].x;
-          pattern_xy[good_cnt].y = pattern_xy[i].y;
-          screen_xy[good_cnt].x = screen_xy[i].x;
-          screen_xy[good_cnt].y = screen_xy[i].y;
-          good_cnt++;
-        }
-      }
-      // run kernel directly with inliers only
-      mm_kernel.run(pattern_xy, screen_xy, homo3x3, good_cnt);
-    } else {
-      jsfeat.matmath.identity_3x3(homo3x3, 1.0);
-    }
-
-    return good_cnt;
-  }
-
-  // project/transform rectangle corners with 3x3 Matrix
-  function tCorners(M, w, h) {
-    var pt = [ { x: 0, y: 0 }, { x: w, y: 0 }, { x: w, y: h }, { x: 0, y: h } ];
-    var z = 0.0, px = 0.0, py = 0.0;
-
-    for (var i = 0; i < 4; ++i) {
-      px = M[0] * pt[i].x + M[1] * pt[i].y + M[2];
-      py = M[3] * pt[i].x + M[4] * pt[i].y + M[5];
-      z  = M[6] * pt[i].x + M[7] * pt[i].y + M[8];
-      pt[i].x = px / z;
-      pt[i].y = py / z;
-    }
-
-    return pt;
-  }
-
-  /**
-   *
-   * @inner
-   * @param {AM.match_t[]} matches
-   * @param {number} count - The matches count.
-   * @param {jsfeat.keypoint_t[]} screen_corners
-   * @param {jsfeat.keypoint_t[][]} pattern_corners
-   */
-  this.Pose = function(matches, count, screen_corners, pattern_corners) {
-    _good_count = find_transform(matches, count, _homo3x3, _match_mask, screen_corners, pattern_corners);
-    return _good_count;
-  };
-
-  /**
-   * Returns the count of good matches, computed using RANSAC by {@link AM.Pose#Pose}
-   * @inner
-   * @returns {number}
-   */
-  this.GetGoodCount = function() {
-    return _good_count;
-  };
-
-  /**
-   * Computes the 4 corners of the pose
-   * @inner
-   * @param {number} marker_width
-   * @param {number} marker_height
-   * @returns {Point2D[]} The corners
-   */
-  this.GetPoseCorners = function(marker_width, marker_height) {
-    return tCorners(_homo3x3.data, marker_width, marker_height);
-  };
-
-
-};
-
-
-/**
- * Computes the posit pose, based on the corners
- * @class
- */
-AM.PosePosit = function() {
-
-  /**
-   * @typedef {object} PositPose
-   * @property {number[]} pose.bestTranslation
-   * @property {number[][]} pose.bestRotation
-   */
-
-  /**
-   * @property {PositPose} pose
-   */
-
-  this.posit = new POS.Posit(10, 1);
-  this.pose;
-};
-
-/**
- * Computes the pose
- * @inner
- * @param {Point2D[]} corners
- * @param {number} [model_size=35] The size of the real model.
- * @param {number} image_width
- * @param {number} image_height
- */
-AM.PosePosit.prototype.Set = function(corners, model_size, image_width, image_height) {
-  model_size = model_size || 35;
-
-  var corners2 = [];
-  for (var i = 0; i < corners.length; ++i) {
-    var x = corners[i].x - (image_width / 2);
-    var y = (image_height / 2) - corners[i].y;
-
-    corners2.push( { x: x, y: y } );
-  }
-
-  this.pose = this.posit.pose(corners2);
-};
-
-/**
- * Sets the focal's length
- * @inner
- * @param {number} value
- */
-AM.PosePosit.prototype.SetFocalLength = function(value) {
-  this.posit.focalLength = value;
-};
-
-
-/**
- * Computes the threejs pose, based on the posit pose
- * @class
- */
-AM.PoseThree = function() {
-  this.position = new THREE.Vector3();
-  this.rotation = new THREE.Euler();
-  this.quaternion = new THREE.Quaternion();
-  this.scale = new THREE.Vector3();
-};
-
-/**
- * Computes the pose
- * @inner
- * @param {PositPose} posit_pose
- * @param {number} model_size
- */
-AM.PoseThree.prototype.Set = function(posit_pose, model_size) {
-  model_size = model_size || 35;
-
-  var rot = posit_pose.bestRotation;
-  var translation = posit_pose.bestTranslation;
-
-  this.scale.x = model_size;
-  this.scale.y = model_size;
-  this.scale.z = model_size;
-
-  this.rotation.x = -Math.asin(-rot[1][2]);
-  this.rotation.y = -Math.atan2(rot[0][2], rot[2][2]);
-  this.rotation.z = Math.atan2(rot[1][0], rot[1][1]);
-
-  this.position.x = translation[0];
-  this.position.y = translation[1];
-  this.position.z = -translation[2];
-
-  this.quaternion.setFromEuler(this.rotation);
-};
-var AM = AM || {};
-
-
-/**
- * Holds the corners and the descriptors of an image, at different levels of zoom.
- * @class
- * @param {string} [uuid] - An unique identifier
- */
-AM.TrainedImage = function(uuid) {
-
-  var _empty = true;
-
-  var _corners_levels = [];
-  var _descriptors_levels = [];
-
-  var _width = 0;
-  var _height = 0;
-
-  var _uuid = uuid;
-
-  var _active = true;
-  
-
-  /**
-   * Returns the corners of a specified level.
-   * @inner
-   * @param {number} level - The level of the corners to be returned.
-   * @returns {jsfeat.keypoint_t[]}
-   */
-  this.GetCorners = function(level) {
-    return _corners_levels[level];
-  };
-
-  /**
-   * Returns the descriptors of a specified level.
-   * @inner
-   * @param {number} level - The level of the descriptors to be returned.
-   * @returns {jsfeat.matrix_t}
-   */
-  this.GetDescriptors = function(level) {
-    return _descriptors_levels[level];
-  };
-
-  /**
-   * Returns the number of level.
-   * @inner
-   * @return {number}
-   */
-  this.GetLevelNbr = function() {
-    return Math.min(_descriptors_levels.length, _corners_levels.length);
-  };
-
-  /**
-   * Returns all the corners.
-   * @inner
-   * @return {jsfeat.keypoint_t[][]}
-   */
-  this.GetCornersLevels = function() {
-    return _corners_levels;
-  };
-
-  /**
-   * Returns all the descriptors.
-   * @inner
-   * @return {jsfeat.matrix_t[]}
-   */
-  this.GetDescriptorsLevels = function() {
-    return _descriptors_levels;
-  };
-
-  /**
-   * Returns the width of the trained image at level 0.
-   * @inner
-   * @return {number}
-   */
-  this.GetWidth = function() {
-    return _width;
-  };
-
-  /**
-   * Returns the height of the trained image at level 0.
-   * @inner
-   * @return {number}
-   */
-  this.GetHeight = function() {
-    return _height;
-  };
-
-  /**
-   * Sets the trained image.
-   * @inner
-   * @param {jsfeat.keypoint_t[][]} corners_levels
-   * @param {jsfeat.matrix_t[]} descriptors_levels
-   * @param {number} width - width of the image at level 0
-   * @param {number} height - height of the image at level 0
-   */
-  this.Set = function(corners_levels, descriptors_levels, width, height) {
-    _empty = false;
-    _corners_levels = corners_levels;
-    _descriptors_levels = descriptors_levels;
-    _width = width;
-    _height = height;
-  };
-
-  /**
-   * Returns wether the object is set or not.
-   * @inner
-   * @returns {bool}
-   */
-  this.IsEmpty = function() {
-    return _empty;
-  };
-
-  /**
-   * Empty the object.
-   * @inner
-   */
-  this.Empty = function() {
-    _empty = true;
-    _corners_levels = [];
-    _descriptors_levels = [];
-  };
-
-  /**
-   * Sets the unique identifier of this object.
-   * @inner
-   * @param {value} uuid
-   */
-  this.SetUuid = function(uuid) {
-    _uuid = uuid;
-  };
-
-  /**
-   * Returns the unique identifier of this object.
-   * @inner
-   * @returns {value}
-   */
-  this.GetUuid = function() {
-    return _uuid;
-  };
-
-  /** Sets this object active or inactive
-   * @inner
-   * param {bool} bool
-   */
-  this.Active = function(bool) {
-    _active = (bool === true);
-  };
-
-  /**
-   * Returns the state of this object
-   * @inner
-   * @returns {bool}
-   */
-  this.IsActive = function() {
-    return _active;
-  };
-
-  
-};
-var AM = AM || {};
-
-
-/**
- * Trains an image, by computing its corners and descriptors on multiple scales
- * @class
-*/
-AM.Training = function() {
-
-  var _descriptors_levels;
-  var _corners_levels;
-
-  var _width = 0;
-  var _height = 0;
-
-  var _params = {
-    num_train_levels: 3,
-    blur_size: 3,
-    image_size_max: 512,
-    training_corners_max: 200,
-    laplacian_threshold: 30,
-    eigen_threshold: 25
-  };
-
-  var _scale_increment = Math.sqrt(2.0); // magic number ;)
-
-
-  function TrainLevel(img, level_img, level, scale) {
-    var corners = _corners_levels[level];
-    var descriptors = _descriptors_levels[level];
-
-    if (level !== 0) {
-      RescaleDown(img, level_img, scale);
-      jsfeat.imgproc.gaussian_blur(level_img, level_img, _params.blur_size);
-    }
-    else {
-      jsfeat.imgproc.gaussian_blur(img, level_img, _params.blur_size);
-    }
-
-    var corners_num = AM.DetectKeypointsYape06(level_img, corners, _params.training_corners_max,
-      _params.laplacian_threshold, _params.eigen_threshold);
-    corners.length = corners_num;
-    jsfeat.orb.describe(level_img, corners, corners_num, descriptors);
-
-    if (level !== 0) {
-      // fix the coordinates due to scale level
-      for(i = 0; i < corners_num; ++i) {
-        corners[i].x *= 1. / scale;
-        corners[i].y *= 1. / scale;
-      }
-    }
-
-    console.log('train ' + level_img.cols + 'x' + level_img.rows + ' points: ' + corners_num);
-  }
-
-  function RescaleDown(src, dst, scale) {
-    if (scale < 1) {
-      var new_width = Math.round(src.cols * scale);
-      var new_height = Math.round(src.rows * scale);
-
-      jsfeat.imgproc.resample(src, dst, new_width, new_height);
-    }
-    else {
-      dst.resize(src.cols, src.rows);
-      src.copy_to(dst);
-    }
-  }
-
-  function AllocateCornersDescriptors(width, height) {
-    for (var level = 0; level < _params.num_train_levels; ++level) {
-      _corners_levels[level] = [];
-      var corners = _corners_levels[level];
-
-      // preallocate corners array
-      var i = (width * height) >> level;
-      while (--i >= 0) {
-        corners[i] = new jsfeat.keypoint_t(0, 0, 0, 0, -1);
-      }
-
-      _descriptors_levels[level] = new jsfeat.matrix_t(32, _params.training_corners_max, jsfeat.U8_t | jsfeat.C1_t);
-    }
-  }
-
-  /**
-   * Trains an image, saves the result internally
-   * @inner
-   * @param {ImageData} image_data
-   */
-  this.Train = function(image_data) {
-    var level = 0;
-    var scale = 1.0;
-
-    _descriptors_levels = [];
-    _corners_levels = [];
-
-    var gray =  new jsfeat.matrix_t(image_data.width, image_data.height, jsfeat.U8_t | jsfeat.C1_t);
-
-    jsfeat.imgproc.grayscale(image_data.data, image_data.width, image_data.height, gray, jsfeat.COLOR_RGBA2GRAY);
-
-    var scale_0 = Math.min(_params.image_size_max / image_data.width, _params.image_size_max / image_data.height);
-    var img = new jsfeat.matrix_t(image_data.width * scale_0, image_data.height * scale_0, jsfeat.U8_t | jsfeat.C1_t);
-
-    _width = img.cols;
-    _height = img.rows;
-
-    RescaleDown(gray, img, scale_0);
-
-    AllocateCornersDescriptors(img.cols, img.rows);
-
-
-    var level_img = new jsfeat.matrix_t(img.cols, img.rows, jsfeat.U8_t | jsfeat.C1_t);
-
-    TrainLevel(img, level_img, 0, scale);
-
-    // lets do multiple scale levels
-    for(level = 1; level < _params.num_train_levels; ++level) {
-      scale /= _scale_increment;
-
-      TrainLevel(img, level_img, level, scale);
-    }
-  };
-
-  /**
-   * Sets the result of the previous {@link AM.Training#Train} call to a {@link AM.TrainedImage}
-   * @inner
-   * @param {AM.TrainedImage} trained_image
-   */
-  this.SetResultToTrainedImage = function(trained_image) {
-    trained_image.Set(_corners_levels, _descriptors_levels, _width, _height);
-  };
-
-  /**
-   * Returns false if this object contains a result
-   * @inner
-   * @returns {bool}
-   */
-  this.IsEmpty = function() {
-    return (!_descriptors_levels || !_corners_levels);
-  };
-
-  /**
-   * Empties results stored
-   * @inner
-   */
-  this.Empty = function() {
-    _descriptors_levels = undefined;
-    _corners_levels = undefined;
-  };
-
-  /**
-   * Sets parameters of the training
-   * @inner
-   * @param {object} params
-   * @params {number} [params.num_train_levels=3]
-   * @params {number} [params.blur_size=3]
-   * @params {number} [params.image_size_max=512]
-   * @params {number} [params.training_corners_max=200]
-   * @params {number} [params.laplacian_threshold=30]
-   * @params {number} [params.eigen_threshold=25]
-   */
-  this.SetParameters = function(params) {
-    for (name in params) {
-      if (typeof _params[name] !== 'undefined')
-        _params[name] = params[name];
-    }
-  };
-
 
 };
 /*************************
@@ -5316,3 +4057,1266 @@ else {
     console.warn('VideoTexture.js: THREE undefined');
   };
 }
+var AM = AM || {};
+
+
+/**
+ * Detects corners in an image using FAST, and descriptors using ORB.
+ * @class
+ */
+AM.Detection = function() {
+
+  var _params = {
+    laplacian_threshold: 30,
+    eigen_threshold: 25,
+    detection_corners_max: 500,
+    border_size: 15,
+    fast_threshold: 20
+  }
+
+  var _debug =false;
+
+  var _screen_corners = [];
+  var _num_corners = 0;
+
+  var _screen_descriptors = new jsfeat.matrix_t(32, _params.detection_corners_max, jsfeat.U8_t | jsfeat.C1_t);
+
+  function AllocateCorners(width, height) {
+    var i = width * height;
+
+    if (i > _screen_corners.length) {
+      while (--i >= 0) {
+        _screen_corners[i] = new jsfeat.keypoint_t();
+      }
+    }
+  }
+
+  /**
+   * Computes the image corners and descriptors and saves them internally.
+   * <br>Use {@link ImageFilter} first to filter an Image.
+   * @inner
+   * @param {jsfeat.matrix_t} img
+   */
+  this.Detect = function(img) {
+    AllocateCorners(img.cols, img.rows);
+
+    _num_corners = AM.DetectKeypointsYape06(img, _screen_corners, _params.detection_corners_max,
+      _params.laplacian_threshold, _params.eigen_threshold, _params.border_size);
+    
+    // _num_corners = AM.DetectKeypointsFast(img, _screen_corners, _params.detection_corners_max,
+    //   _params.fast_threshold, _params.border_size);
+
+    jsfeat.orb.describe(img, _screen_corners, _num_corners, _screen_descriptors);
+
+    if (_debug) console.log("Learn : " + _num_corners + " corners");
+  };
+
+  /**
+   * Sets the params used during the detection
+   * @inner
+   * @param {object} params
+   * @param {number} [params.laplacian_threshold=30] - 0 - 100
+   * @param {number} [params.eigen_threshold=25] - 0 - 100
+   * @param {number} [params.detection_corners_max=500] - 100 - 1000
+   * @param {number} [params.border_size=3]
+   * @param {number} [params.fast_threshold=48] - 0 - 10
+   */
+  this.SetParameters = function(params) {
+    for (name in params) {
+      if (typeof _params[name] !== 'undefined')
+        _params[name] = params[name];
+    }
+  };
+
+  /**
+   * Returns the last computed descriptors
+   * @inner
+   * @returns {jsfeat.matrix_t} Descriptors
+   */
+  this.GetDescriptors = function() {
+    return _screen_descriptors;
+  };
+
+  /**
+   * Returns the count of the last computed corners
+   * @inner
+   * @returns {number}
+   */
+  this.GetNumCorners = function() {
+    return _num_corners;
+  };
+
+  /**
+   * Returns the last computed corners
+   * @inner
+   * @returns {jsfeat.keypoint_t[]}
+   */
+  this.GetCorners = function() {
+    return _screen_corners;
+  };
+
+
+};
+
+AM.IcAngle = (function() {
+  var u_max = new Int32Array( [ 15, 15, 15, 15, 14, 14, 14, 13, 13, 12, 11, 10, 9, 8, 6, 3, 0 ] );
+  var half_pi = Math.PI / 2;
+
+  return function(img, px, py) {
+    var half_k = 15; // half patch size
+    var m_01 = 0, m_10 = 0;
+    var src = img.data, step = img.cols;
+    var u = 0, v = 0, center_off = (py * step + px) | 0;
+    var v_sum = 0, d = 0, val_plus = 0, val_minus = 0;
+
+    // Treat the center line differently, v=0
+    for (u = -half_k; u <= half_k; ++u)
+      m_10 += u * src[center_off + u];
+
+    // Go line by line in the circular patch
+    for (v = 1; v <= half_k; ++v) {
+      // Proceed over the two lines
+      v_sum = 0;
+      d = u_max[v];
+      for (u = -d; u <= d; ++u) {
+        val_plus = src[center_off + u + v * step];
+        val_minus = src[center_off + u - v * step];
+        v_sum += (val_plus - val_minus);
+        m_10 += u * (val_plus + val_minus);
+      }
+      m_01 += v * v_sum;
+    }
+
+    // return Math.atan2(m_01, m_10);
+    return AM.DiamondAngle(m_01, m_10) * half_pi;
+  }
+})();
+
+AM.DiamondAngle = function(y, x) {
+  if (y >= 0)
+    return (x >= 0 ? y / (x + y) : 1 - x / (-x + y)); 
+  else
+    return (x < 0 ? 2 - y / (-x - y) : 3 + x / (x - y));
+}
+
+AM.DetectKeypointsPostProc = function(img, corners, count, max_allowed) {
+
+  // sort by score and reduce the count if needed
+  if(count > max_allowed) {
+    jsfeat.math.qsort(corners, 0, count - 1, function(a, b) {
+      return (b.score < a.score);
+    } );
+    count = max_allowed;
+  }
+
+  // calculate dominant orientation for each keypoint
+  for(var i = 0; i < count; ++i) {
+    corners[i].angle = AM.IcAngle(img, corners[i].x, corners[i].y);
+  }
+
+  return count;
+}
+
+AM.DetectKeypointsYape06 = function(img, corners, max_allowed,
+  laplacian_threshold, eigen_threshold, border_size) {
+
+  jsfeat.yape06.laplacian_threshold = laplacian_threshold;
+  jsfeat.yape06.min_eigen_value_threshold = eigen_threshold;
+
+  // detect features
+  var count = jsfeat.yape06.detect(img, corners, border_size);
+
+  count = AM.DetectKeypointsPostProc(img, corners, count, max_allowed);
+
+  return count;
+};
+
+AM.DetectKeypointsFast = function(img, corners, max_allowed, threshold, border_size) {
+  jsfeat.fast_corners.set_threshold(threshold);
+
+  var count = jsfeat.fast_corners.detect(img, corners, border_size || 3);
+
+  count = AM.DetectKeypointsPostProc(img, corners, count, max_allowed);
+
+  return count;
+};
+var AM = AM || {};
+
+
+/**
+ * Filters images so the result can be used by {@link Detection}
+ * @class
+ */
+AM.ImageFilter = function() {
+
+  var _img_u8;
+
+  var _params = {
+    blur_size: 3,
+    blur: true
+  }
+
+  /**
+   * Filters the image and saves the result internally
+   * @inner
+   * @param {ImageData} image_data
+   */
+  this.Filter = function(image_data) {
+    var width = image_data.width;
+    var height = image_data.height;
+
+    if (_img_u8) _img_u8.resize(width, height, jsfeat.U8_t | jsfeat.C1_t);
+    else _img_u8 = new jsfeat.matrix_t(width, height, jsfeat.U8_t | jsfeat.C1_t);
+
+    jsfeat.imgproc.grayscale(image_data.data, width, height, _img_u8);
+
+    if (_params.blur)
+      jsfeat.imgproc.gaussian_blur(_img_u8, _img_u8, _params.blur_size);
+  };
+
+  /**
+   * Returns the last filtered image
+   * @inner
+   * @returns {jsfeat.matrix_t}
+   */
+  this.GetFilteredImage = function() {
+    return _img_u8;
+  };
+
+  /**
+   * Sets parameters, all optionnal
+   * @inner
+   * @param {object} params
+   * @param {number} [params.blur_size=3]
+   * @param {bool} [params.blur=true] - compute blur ?
+   */
+  this.SetParameters = function(params) {
+    for (name in params) {
+      if (typeof _params[name] !== 'undefined')
+        _params[name] = params[name];
+    }
+  };
+
+
+}
+/*************************
+
+
+
+
+
+
+
+SetParameters(params)
+
+params.match_min
+params.laplacian_threshold
+params.eigen_threshold
+params.detection_corners_max
+params.blur
+params.blur_size
+params.match_threshold
+params.num_train_levels
+params.image_size_max
+params.training_corners_max
+
+
+
+*************************/
+
+
+var AM = AM || {};
+
+
+/**
+ * @class
+ */
+AM.MarkerTracker = function() {
+
+  var _training = new AM.Training();
+  var _trained_images = {};
+
+  var _image_filter = new AM.ImageFilter();
+  var _detection = new AM.Detection();
+  var _matching = new AM.Matching();
+  var _pose = new AM.Pose();
+
+  var _match_found = false;
+  var _matching_image;
+
+  var _params = {
+    match_min : 8
+  }
+  
+  var _debug =false; 
+  
+  var _profiler = new AM.Profiler();
+  _profiler.add('filter');
+  _profiler.add('detection');
+  _profiler.add('matching');
+  _profiler.add('pose');
+
+
+  /**
+  * Computes the corners and descriptors
+  * @inner
+  * @param {ImageData} image_data
+  */
+  this.ComputeImage = function(image_data) {
+    _profiler.new_frame();
+    _profiler.start('filter');
+    _image_filter.Filter(image_data);
+    _profiler.stop('filter');
+    _profiler.start('detection');
+    _detection.Detect(_image_filter.GetFilteredImage());
+    _profiler.stop('detection');
+  };
+
+  /**
+   * Matches the last computed ImageData and every active trained image.
+   * @inner
+   * @returns {bool} true if a match if found.
+   */
+  this.Match = function() {
+    _profiler.start('matching');
+
+    _match_found = false;
+    _matching_image = undefined;
+
+    _matching.SetScreenDescriptors(_detection.GetDescriptors());
+
+    for(uuid in _trained_images) {
+      var trained_image = _trained_images[uuid];
+
+      if (!trained_image.IsActive())
+        continue;
+
+      _matching.Match(trained_image.GetDescriptorsLevels());
+
+      var count = _matching.GetNumMatches();
+
+      _match_found = (count >= _params.match_min);
+      if (_debug) console.log("nbMatches : " + count);
+      if (!_match_found)
+        continue;
+
+      var good_count = _pose.Pose(_matching.GetMatches(), count,
+        _detection.GetCorners(), trained_image.GetCornersLevels());
+      _match_found = (good_count >= _params.match_min);
+
+      if (_debug) console.log(" goodMatches : " + good_count);
+      if (_match_found) {
+        _matching_image = trained_image;
+        break;
+      }
+
+    }
+
+    _profiler.stop('matching');
+
+    return _match_found;
+  };
+
+  /**
+   * Returns the id of the last match
+   * @inner
+   */
+  this.GetMatchUuid = function() {
+    return _matching_image.GetUuid();
+  };
+
+  /**
+   * Computes and returns the pose of the last match
+   * @inner
+   * @returns {Point2D[]} The corners
+   */
+  this.GetPose = function() {
+    if (_match_found) {
+      _profiler.start('pose');
+      var pose = _pose.GetPoseCorners(_matching_image.GetWidth(), _matching_image.GetHeight());
+      _profiler.stop('pose');
+      return pose;
+    }
+    return undefined;
+  };
+
+  /**
+   * Trains a marker
+   * @inner
+   * @param {ImageData} image_data - The marker, has to be a square (same width and height).
+   * @param {value} uuid - The identifier of the marker.
+   */
+  this.AddMarker = function(image_data, uuid) {
+    _training.Train(image_data);
+    var trained_image = new AM.TrainedImage(uuid);
+    _training.SetResultToTrainedImage(trained_image);
+    _training.Empty();
+    _trained_images[uuid] = trained_image;
+  };
+
+  /**
+   * Removes a marker
+   * @inner
+   * @param {value} uuid - The identifier of the marker.
+   */
+  this.RemoveMarker = function(uuid) {
+    if (_trained_images[uuid]) {
+      delete _trained_images[uuid];
+    }
+  };
+
+  /**
+   * Activates or desactivates a marker.
+   * <br>A marker inactive will be ignored during the matching.
+   * @inner
+   * @param {value} uuid - The identifier of the marker.
+   * @param {bool} bool - Sets active if true, inactive if false.
+   */
+  this.ActiveMarker = function(uuid, bool) {
+    if (_trained_images[uuid])
+      _trained_images[uuid].Active(bool);
+  };
+
+  /**
+   * Sets active or inactive all the markers
+   * @inner
+   * @param {bool} bool - Sets all active if true, inactive if false.
+   */
+  this.ActiveAllMarkers = function(bool) {
+    for (uuid in _trained_images) {
+      _trained_images[uuid].Active(bool);
+    }
+  };
+
+  /**
+   * Removes all the markers
+   * @inner
+   */
+  this.ClearMarkers = function() {
+    _trained_images = {};
+  };
+
+  /**
+   * Returns the corners of the last computed image
+   * @inner
+   * @returns {jsfeat.keypoint_t[]}
+   */
+  this.GetScreenCorners = function() {
+    return _detection.GetCorners();
+  };
+
+  /**
+   * Returns the count of corners of the last computed image
+   * @inner
+   * @returns {number}
+   */
+  this.GetNumScreenCorners = function() {
+    return _detection.GetNumCorners();
+  };
+
+ /**
+   * Returns the buffer of matches ()
+   * @inner
+   * @returns {AM.match_t[]}
+   */
+  this.Getmatches = function () {
+    return _matching.GetMatches();
+  };
+
+/**
+   * Returns the timings of matching function()
+   * @inner
+   * @returns {pair[]}
+   */
+  this.GetProfiler = function () {
+    return _profiler.GetProfiler();
+  };
+
+/**
+   * Returns corners of trained image
+   * @inner
+   * @returns {jsfeat.keypoint_t[]}
+   */
+  this.GetTrainedCorners = function () {
+    var trained_image = _trained_images[uuid];
+    return trained_image.GetCornersLevels();
+  };
+
+  /**
+   * Puts the log to the console
+   * @inner
+   */
+  this.Log = function() {
+    console.log(_profiler.log() + ((_match_found) ? '<br/>match found' : ''));
+  };
+
+  /**
+   * Sets optionnals parameters
+   * @inner
+   * @param {object} params
+   * @param {number} [match_min=8] minimum number of matching corners necessary for a match to be valid.
+   * @see AM.ImageFilter
+   * @see AM.Detection
+   * @see AM.Matching
+   * @see AM.Training
+   */
+  this.SetParameters = function(params) {
+    for (name in params) {
+      if (typeof _params[name] !== 'undefined')
+        _params[name] = params[name];
+    }
+
+    _training.SetParameters(params);
+    _image_filter.SetParameters(params);
+    _detection.SetParameters(params);
+    _matching.SetParameters(params);
+  };
+};
+var AM = AM || {};
+
+
+/**
+ * Matches descriptors
+ * @class
+ */
+AM.Matching = function() {
+
+  var _screen_descriptors;
+
+  var _num_matches;
+  var _matches = [];
+
+  var _params = {
+    match_threshold: 48
+  }
+
+  /**
+   *
+   * @inner
+   * @param {jsfeat.matrix_t} screen_descriptors
+   */
+  this.SetScreenDescriptors = function(screen_descriptors) {
+    _screen_descriptors = screen_descriptors;
+  };
+
+  /**
+   * Computes the matching.
+   * @inner
+   * @param {jsfeat.matrix_t[]} pattern_descriptors - The descriptors of a trained image.
+   * @returns {number} The number of matches of the best match if there is a match, 0 otherwise.
+   */
+  this.Match = function(pattern_descriptors) {
+    _num_matches = MatchPattern(_screen_descriptors, pattern_descriptors);
+    return _num_matches;
+  };
+
+  function popcnt32(n) {
+    n -= ((n >> 1) & 0x55555555);
+    n = (n & 0x33333333) + ((n >> 2) & 0x33333333);
+    return (((n + (n >> 4))& 0xF0F0F0F)* 0x1010101) >> 24;
+  }
+
+  var popcnt32_2 = function() {
+    var v2b = [
+      0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
+      1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+      1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+      2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+      1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+      2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+      2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+      3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+      1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+      2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+      2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+      3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+      2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+      3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+      3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+      4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8,
+    ];
+
+    var m8 = 0x000000ff;
+
+    return function(n) {
+      var r = v2b[n & m8];
+      n = n >> 8;
+      r += v2b[n & m8];
+      n = n >> 8;
+      r += v2b[n & m8];
+      n = n >> 8;
+      r += v2b[n & m8];
+      return r;
+    }
+  }();
+
+  var popcnt32_3 = function() {
+
+    var v2b = [];
+    for (i = 0; i < 256 * 256; ++i)
+      v2b.push(popcnt32(i));
+
+    var m16 = 0x0000ffff;
+
+    return function(n) {
+      var r = v2b[n & m16];
+      n = n >> 16;
+      r += v2b[n & m16];
+      return r;
+    }
+  }();
+
+  function MatchPattern(screen_descriptors, pattern_descriptors) {
+    var q_cnt = screen_descriptors.rows;
+    var query_u32 = screen_descriptors.buffer.i32; // cast to integer buffer
+    var qd_off = 0;
+    var num_matches = 0;
+
+    _matches = [];
+
+    for (var qidx = 0; qidx < q_cnt; ++qidx) {
+      var best_dist = 256;
+      var best_dist2 = 256;
+      var best_idx = -1;
+      var best_lev = -1;
+
+      for (var lev = 0, lev_max = pattern_descriptors.length; lev < lev_max; ++lev) {
+        var lev_descr = pattern_descriptors[lev];
+        var ld_cnt = lev_descr.rows;
+        var ld_i32 = lev_descr.buffer.i32; // cast to integer buffer
+        var ld_off = 0;
+
+        for (var pidx = 0; pidx < ld_cnt; ++pidx) {
+
+          var curr_d = 0;
+          // our descriptor is 32 bytes so we have 8 Integers
+          for (var k = 0; k < 8; ++k) {
+            curr_d += popcnt32_3(query_u32[qd_off + k] ^ ld_i32[ld_off + k]);
+          }
+
+          if (curr_d < best_dist) {
+            best_dist2 = best_dist;
+            best_dist = curr_d;
+            best_lev = lev;
+            best_idx = pidx;
+          } else if (curr_d < best_dist2) {
+            best_dist2 = curr_d;
+          }
+
+          ld_off += 8; // next descriptor
+        }
+      }
+
+      // filter out by some threshold
+      if (best_dist < _params.match_threshold) {
+
+        while (_matches.length <= num_matches) {
+          _matches.push(new AM.match_t());
+        }
+
+        _matches[num_matches].screen_idx = qidx;
+        _matches[num_matches].pattern_lev = best_lev;
+        _matches[num_matches].pattern_idx = best_idx;
+        num_matches++;
+      }
+
+      // filter using the ratio between 2 closest matches
+      /*if(best_dist < 0.8*best_dist2) {
+        while (_matches.length <= num_matches) {
+          _matches.push(new AM.match_t());
+        }
+        _matches[num_matches].screen_idx = qidx;
+        _matches[num_matches].pattern_lev = best_lev;
+        _matches[num_matches].pattern_idx = best_idx;
+        num_matches++;
+      }*/
+      
+
+      qd_off += 8; // next query descriptor
+    }
+
+    _matches.length = num_matches;
+    return num_matches;
+  }
+
+  /**
+   * Returns the matches
+   * @inner
+   * @returns {AM.match_t[]} The buffer of matches
+   */
+  this.GetMatches = function() {
+    return _matches;
+  };
+
+  /**
+   * Returns the number of matches
+   * @inner
+   * @returns {number}
+   */
+  this.GetNumMatches = function() {
+    return _num_matches;
+  };
+
+  /**
+   * Sets parameters of the matching
+   * @inner
+   * @param {object} params
+   * @param {number} [params.match_threshold=48] 16 - 128
+   */
+  this.SetParameters = function(params) {
+    for (name in params) {
+      if (typeof _params[name] !== 'undefined')
+        _params[name] = params[name];
+    }
+  };
+
+
+};
+
+/**
+ *
+ * @class
+ * @param {number} screen_idx
+ * @param {number} pattern_lev
+ * @param {number} pattern_idx
+ * @param {number} distance
+ */ 
+AM.match_t = function (screen_idx, pattern_lev, pattern_idx, distance) {
+  this.screen_idx = screen_idx || 0;
+  this.pattern_lev = pattern_lev || 0;
+  this.pattern_idx = pattern_idx || 0;
+  this.distance = distance || 0;
+};
+var AM = AM || {};
+
+
+/**
+ * Computes the pose and remove bad matches using RANSAC
+ * @class
+ */
+AM.Pose = function() {
+
+  var _good_count = 0;
+  var _homo3x3 = new jsfeat.matrix_t(3, 3, jsfeat.F32C1_t);
+  var _match_mask = new jsfeat.matrix_t(500, 1, jsfeat.U8C1_t);
+
+
+  // estimate homography transform between matched points
+  function find_transform(matches, count, homo3x3, match_mask, screen_corners, pattern_corners) {
+    // motion kernel
+    var mm_kernel = new jsfeat.motion_model.homography2d();
+    // ransac params
+    var num_model_points = 4;
+    var reproj_threshold = 3;
+    var ransac_param = new jsfeat.ransac_params_t(num_model_points,
+                                                  reproj_threshold, 0.5, 0.99);
+
+    var pattern_xy = [];
+    var screen_xy = [];
+
+    // construct correspondences
+    for(var i = 0; i < count; ++i) {
+      var m = matches[i];
+      var s_kp = screen_corners[m.screen_idx];
+      var p_kp = pattern_corners[m.pattern_lev][m.pattern_idx];
+      pattern_xy[i] = { x: p_kp.x, y: p_kp.y };
+      screen_xy[i] =  { x: s_kp.x, y: s_kp.y };
+    }
+
+    // estimate motion
+    var ok = false;
+    ok = jsfeat.motion_estimator.ransac(ransac_param, mm_kernel,
+                                        pattern_xy, screen_xy, count, homo3x3, match_mask, 1000);
+
+    // extract good matches and re-estimate
+    var good_cnt = 0;
+    if (ok) {
+      for(var i = 0; i < count; ++i) {
+        if(match_mask.data[i]) {
+          pattern_xy[good_cnt].x = pattern_xy[i].x;
+          pattern_xy[good_cnt].y = pattern_xy[i].y;
+          screen_xy[good_cnt].x = screen_xy[i].x;
+          screen_xy[good_cnt].y = screen_xy[i].y;
+          good_cnt++;
+        }
+      }
+      // run kernel directly with inliers only
+      mm_kernel.run(pattern_xy, screen_xy, homo3x3, good_cnt);
+    } else {
+      jsfeat.matmath.identity_3x3(homo3x3, 1.0);
+    }
+
+    return good_cnt;
+  }
+
+  // project/transform rectangle corners with 3x3 Matrix
+  function tCorners(M, w, h) {
+    var pt = [ { x: 0, y: 0 }, { x: w, y: 0 }, { x: w, y: h }, { x: 0, y: h } ];
+    var z = 0.0, px = 0.0, py = 0.0;
+
+    for (var i = 0; i < 4; ++i) {
+      px = M[0] * pt[i].x + M[1] * pt[i].y + M[2];
+      py = M[3] * pt[i].x + M[4] * pt[i].y + M[5];
+      z  = M[6] * pt[i].x + M[7] * pt[i].y + M[8];
+      pt[i].x = px / z;
+      pt[i].y = py / z;
+    }
+
+    return pt;
+  }
+
+  /**
+   *
+   * @inner
+   * @param {AM.match_t[]} matches
+   * @param {number} count - The matches count.
+   * @param {jsfeat.keypoint_t[]} screen_corners
+   * @param {jsfeat.keypoint_t[][]} pattern_corners
+   */
+  this.Pose = function(matches, count, screen_corners, pattern_corners) {
+    _good_count = find_transform(matches, count, _homo3x3, _match_mask, screen_corners, pattern_corners);
+    return _good_count;
+  };
+
+  /**
+   * Returns the count of good matches, computed using RANSAC by {@link AM.Pose#Pose}
+   * @inner
+   * @returns {number}
+   */
+  this.GetGoodCount = function() {
+    return _good_count;
+  };
+
+  /**
+   * Computes the 4 corners of the pose
+   * @inner
+   * @param {number} marker_width
+   * @param {number} marker_height
+   * @returns {Point2D[]} The corners
+   */
+  this.GetPoseCorners = function(marker_width, marker_height) {
+    return tCorners(_homo3x3.data, marker_width, marker_height);
+  };
+
+
+};
+
+
+/**
+ * Computes the posit pose, based on the corners
+ * @class
+ */
+AM.PosePosit = function() {
+
+  /**
+   * @typedef {object} PositPose
+   * @property {number[]} pose.bestTranslation
+   * @property {number[][]} pose.bestRotation
+   */
+
+  /**
+   * @property {PositPose} pose
+   */
+
+  this.posit = new POS.Posit(10, 1);
+  this.pose;
+};
+
+/**
+ * Computes the pose
+ * @inner
+ * @param {Point2D[]} corners
+ * @param {number} [model_size=35] The size of the real model.
+ * @param {number} image_width
+ * @param {number} image_height
+ */
+AM.PosePosit.prototype.Set = function(corners, model_size, image_width, image_height) {
+  model_size = model_size || 35;
+
+  var corners2 = [];
+  for (var i = 0; i < corners.length; ++i) {
+    var x = corners[i].x - (image_width / 2);
+    var y = (image_height / 2) - corners[i].y;
+
+    corners2.push( { x: x, y: y } );
+  }
+
+  this.pose = this.posit.pose(corners2);
+};
+
+/**
+ * Sets the focal's length
+ * @inner
+ * @param {number} value
+ */
+AM.PosePosit.prototype.SetFocalLength = function(value) {
+  this.posit.focalLength = value;
+};
+
+
+/**
+ * Computes the threejs pose, based on the posit pose
+ * @class
+ */
+AM.PoseThree = function() {
+  this.position = new THREE.Vector3();
+  this.rotation = new THREE.Euler();
+  this.quaternion = new THREE.Quaternion();
+  this.scale = new THREE.Vector3();
+};
+
+/**
+ * Computes the pose
+ * @inner
+ * @param {PositPose} posit_pose
+ * @param {number} model_size
+ */
+AM.PoseThree.prototype.Set = function(posit_pose, model_size) {
+  model_size = model_size || 35;
+
+  var rot = posit_pose.bestRotation;
+  var translation = posit_pose.bestTranslation;
+
+  this.scale.x = model_size;
+  this.scale.y = model_size;
+  this.scale.z = model_size;
+
+  this.rotation.x = -Math.asin(-rot[1][2]);
+  this.rotation.y = -Math.atan2(rot[0][2], rot[2][2]);
+  this.rotation.z = Math.atan2(rot[1][0], rot[1][1]);
+
+  this.position.x = translation[0];
+  this.position.y = translation[1];
+  this.position.z = -translation[2];
+
+  this.quaternion.setFromEuler(this.rotation);
+};
+var AM = AM || {};
+
+
+/**
+ * Holds the corners and the descriptors of an image, at different levels of zoom.
+ * @class
+ * @param {string} [uuid] - An unique identifier
+ */
+AM.TrainedImage = function(uuid) {
+
+  var _empty = true;
+
+  var _corners_levels = [];
+  var _descriptors_levels = [];
+
+  var _width = 0;
+  var _height = 0;
+
+  var _uuid = uuid;
+
+  var _active = true;
+  
+
+  /**
+   * Returns the corners of a specified level.
+   * @inner
+   * @param {number} level - The level of the corners to be returned.
+   * @returns {jsfeat.keypoint_t[]}
+   */
+  this.GetCorners = function(level) {
+    return _corners_levels[level];
+  };
+
+  /**
+   * Returns the descriptors of a specified level.
+   * @inner
+   * @param {number} level - The level of the descriptors to be returned.
+   * @returns {jsfeat.matrix_t}
+   */
+  this.GetDescriptors = function(level) {
+    return _descriptors_levels[level];
+  };
+
+  /**
+   * Returns the number of level.
+   * @inner
+   * @return {number}
+   */
+  this.GetLevelNbr = function() {
+    return Math.min(_descriptors_levels.length, _corners_levels.length);
+  };
+
+  /**
+   * Returns all the corners.
+   * @inner
+   * @return {jsfeat.keypoint_t[][]}
+   */
+  this.GetCornersLevels = function() {
+    return _corners_levels;
+  };
+
+  /**
+   * Returns all the descriptors.
+   * @inner
+   * @return {jsfeat.matrix_t[]}
+   */
+  this.GetDescriptorsLevels = function() {
+    return _descriptors_levels;
+  };
+
+  /**
+   * Returns the width of the trained image at level 0.
+   * @inner
+   * @return {number}
+   */
+  this.GetWidth = function() {
+    return _width;
+  };
+
+  /**
+   * Returns the height of the trained image at level 0.
+   * @inner
+   * @return {number}
+   */
+  this.GetHeight = function() {
+    return _height;
+  };
+
+  /**
+   * Sets the trained image.
+   * @inner
+   * @param {jsfeat.keypoint_t[][]} corners_levels
+   * @param {jsfeat.matrix_t[]} descriptors_levels
+   * @param {number} width - width of the image at level 0
+   * @param {number} height - height of the image at level 0
+   */
+  this.Set = function(corners_levels, descriptors_levels, width, height) {
+    _empty = false;
+    _corners_levels = corners_levels;
+    _descriptors_levels = descriptors_levels;
+    _width = width;
+    _height = height;
+  };
+
+  /**
+   * Returns wether the object is set or not.
+   * @inner
+   * @returns {bool}
+   */
+  this.IsEmpty = function() {
+    return _empty;
+  };
+
+  /**
+   * Empty the object.
+   * @inner
+   */
+  this.Empty = function() {
+    _empty = true;
+    _corners_levels = [];
+    _descriptors_levels = [];
+  };
+
+  /**
+   * Sets the unique identifier of this object.
+   * @inner
+   * @param {value} uuid
+   */
+  this.SetUuid = function(uuid) {
+    _uuid = uuid;
+  };
+
+  /**
+   * Returns the unique identifier of this object.
+   * @inner
+   * @returns {value}
+   */
+  this.GetUuid = function() {
+    return _uuid;
+  };
+
+  /** Sets this object active or inactive
+   * @inner
+   * param {bool} bool
+   */
+  this.Active = function(bool) {
+    _active = (bool === true);
+  };
+
+  /**
+   * Returns the state of this object
+   * @inner
+   * @returns {bool}
+   */
+  this.IsActive = function() {
+    return _active;
+  };
+
+  
+};
+var AM = AM || {};
+
+
+/**
+ * Trains an image, by computing its corners and descriptors on multiple scales
+ * @class
+*/
+AM.Training = function() {
+
+  var _descriptors_levels;
+  var _corners_levels;
+
+  var _width = 0;
+  var _height = 0;
+
+  var _params = {
+    num_train_levels: 3,
+    blur_size: 3,
+    image_size_max: 512,
+    training_corners_max: 200,
+    laplacian_threshold: 30,
+    eigen_threshold: 25
+  };
+
+  var _scale_increment = Math.sqrt(2.0); // magic number ;)
+
+
+  function TrainLevel(img, level_img, level, scale) {
+    var corners = _corners_levels[level];
+    var descriptors = _descriptors_levels[level];
+
+    if (level !== 0) {
+      RescaleDown(img, level_img, scale);
+      jsfeat.imgproc.gaussian_blur(level_img, level_img, _params.blur_size);
+    }
+    else {
+      jsfeat.imgproc.gaussian_blur(img, level_img, _params.blur_size);
+    }
+
+    var corners_num = AM.DetectKeypointsYape06(level_img, corners, _params.training_corners_max,
+      _params.laplacian_threshold, _params.eigen_threshold);
+    corners.length = corners_num;
+    jsfeat.orb.describe(level_img, corners, corners_num, descriptors);
+
+    if (level !== 0) {
+      // fix the coordinates due to scale level
+      for(i = 0; i < corners_num; ++i) {
+        corners[i].x *= 1. / scale;
+        corners[i].y *= 1. / scale;
+      }
+    }
+
+    console.log('train ' + level_img.cols + 'x' + level_img.rows + ' points: ' + corners_num);
+  }
+
+  function RescaleDown(src, dst, scale) {
+    if (scale < 1) {
+      var new_width = Math.round(src.cols * scale);
+      var new_height = Math.round(src.rows * scale);
+
+      jsfeat.imgproc.resample(src, dst, new_width, new_height);
+    }
+    else {
+      dst.resize(src.cols, src.rows);
+      src.copy_to(dst);
+    }
+  }
+
+  function AllocateCornersDescriptors(width, height) {
+    for (var level = 0; level < _params.num_train_levels; ++level) {
+      _corners_levels[level] = [];
+      var corners = _corners_levels[level];
+
+      // preallocate corners array
+      var i = (width * height) >> level;
+      while (--i >= 0) {
+        corners[i] = new jsfeat.keypoint_t(0, 0, 0, 0, -1);
+      }
+
+      _descriptors_levels[level] = new jsfeat.matrix_t(32, _params.training_corners_max, jsfeat.U8_t | jsfeat.C1_t);
+    }
+  }
+
+  /**
+   * Trains an image, saves the result internally
+   * @inner
+   * @param {ImageData} image_data
+   */
+  this.Train = function(image_data) {
+    var level = 0;
+    var scale = 1.0;
+
+    _descriptors_levels = [];
+    _corners_levels = [];
+
+    var gray =  new jsfeat.matrix_t(image_data.width, image_data.height, jsfeat.U8_t | jsfeat.C1_t);
+
+    jsfeat.imgproc.grayscale(image_data.data, image_data.width, image_data.height, gray, jsfeat.COLOR_RGBA2GRAY);
+
+    var scale_0 = Math.min(_params.image_size_max / image_data.width, _params.image_size_max / image_data.height);
+    var img = new jsfeat.matrix_t(image_data.width * scale_0, image_data.height * scale_0, jsfeat.U8_t | jsfeat.C1_t);
+
+    _width = img.cols;
+    _height = img.rows;
+
+    RescaleDown(gray, img, scale_0);
+
+    AllocateCornersDescriptors(img.cols, img.rows);
+
+
+    var level_img = new jsfeat.matrix_t(img.cols, img.rows, jsfeat.U8_t | jsfeat.C1_t);
+
+    TrainLevel(img, level_img, 0, scale);
+
+    // lets do multiple scale levels
+    for(level = 1; level < _params.num_train_levels; ++level) {
+      scale /= _scale_increment;
+
+      TrainLevel(img, level_img, level, scale);
+    }
+  };
+
+  /**
+   * Sets the result of the previous {@link AM.Training#Train} call to a {@link AM.TrainedImage}
+   * @inner
+   * @param {AM.TrainedImage} trained_image
+   */
+  this.SetResultToTrainedImage = function(trained_image) {
+    trained_image.Set(_corners_levels, _descriptors_levels, _width, _height);
+  };
+
+  /**
+   * Returns false if this object contains a result
+   * @inner
+   * @returns {bool}
+   */
+  this.IsEmpty = function() {
+    return (!_descriptors_levels || !_corners_levels);
+  };
+
+  /**
+   * Empties results stored
+   * @inner
+   */
+  this.Empty = function() {
+    _descriptors_levels = undefined;
+    _corners_levels = undefined;
+  };
+
+  /**
+   * Sets parameters of the training
+   * @inner
+   * @param {object} params
+   * @params {number} [params.num_train_levels=3]
+   * @params {number} [params.blur_size=3]
+   * @params {number} [params.image_size_max=512]
+   * @params {number} [params.training_corners_max=200]
+   * @params {number} [params.laplacian_threshold=30]
+   * @params {number} [params.eigen_threshold=25]
+   */
+  this.SetParameters = function(params) {
+    for (name in params) {
+      if (typeof _params[name] !== 'undefined')
+        _params[name] = params[name];
+    }
+  };
+
+
+};
