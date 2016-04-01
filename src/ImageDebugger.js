@@ -11,7 +11,7 @@ AM.ImageDebugger = function() {
   var _profiler;
   var _uuid;
 
-  var _debugMatches;
+  var _debugMatches=false;
 
 
   this.DrawCorners = function(marker_corners, ratio) {
@@ -50,8 +50,11 @@ AM.ImageDebugger = function() {
 
   };
 
-  this.SetData = function ( context2d, debugMatches) {
+  this.SetData = function ( context2d) {
     _context2d=context2d;
+  };
+
+  this.SetDebug = function ( debugMatches ) {
     _debugMatches=debugMatches || false;
   };
 
