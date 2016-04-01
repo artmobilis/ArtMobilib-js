@@ -203,10 +203,12 @@ AM.ImageDebugger = function() {
   var _context2d;
   var _trained_image_url;
   var _corners;
+  var _trained_corners;
   var _screen_corners;
   var _matches;
   var _profiler;
   var _uuid;
+  var _ratio;
   var _offsety=40;
 
   var _last_uuid;
@@ -223,6 +225,7 @@ AM.ImageDebugger = function() {
 
     _screen_corners = marker_corners.screen_corners;
     _profiler       = marker_corners.profiler;
+    _ratio=ratio;
 
     if(!_screen_corners.length) return;
 
@@ -244,7 +247,8 @@ AM.ImageDebugger = function() {
     if(!marker_corners) return;
     if(!trained_image_url) return;
 
-    _corners          = marker_corners.corners;       
+    _corners          = marker_corners.corners;
+    _trained_corners  = marker_corners.trained_corners;       
     _matches          = marker_corners.matches;
     _trained_image_url = trained_image_url;
 
@@ -265,6 +269,19 @@ AM.ImageDebugger = function() {
   drawImage = function (){
     console.log("image size=" + _last_image_data.width + " " + _last_image_data.height);
     _context2d.putImageData(_last_image_data, 0, _offsety);
+
+    // draw Image corners    
+    _context2d.strokeStyle="green";
+    _context2d.lineWidth=5;
+    _context2d.beginPath();
+    _context2d.moveTo(_corners[0].x*_ratio,  _corners[0].y*_ratio);
+    _context2d.lineTo(_corners[1].x*_ratio,  _corners[1].y*_ratio);
+    _context2d.lineTo(_corners[2].x*_ratio,  _corners[2].y*_ratio);
+    _context2d.lineTo(_corners[3].x*_ratio,  _corners[3].y*_ratio);
+    _context2d.lineTo(_corners[0].x*_ratio,  _corners[0].y*_ratio);
+    _context2d.stroke();
+
+
   }
 
   this.SetData = function ( context2d, debugMatches) {
