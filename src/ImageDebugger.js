@@ -29,7 +29,7 @@ AM.ImageDebugger = function() {
       var sc = _screen_corners[i];
 
       _context2d.beginPath();
-      _context2d.arc(sc.x*ratio, sc.y*ratio, 5, 0, 2 * Math.PI);
+      _context2d.arc(sc.x*ratio, sc.y*ratio, 3, 0, 2 * Math.PI);
      _context2d.fill();
     }
 
@@ -50,8 +50,9 @@ AM.ImageDebugger = function() {
 
   };
 
-  this.SetData = function ( context2d) {
+  this.SetData = function ( context2d, debugMatches) {
     _context2d=context2d;
+    _debugMatches=debugMatches || false;
   };
 
   this.SetDebug = function ( debugMatches ) {
