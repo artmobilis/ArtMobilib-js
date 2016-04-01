@@ -218,7 +218,7 @@ AM.MarkerTracker = function() {
    * @inner
    * @returns {AM.match_t[]}
    */
-  this.Getmatches = function () {
+  this.GetMatches = function () {
     return _matching.GetMatches();
   };
 
