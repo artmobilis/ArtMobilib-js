@@ -13,9 +13,13 @@ AM.ImageDebugger = function() {
   var _matches;
   var _profiler;
   var _uuid;
+
   var _ratio;
   var _offsetx;
   var _offsety;
+
+  var _template_offsetx=0;
+  var _template_offsety=40;
 
   var _last_uuid;
   var _last_image_data;
@@ -73,9 +77,9 @@ AM.ImageDebugger = function() {
 
   drawImage = function (){
     console.log("image size=" + _last_image_data.width + " " + _last_image_data.height);
-    _context2d.putImageData(_last_image_data, 0, _offsety);
+    _context2d.putImageData(_last_image_data, _template_offsetx, _template_offsety);
 
-    // draw Image corners    
+    // draw Image corners  (Todo: because we squared initial marquer, result is the square, size should be reduced)
     _context2d.strokeStyle="green";
     _context2d.lineWidth=5;
     _context2d.beginPath();
@@ -89,15 +93,34 @@ AM.ImageDebugger = function() {
 
     //to finish
 
-    // draw trained corners    
+    // draw matched trained corners    
     _context2d.fillStyle="blue";
+    _context2d.strokeStyle="blue";
+    _context2d.lineWidth=2;
+    for(var i = 0; i < _matches.length; ++i) {
+      var m= _matches[i];
+      var tcl = _trained_corners[m.pattern_lev];
+      var tc = tcl[m.pattern_idx];
+      var ts = _screen_corners[m.screen_idx];
+
+      _context2d.beginPath();
+      _context2d.arc(tc.x+_template_offsetx, tc.y+_template_offsety, 3, 0, 2 * Math.PI);
+      _context2d.fill();
+
+      _context2d.beginPath();
+      _context2d.moveTo(tc.x+_template_offsetx, tc.y+_template_offsety);
+      _context2d.lineTo(ts.x*_ratio+_offsetx, ts.y*_ratio+_offsety);
+      _context2d.stroke();
+    }
+    
+    /* too much 150/level need to show only representative for debug
     for(var i = 0; i < _trained_corners.length; ++i) {
       var sc = _trained_corners[i];
 
       _context2d.beginPath();
       _context2d.arc(sc.x+_offsetx, sc.y+_offsety, 3, 0, 2 * Math.PI);
       _context2d.fill();
-    }
+    }*/
   };
 
 // todo, there is still a small offset. Is original is cropped?

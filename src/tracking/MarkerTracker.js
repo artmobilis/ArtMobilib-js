@@ -222,6 +222,15 @@ AM.MarkerTracker = function() {
     return _matching.GetMatches();
   };
 
+ /**
+   * Returns the buffer of matches validated by homography ()
+   * @inner
+   * @returns {AM.match_t[]}
+   */
+  this.GetMatchesMask = function () {
+    return _pose.GetMatchesMask();
+  };
+
 /**
    * Returns the timings of matching function()
    * @inner
