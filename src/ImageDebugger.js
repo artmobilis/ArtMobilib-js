@@ -39,7 +39,7 @@ AM.ImageDebugger = function() {
     if(!marker_corners) return;
 
     _screen_corners = marker_corners.screen_corners;
-    _profiler       = marker_corners.profiler;
+    _profiler       = marker_corners.profiles;
     _image_data     = marker_corners.image_data;
 
 
@@ -66,6 +66,18 @@ AM.ImageDebugger = function() {
     }
 
     // console
+    _context2d.font="30px Arial";
+    _context2d.fillStyle = "red";
+    _context2d.textAlign = "left";
+
+    var str = "FPS: " + _profiler.fps.toFixed(2) + "  ";
+    for (i = 0; i < _profiler.timers.length; ++i) {
+      var pair = _profiler.timers[i];
+      str += pair[0] + ": " + pair[1].run_time + "ms  ";
+    }
+
+    _context2d.fillText(str, 10, _canvas_height-5-_hbands);
+
   };
 
   this.DrawMatches = function(marker_corners, trained_image_url) {
