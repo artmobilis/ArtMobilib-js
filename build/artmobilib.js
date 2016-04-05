@@ -208,6 +208,7 @@ AM.ImageDebugger = function() {
   var _trained_corners;
   var _screen_corners;
   var _matches;
+  var _matches_mask;
   var _profiler;
   var _uuid;
 
@@ -257,6 +258,7 @@ AM.ImageDebugger = function() {
     _corners          = marker_corners.corners;
     _trained_corners  = marker_corners.trained_corners;       
     _matches          = marker_corners.matches;
+    _matches_mask     = marker_corners.matches_mask;
     _trained_image_url = trained_image_url;
 
     // draw images, its corresponding corners, and matches
@@ -273,7 +275,7 @@ AM.ImageDebugger = function() {
       drawImage();
   };
 
-  drawImage = function (){
+  drawImage = function () {
     // correct position in template image
     if( _last_image_data.width>_last_image_data.height){
       var dif= _last_image_data.width-_last_image_data.height;
@@ -301,14 +303,22 @@ AM.ImageDebugger = function() {
     _context2d.stroke();
 
     // draw matched trained corners    
-    _context2d.fillStyle="blue";
-    _context2d.strokeStyle="blue";
     _context2d.lineWidth=2;
     for(var i = 0; i < _matches.length; ++i) {
       var m= _matches[i];
+      var mm= _matches_mask.data[i];
       var tcl = _trained_corners[m.pattern_lev];
       var tc = tcl[m.pattern_idx];
       var ts = _screen_corners[m.screen_idx];
+
+      if (mm) {
+        _context2d.fillStyle="blue";
+        _context2d.strokeStyle="blue";
+      }
+      else {
+        _context2d.fillStyle="red";
+        _context2d.strokeStyle="red";
+      }
 
       _context2d.beginPath();
       _context2d.arc(tc.x+_template_offsetx, tc.y+_template_offsety, 3, 0, 2 * Math.PI);
@@ -334,9 +344,9 @@ AM.ImageDebugger = function() {
     }*/
   };
 
-// todo, there is still a small offset, might be: (1) inaccuracy due to corner location in low resolution, (2) misunderstanding of canvas/live image location
-// but corners stay almost at  fixed locations when resizing, so should be correct.
-// Live mage seems drawed in full canvas then menu bars are on top of it
+  // todo, there is still a small offset, might be: (1) inaccuracy due to corner location in low resolution, (2) misunderstanding of canvas/live image location
+  // but corners stay almost at  fixed locations when resizing, so should be correct.
+  // Live mage seems drawed in full canvas then menu bars are on top of it
   this.UpdateSize = function (canvas2d, video_size_target){
     var corrected_height=canvas2d.height;//-2*_hbands;
     var ratioVideoWH = _camera_video_element.videoWidth/_camera_video_element.videoHeight;
