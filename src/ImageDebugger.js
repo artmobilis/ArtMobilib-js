@@ -13,6 +13,7 @@ AM.ImageDebugger = function() {
   var _matches;
   var _matches_mask;
   var _profiler;
+  var _image_data;
   var _uuid;
 
   var _hbands=44; // Height of upper horizontal menu band (44 pixels on my desktop)
@@ -23,8 +24,8 @@ AM.ImageDebugger = function() {
   var _template_offsetx;
   var _template_offsety;
 
-  var _last_uuid;
-  var _last_image_data;
+  var _last_trained_uuid;
+  var _last_trained_image_data;
 
   var _image_loader = new AM.ImageLoader();
 
@@ -37,6 +38,8 @@ AM.ImageDebugger = function() {
 
     _screen_corners = marker_corners.screen_corners;
     _profiler       = marker_corners.profiler;
+    _image_data     = marker_corners.image_data;
+
 
     if(!_screen_corners.length) return;
 
@@ -47,7 +50,18 @@ AM.ImageDebugger = function() {
 
       _context2d.beginPath();
       _context2d.arc(sc.x*_ratio+_offsetx, sc.y*_ratio+_offsety, 3, 0, 2 * Math.PI);
-     _context2d.fill();
+      _context2d.fill();
+    }
+
+
+    // draw image data and corners
+    _context2d.putImageData(_image_data, 500, _hbands);
+    for(var i = 0; i < _screen_corners.length; ++i) {
+      var sc = _screen_corners[i];
+
+      _context2d.beginPath();
+      _context2d.arc(sc.x+500, sc.y+_hbands, 3, 0, 2 * Math.PI);
+      _context2d.fill();
     }
 
     // console
@@ -65,34 +79,34 @@ AM.ImageDebugger = function() {
     _trained_image_url = trained_image_url;
 
     // draw images, its corresponding corners, and matches
-    if(marker_corners.uuid != _last_uuid) {
-      _last_uuid=marker_corners.uuid;
+    if(marker_corners.uuid != _last_trained_uuid) {
+      _last_trained_uuid=marker_corners.uuid;
 
       _image_loader.GetImageData(trained_image_url, function(image_data) {
-            _last_image_data=image_data;
+            _last_trained_image_data=image_data;
             drawImage();
           }, false);
     }
 
-    if(_last_image_data)
+    if(_last_trained_image_data)
       drawImage();
   };
 
   drawImage = function () {
     // correct position in template image
-    if( _last_image_data.width>_last_image_data.height){
-      var dif= _last_image_data.width-_last_image_data.height;
+    if(_last_trained_image_data.width>_last_trained_image_data.height){
+      var dif= _last_trained_image_data.width-_last_trained_image_data.height;
       _template_offsetx=0;
       _template_offsety=_hbands-Math.round(dif/2);
     }
     else{
-      var dif= _last_image_data.height-_last_image_data.width;
+      var dif= _last_trained_image_data.height-_last_trained_image_data.width;
       _template_offsetx=-Math.round(dif/2);
       _template_offsety=_hbands;
     }
 
-     console.log("image size=" + _last_image_data.width + " " + _last_image_data.height);
-    _context2d.putImageData(_last_image_data, 0, _hbands);
+     //console.log("Trained image size=" + _last_trained_image_data.width + " " + _last_trained_image_data.height);
+    _context2d.putImageData(_last_trained_image_data, 0, _hbands);
 
     // draw Image corners  (Todo: because we squared initial marquer, result is the square, size should be reduced)
     _context2d.strokeStyle="green";
@@ -137,7 +151,7 @@ AM.ImageDebugger = function() {
       _context2d.fill();
     }
 
-    /* too much 150/level need to show only representative for debug
+    /* too much corners (150/level), we need to show only representative for debug
     for(var i = 0; i < _trained_corners.length; ++i) {
       var sc = _trained_corners[i];
 
