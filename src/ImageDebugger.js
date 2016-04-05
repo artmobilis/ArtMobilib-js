@@ -20,6 +20,8 @@ AM.ImageDebugger = function() {
   var _ratio;
   var _offsetx;
   var _offsety;
+  var _canvas_height;
+  var _canvas_width;
 
   var _template_offsetx;
   var _template_offsety;
@@ -53,14 +55,13 @@ AM.ImageDebugger = function() {
       _context2d.fill();
     }
 
-
     // draw image data and corners
-    _context2d.putImageData(_image_data, 500, _hbands);
+    _context2d.putImageData(_image_data, _canvas_width-_image_data.width, _hbands);
     for(var i = 0; i < _screen_corners.length; ++i) {
       var sc = _screen_corners[i];
 
       _context2d.beginPath();
-      _context2d.arc(sc.x+500, sc.y+_hbands, 3, 0, 2 * Math.PI);
+      _context2d.arc(sc.x+_canvas_width-_image_data.width, sc.y+_hbands, 3, 0, 2 * Math.PI);
       _context2d.fill();
     }
 
@@ -165,20 +166,23 @@ AM.ImageDebugger = function() {
   // but corners stay almost at  fixed locations when resizing, so should be correct.
   // Live mage seems drawed in full canvas then menu bars are on top of it
   this.UpdateSize = function (canvas2d, video_size_target){
-    var corrected_height=canvas2d.height;//-2*_hbands;
+    _canvas_height=canvas2d.height;
+    _canvas_width =canvas2d.width;
+
+    var corrected_height=_canvas_height;//-2*_hbands;
     var ratioVideoWH = _camera_video_element.videoWidth/_camera_video_element.videoHeight;
-    var ratioWindowWH = canvas2d.width/corrected_height;
+    var ratioWindowWH = _canvas_width/corrected_height;
 
     // correct position in live image
     if(ratioWindowWH>ratioVideoWH) { // larger window width, video is bordered by left and right bands
       var liveWidth=Math.round(corrected_height*ratioVideoWH);
       _ratio=liveWidth/video_size_target;
-      _offsetx=Math.round((canvas2d.width-liveWidth)*0.5);
+      _offsetx=Math.round((_canvas_width-liveWidth)*0.5);
       _offsety=0;//_hbands;
     } 
     else { // larger window height, video is bordered by upper and lower bands
-      var liveHeight=canvas2d.width/ratioVideoWH;
-      _ratio=canvas2d.width/video_size_target;
+      var liveHeight=_canvas_width/ratioVideoWH;
+      _ratio=_canvas_width/video_size_target;
       _offsetx=0;
       _offsety=/*_hbands+*/Math.round((corrected_height-liveHeight)*0.5);      
     }
