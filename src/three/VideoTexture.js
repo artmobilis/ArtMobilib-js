@@ -6,9 +6,19 @@ if (typeof THREE !== 'undefined') {
   /**
    * @class
    * @augments THREE.Texture
+   * @param {object} [params]
+   * @param {string} [params.uuid]
+   * @param {number} [params.width]
+   * @param {number} [params.height]
+   * @param {bool} [params.autoplay]
+   * @param {bool} [params.loop]
    */
   AMTHREE.VideoTexture = function(params) {
+    params = params || {};
+
     THREE.Texture.call(this);
+
+    this.uuid = params.uuid || this.uuid;
 
     this.minFilter = THREE.NearestMipMapNearestFilter;
 
@@ -100,8 +110,14 @@ if (typeof THREE !== 'undefined') {
 
   /**
    * Sets the source video of the texture.
+   * @param {object} [params]
+   * @param {number} [params.width]
+   * @param {number} [params.height]
+   * @param {bool} [params.autoplay]
+   * @param {bool} [params.loop]
    */
   AMTHREE.VideoTexture.prototype.setVideo = function(params) {
+    params = params || {};
 
     this.stop();
 
@@ -119,6 +135,25 @@ if (typeof THREE !== 'undefined') {
     if (this.videoElement.autoplay)
       this.play();
   };
+
+  AMTHREE.VideoTexture.prototype.toJSON = function(meta) {
+    var output = {};
+    var video = {};
+
+    video.uuid = this.uuid;
+    video.url = this.src;
+
+    output.uuid = this.uuid;
+    output.video = video.uuid;
+    output.loop = this.videoElement.loop;
+    output.autoplay = this.videoElement.autoplay;
+
+    meta.videos = meta.video || {};
+    meta.videos[video.uuid] = video;
+    meta.textures[output.uuid] = output;
+
+    return output;
+  }
 
 
 }

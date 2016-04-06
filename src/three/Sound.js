@@ -122,6 +122,15 @@ if (typeof THREE !== 'undefined') {
     AMTHREE.SoundsCall(object, 'stop');
   };
 
+  AMTHREE.Sound.prototype.toJSON = function(meta) {
+    var output = THREE.Object3D.prototype.toJSON.call(this, meta);
+
+    output.object.type = 'Sound';
+    output.object.url = this.src;
+
+    return output;
+  }
+
 
 }
 else {

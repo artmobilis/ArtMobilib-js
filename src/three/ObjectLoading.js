@@ -84,19 +84,19 @@ var AMTHREE = AMTHREE || {};
     return new Promise(function(resolve, reject) {
       var images = {};
       if (json instanceof Array) {
-        var loader = new THREE.ImageLoader();
 
-        return Promise.all(json.map(function(image) {
+        return Promise.all(json.map(function(image_json) {
 
           return new Promise(function(resolve, reject) {
-            if (image.url === undefined)
-              console.warn('AMTHREE.ObjectLoader: no "url" specified for image ' + i);
-            else if (image.uuid === undefined)
-              console.warn('AMTHREE.ObjectLoader: no "uuid" specified for image ' + i);
+            if (image_json.url === undefined)
+              reject('AMTHREE.ObjectLoader: no "url" specified for image ' + i);
+            else if (image_json.uuid === undefined)
+              reject('AMTHREE.ObjectLoader: no "uuid" specified for image ' + i);
             else {
-              var url = path + '/' + image.url;
-              images[image.uuid] = loader.load(url, resolve);
-              return;
+              var image = new AMTHREE.Image(image_json.uuid);
+              var url = path + '/' + image_json.url;
+              image.Load(url);
+              images[image.uuid] = image;
             }
             resolve();
           });
@@ -139,6 +139,12 @@ var AMTHREE = AMTHREE || {};
     return videos;
   }
 
+  function ParseThreeConstant(value) {
+    if (typeof value === 'number') return value;
+    console.warn('AMTHREE.ObjectLoader.parseTexture: Constant should be in numeric form.', value);
+    return THREE[value];
+  }
+
   function CreateTextures(json, images, videos) {
 
     var textures = {};
@@ -146,11 +152,6 @@ var AMTHREE = AMTHREE || {};
     if (typeof SuperGif === 'undefined')
       console.warn('AMTHREE.ObjectLoader: SuperGif is undefined');
 
-    function ParseConstant(value) {
-      if (typeof value === 'number') return value;
-      console.warn('AMTHREE.ObjectLoader.parseTexture: Constant should be in numeric form.', value);
-      return THREE[value];
-    }
 
     if (typeof json !== 'undefined') {
 
@@ -178,10 +179,10 @@ var AMTHREE = AMTHREE || {};
             if (typeof SuperGif == 'undefined')
               continue;
 
-            var texture = new AMTHREE.GifTexture(image.src);
+            var texture = new AMTHREE.GifTexture(image);
 
           } else {
-            var texture = new THREE.Texture(image);
+            var texture = new AMTHREE.ImageTexture(image);
             texture.needsUpdate = true;
           }
         }
@@ -206,17 +207,17 @@ var AMTHREE = AMTHREE || {};
         texture.uuid = data.uuid;
 
         if (data.name !== undefined) texture.name = data.name;
-        if (data.mapping !== undefined) texture.mapping = ParseConstant(data.mapping);
+        if (data.mapping !== undefined) texture.mapping = ParseThreeConstant(data.mapping);
         if (data.offset !== undefined) texture.offset = new THREE.Vector2(data.offset[0], data.offset[1]);
         if (data.repeat !== undefined) texture.repeat = new THREE.Vector2(data.repeat[0], data.repeat[1]);
-        if (data.minFilter !== undefined) texture.minFilter = ParseConstant(data.minFilter);
+        if (data.minFilter !== undefined) texture.minFilter = ParseThreeConstant(data.minFilter);
         else texture.minFilter = THREE.LinearFilter;
-        if (data.magFilter !== undefined) texture.magFilter = ParseConstant(data.magFilter);
+        if (data.magFilter !== undefined) texture.magFilter = ParseThreeConstant(data.magFilter);
         if (data.anisotropy !== undefined) texture.anisotropy = data.anisotropy;
         if (Array.isArray(data.wrap)) {
 
-          texture.wrapS = ParseConstant(data.wrap[0]);
-          texture.wrapT = ParseConstant(data.wrap[1]);
+          texture.wrapS = ParseThreeConstant(data.wrap[0]);
+          texture.wrapT = ParseThreeConstant(data.wrap[1]);
 
         }
 

@@ -37,7 +37,7 @@ if (typeof THREE !== 'undefined') {
    * @class
    * @augments THREE.Texture
    */
-  AMTHREE.GifTexture = function(src) {
+  AMTHREE.GifTexture = function(image) {
     THREE.Texture.call(this);
 
     this.minFilter = THREE.NearestMipMapNearestFilter;
@@ -50,8 +50,8 @@ if (typeof THREE !== 'undefined') {
     this.imageElement.width = this.imageElement.naturalWidth;
     this.imageElement.height = this.imageElement.naturalHeight;
 
-    if (src)
-      this.setGif(src);
+    if (image)
+      this.setGif(image);
   };
 
   AMTHREE.GifTexture.prototype = Object.create(THREE.Texture.prototype);
@@ -90,16 +90,35 @@ if (typeof THREE !== 'undefined') {
   /**
    * Sets the source gif of the texture.
    */
-  AMTHREE.GifTexture.prototype.setGif = function(src) {
-    this.imageElement.src = src;
+  AMTHREE.GifTexture.prototype.setGif = function(image) {
+    if (image.url) {
+      this.image = image;
 
-    this.anim = new SuperGif( { gif: this.imageElement, auto_play: false } );
-    this.anim.load();
+      this.imageElement.src = image.url;
 
-    this.gifCanvas = this.anim.get_canvas();
+      this.anim = new SuperGif( { gif: this.imageElement, auto_play: false } );
+      this.anim.load();
 
-    this.gifCanvas.style.display = 'none';
+      this.gifCanvas = this.anim.get_canvas();
+
+      this.gifCanvas.style.display = 'none';
+    }
   };
+
+  AMTHREE.GifTexture.prototype.toJSON = function(meta) {
+    var output = {};
+
+    output.uuid = this.uuid;
+    if (this.image)
+      output.image = this.image.uuid;
+    output.animated = true;
+
+    this.image.toJSON(meta);
+
+    meta.textures[output.uuid] = output;
+
+    return output;
+  }
 
 
 }
