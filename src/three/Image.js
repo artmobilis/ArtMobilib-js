@@ -9,8 +9,8 @@ if (typeof THREE !== 'undefined') {
    */
   AMTHREE.Image = function(uuid) {
     this.uuid = uuid || THREE.Math.generateUUID();
-    this.image = null;
-    this.url = null;
+    this.image = new Image();
+    this.url;
   };
 
   /**
@@ -19,18 +19,10 @@ if (typeof THREE !== 'undefined') {
   * @returns {Promise.<undefined, string>} A promise that resolves when the image is loaded.
   */
   AMTHREE.Image.prototype.Load = function(url) {
-    var scope = this;
     this.url = url;
+    var scope = this;
     return new Promise(function(resolve, reject) {
-      var loader = new THREE.ImageLoader();
-      loader.load(url, function(image) {
-        scope.image = image;
-        resolve();
-      },
-      undefined,
-      function(xhr) {
-        reject('failed to load image ' + url);
-      })
+      scope.image.src = url;
     });
   }
 

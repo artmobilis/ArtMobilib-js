@@ -140,7 +140,7 @@ if (typeof THREE !== 'undefined') {
     var output = {};
     var video = {};
 
-    video.uuid = this.uuid;
+    video.uuid = THREE.Math.generateUUID();
     video.url = this.src;
 
     output.uuid = this.uuid;

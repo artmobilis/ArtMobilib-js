@@ -10,8 +10,8 @@ if (typeof THREE !== 'undefined') {
   AMTHREE.ImageTexture = function(image) {
     THREE.Texture.call(this);
 
-    this.minFilter = THREE.NearestMipMapNearestFilter;
-    this.image = image;
+    this.image_ref = image;
+    this.image = image.image;
   };
 
   AMTHREE.ImageTexture.prototype = Object.create(THREE.Texture.prototype);
@@ -26,9 +26,9 @@ if (typeof THREE !== 'undefined') {
     var output = {};
 
     output.uuid = this.uuid;
-    output.image = this.image.uuid;
+    output.image = this.image_ref.uuid;
 
-    this.image.toJSON(meta);
+    this.image_ref.toJSON(meta);
 
     if (typeof meta === 'object') {
       if (!meta.textures) meta.textures = {};

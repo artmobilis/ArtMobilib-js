@@ -74,7 +74,7 @@ if (typeof THREE !== 'undefined') {
    */
   AMTHREE.GifTexture.prototype.setGif = function(image) {
     if (image.url) {
-      this.image = image;
+      this.image_ref = image;
 
       this.imageElement.src = image.url;
 
@@ -96,11 +96,11 @@ if (typeof THREE !== 'undefined') {
     var output = {};
 
     output.uuid = this.uuid;
-    if (this.image)
-      output.image = this.image.uuid;
+    if (this.image_ref)
+      output.image = this.image_ref.uuid;
     output.animated = true;
 
-    this.image.toJSON(meta);
+    this.image_ref.toJSON(meta);
 
     if (typeof meta === 'object') {
       if (!meta.textures) meta.textures = {};
