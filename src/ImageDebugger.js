@@ -3,6 +3,8 @@ var AM = AM || {};
 
 AM.ImageDebugger = function() {
 
+  var _training = new AM.Training;
+
   var _context2d;
   var _camera_video_element;
 
@@ -32,6 +34,7 @@ AM.ImageDebugger = function() {
   var _image_loader = new AM.ImageLoader();
 
   var _debugMatches=false;
+  var _debugTraining=true;
 
 
   this.DrawCorners = function(marker_corners) {
@@ -97,15 +100,20 @@ AM.ImageDebugger = function() {
 
       _image_loader.GetImageData(trained_image_url, function(image_data) {
             _last_trained_image_data=image_data;
+            correctTrainingImageOffsets();
             drawImage();
+            if(_debugTraining) debugTraining();
           }, false);
     }
 
-    if(_last_trained_image_data)
+    if(_last_trained_image_data){
+      correctTrainingImageOffsets();
       drawImage();
+      if(_debugTraining) debugTraining();
+    }
   };
 
-  drawImage = function () {
+  correctTrainingImageOffsets = function () {
     // correct position in template image
     if(_last_trained_image_data.width>_last_trained_image_data.height){
       var dif= _last_trained_image_data.width-_last_trained_image_data.height;
@@ -117,8 +125,10 @@ AM.ImageDebugger = function() {
       _template_offsetx=-Math.round(dif/2);
       _template_offsety=_hbands;
     }
+  };
 
-     //console.log("Trained image size=" + _last_trained_image_data.width + " " + _last_trained_image_data.height);
+  drawImage = function () {
+    //console.log("Trained image size=" + _last_trained_image_data.width + " " + _last_trained_image_data.height);
     _context2d.putImageData(_last_trained_image_data, 0, _hbands);
 
     // draw Image corners  (Todo: because we squared initial marquer, result is the square, size should be reduced)
@@ -164,6 +174,37 @@ AM.ImageDebugger = function() {
       _context2d.fill();
     }
 
+  };
+
+
+  jsFeat2ImageData = function (src){
+    var dst = _context2d.createImageData(src.cols, src.rows);
+    var i = src.data.length, j = (i * 4) + 3;
+
+    while(i --){
+      dst.data[j -= 4] = 255;
+      dst.data[j - 1] = dst.data[j - 2] = dst.data[j - 3] = src.data[i];
+    }
+    return dst;
+  };
+
+
+  //todo, there is maybe a better location to put those images
+  debugTraining = function () {
+    _training.TrainFull(_last_trained_image_data);
+    var trained_image = new AM.TrainedImage(uuid);
+    _training.SetResultToTrainedImage(trained_image);
+    _training.Empty();
+
+    var imgGray=jsFeat2ImageData(_training.getGrayData());
+    var bluredImages=_training.getBluredImages();
+    _context2d.putImageData(imgGray, 0, _canvas_height-35-_hbands-imgGray.height);
+    var offset=imgGray.width;
+    for(var i=0; i < bluredImages.length; ++i) {
+      _context2d.putImageData(jsFeat2ImageData(bluredImages[i]), offset, _canvas_height-35-_hbands-bluredImages[i].rows);
+      offset+=bluredImages[i].cols;
+    }
+
     /* too much corners (150/level), we need to show only representative for debug
     for(var i = 0; i < _trained_corners.length; ++i) {
       var sc = _trained_corners[i];
@@ -173,6 +214,7 @@ AM.ImageDebugger = function() {
       _context2d.fill();
     }*/
   };
+
 
   // todo, there is still a small offset, might be: (1) inaccuracy due to corner location in low resolution, (2) misunderstanding of canvas/live image location
   // but corners stay almost at  fixed locations when resizing, so should be correct.

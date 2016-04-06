@@ -200,6 +200,8 @@ var AM = AM || {};
 
 AM.ImageDebugger = function() {
 
+  var _training = new AM.Training;
+
   var _context2d;
   var _camera_video_element;
 
@@ -229,6 +231,7 @@ AM.ImageDebugger = function() {
   var _image_loader = new AM.ImageLoader();
 
   var _debugMatches=false;
+  var _debugTraining=true;
 
 
   this.DrawCorners = function(marker_corners) {
@@ -294,15 +297,20 @@ AM.ImageDebugger = function() {
 
       _image_loader.GetImageData(trained_image_url, function(image_data) {
             _last_trained_image_data=image_data;
+            correctTrainingImageOffsets();
             drawImage();
+            if(_debugTraining) debugTraining();
           }, false);
     }
 
-    if(_last_trained_image_data)
+    if(_last_trained_image_data){
+      correctTrainingImageOffsets();
       drawImage();
+      if(_debugTraining) debugTraining();
+    }
   };
 
-  drawImage = function () {
+  correctTrainingImageOffsets = function () {
     // correct position in template image
     if(_last_trained_image_data.width>_last_trained_image_data.height){
       var dif= _last_trained_image_data.width-_last_trained_image_data.height;
@@ -314,8 +322,10 @@ AM.ImageDebugger = function() {
       _template_offsetx=-Math.round(dif/2);
       _template_offsety=_hbands;
     }
+  };
 
-     //console.log("Trained image size=" + _last_trained_image_data.width + " " + _last_trained_image_data.height);
+  drawImage = function () {
+    //console.log("Trained image size=" + _last_trained_image_data.width + " " + _last_trained_image_data.height);
     _context2d.putImageData(_last_trained_image_data, 0, _hbands);
 
     // draw Image corners  (Todo: because we squared initial marquer, result is the square, size should be reduced)
@@ -361,6 +371,37 @@ AM.ImageDebugger = function() {
       _context2d.fill();
     }
 
+  };
+
+
+  jsFeat2ImageData = function (src){
+    var dst = _context2d.createImageData(src.cols, src.rows);
+    var i = src.data.length, j = (i * 4) + 3;
+
+    while(i --){
+      dst.data[j -= 4] = 255;
+      dst.data[j - 1] = dst.data[j - 2] = dst.data[j - 3] = src.data[i];
+    }
+    return dst;
+  };
+
+
+  //todo, there is maybe a better location to put those images
+  debugTraining = function () {
+    _training.TrainFull(_last_trained_image_data);
+    var trained_image = new AM.TrainedImage(uuid);
+    _training.SetResultToTrainedImage(trained_image);
+    _training.Empty();
+
+    var imgGray=jsFeat2ImageData(_training.getGrayData());
+    var bluredImages=_training.getBluredImages();
+    _context2d.putImageData(imgGray, 0, _canvas_height-35-_hbands-imgGray.height);
+    var offset=imgGray.width;
+    for(var i=0; i < bluredImages.length; ++i) {
+      _context2d.putImageData(jsFeat2ImageData(bluredImages[i]), offset, _canvas_height-35-_hbands-bluredImages[i].rows);
+      offset+=bluredImages[i].cols;
+    }
+
     /* too much corners (150/level), we need to show only representative for debug
     for(var i = 0; i < _trained_corners.length; ++i) {
       var sc = _trained_corners[i];
@@ -370,6 +411,7 @@ AM.ImageDebugger = function() {
       _context2d.fill();
     }*/
   };
+
 
   // todo, there is still a small offset, might be: (1) inaccuracy due to corner location in low resolution, (2) misunderstanding of canvas/live image location
   // but corners stay almost at  fixed locations when resizing, so should be correct.
@@ -5341,6 +5383,8 @@ AM.Training = function() {
 
   var _scale_increment = Math.sqrt(2.0); // magic number ;)
 
+  var _gray_image;
+  var _blured_images = [];
 
   function TrainLevel(img, level_img, level, scale) {
     var corners = _corners_levels[level];
@@ -5435,6 +5479,62 @@ AM.Training = function() {
 
       TrainLevel(img, level_img, level, scale);
     }
+  };
+
+  cloneImage = function(img){
+    var dst = new jsfeat.matrix_t(img.cols, img.rows, jsfeat.U8_t | jsfeat.C1_t);
+    img.copy_to(dst);
+    return dst;
+  }
+
+ /**
+   * Trains an image, saves the intermediate results and images internally
+   * @inner
+   * @param {ImageData} image_data
+   */
+  this.TrainFull = function(image_data) {
+    var level = 0;
+    var scale = 1.0;
+
+    _descriptors_levels = [];
+    _corners_levels = [];
+    _images_blured = [];
+
+    var gray =  new jsfeat.matrix_t(image_data.width, image_data.height, jsfeat.U8_t | jsfeat.C1_t);
+
+    jsfeat.imgproc.grayscale(image_data.data, image_data.width, image_data.height, gray, jsfeat.COLOR_RGBA2GRAY);
+
+    var scale_0 = Math.min(_params.image_size_max / image_data.width, _params.image_size_max / image_data.height);
+    var img = new jsfeat.matrix_t(image_data.width * scale_0, image_data.height * scale_0, jsfeat.U8_t | jsfeat.C1_t);
+
+    _width = img.cols;
+    _height = img.rows;
+
+    RescaleDown(gray, img, scale_0);
+
+    AllocateCornersDescriptors(img.cols, img.rows);
+
+    var level_img = new jsfeat.matrix_t(img.cols, img.rows, jsfeat.U8_t | jsfeat.C1_t);
+
+    TrainLevel(img, level_img, 0, scale);
+    _gray_image=img;
+    _blured_images[0] = cloneImage(level_img);
+
+    // lets do multiple scale levels
+    for(level = 1; level < _params.num_train_levels; ++level) {
+      scale /= _scale_increment;
+
+      TrainLevel(img, level_img, level, scale);
+      _blured_images[level] = cloneImage(level_img);
+    }
+  };
+
+  this.getGrayData = function() {
+    return _gray_image;
+  };
+
+  this.getBluredImages = function(){
+    return _blured_images;
   };
 
   /**

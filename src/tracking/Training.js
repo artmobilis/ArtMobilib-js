@@ -24,6 +24,8 @@ AM.Training = function() {
 
   var _scale_increment = Math.sqrt(2.0); // magic number ;)
 
+  var _gray_image;
+  var _blured_images = [];
 
   function TrainLevel(img, level_img, level, scale) {
     var corners = _corners_levels[level];
@@ -118,6 +120,62 @@ AM.Training = function() {
 
       TrainLevel(img, level_img, level, scale);
     }
+  };
+
+  cloneImage = function(img){
+    var dst = new jsfeat.matrix_t(img.cols, img.rows, jsfeat.U8_t | jsfeat.C1_t);
+    img.copy_to(dst);
+    return dst;
+  }
+
+ /**
+   * Trains an image, saves the intermediate results and images internally
+   * @inner
+   * @param {ImageData} image_data
+   */
+  this.TrainFull = function(image_data) {
+    var level = 0;
+    var scale = 1.0;
+
+    _descriptors_levels = [];
+    _corners_levels = [];
+    _images_blured = [];
+
+    var gray =  new jsfeat.matrix_t(image_data.width, image_data.height, jsfeat.U8_t | jsfeat.C1_t);
+
+    jsfeat.imgproc.grayscale(image_data.data, image_data.width, image_data.height, gray, jsfeat.COLOR_RGBA2GRAY);
+
+    var scale_0 = Math.min(_params.image_size_max / image_data.width, _params.image_size_max / image_data.height);
+    var img = new jsfeat.matrix_t(image_data.width * scale_0, image_data.height * scale_0, jsfeat.U8_t | jsfeat.C1_t);
+
+    _width = img.cols;
+    _height = img.rows;
+
+    RescaleDown(gray, img, scale_0);
+
+    AllocateCornersDescriptors(img.cols, img.rows);
+
+    var level_img = new jsfeat.matrix_t(img.cols, img.rows, jsfeat.U8_t | jsfeat.C1_t);
+
+    TrainLevel(img, level_img, 0, scale);
+    _gray_image=img;
+    _blured_images[0] = cloneImage(level_img);
+
+    // lets do multiple scale levels
+    for(level = 1; level < _params.num_train_levels; ++level) {
+      scale /= _scale_increment;
+
+      TrainLevel(img, level_img, level, scale);
+      _blured_images[level] = cloneImage(level_img);
+    }
+  };
+
+  this.getGrayData = function() {
+    return _gray_image;
+  };
+
+  this.getBluredImages = function(){
+    return _blured_images;
   };
 
   /**
