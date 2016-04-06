@@ -19,7 +19,7 @@ if (typeof THREE !== 'undefined') {
 
   /**
   * Returns the json representation of the texture
-  * @param {object} meta - an object holding json ressources. The result of this function will be added to it.
+  * @param {object} [meta] - an object holding json ressources. If provided, the result of this function will be added to it.
   * @returns {object} A json object
   */
   AMTHREE.ImageTexture.prototype.toJSON = function(meta) {
@@ -30,7 +30,10 @@ if (typeof THREE !== 'undefined') {
 
     this.image.toJSON(meta);
 
-    meta.textures[output.uuid] = output;
+    if (typeof meta === 'object') {
+      if (!meta.textures) meta.textures = {};
+      meta.textures[output.uuid] = output;
+    }
 
     return output;
   }

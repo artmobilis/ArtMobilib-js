@@ -25,6 +25,7 @@ if (typeof THREE !== 'undefined') {
       var loader = new THREE.ImageLoader();
       loader.load(url, function(image) {
         scope.image = image;
+        resolve();
       },
       undefined,
       function(xhr) {
@@ -35,7 +36,7 @@ if (typeof THREE !== 'undefined') {
 
   /**
   * Returns an object that can be serialized using JSON.stringify.
-  * @param {object} meta - an object holding json ressources. The result of this function will be added to it.
+  * @param {object} [meta] - an object holding json ressources. The result of this function will be added to it if provided.
   * @returns {object} A json object
   */
   AMTHREE.Image.prototype.toJSON = function(meta) {
@@ -44,7 +45,10 @@ if (typeof THREE !== 'undefined') {
     output.uuid = this.uuid;
     output.url = this.url;
 
-    meta.images[output.uuid] = output;
+    if (typeof meta === 'object') {
+      if (!meta.images) meta.images = {};
+      meta.images[output.uuid] = output;
+    }
 
     return output;
   }
