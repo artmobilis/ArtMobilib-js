@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Home</title>
+    <title>JSDoc: Source: three/Image.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,32 +17,76 @@
 
 <div id="main">
 
-    <h1 class="page-title">Home</h1>
+    <h1 class="page-title">Source: three/Image.js</h1>
 
     
 
 
 
     
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/** @namespace */
+var AMTHREE = AMTHREE || {};
+
+if (typeof THREE !== 'undefined') {
+
+  /**
+   * @class
+   * @augments THREE.Texture
+   */
+  AMTHREE.Image = function(uuid) {
+    this.uuid = uuid || THREE.Math.generateUUID();
+    this.image = null;
+    this.url = null;
+  };
+
+  /**
+  * Loads an image
+  * @param {string} url
+  * @returns {Promise.&lt;undefined, string>} A promise that resolves when the image is loaded.
+  */
+  AMTHREE.Image.prototype.Load = function(url) {
+    var scope = this;
+    this.url = url;
+    return new Promise(function(resolve, reject) {
+      var loader = new THREE.ImageLoader();
+      loader.load(url, function(image) {
+        scope.image = image;
+      },
+      undefined,
+      function(xhr) {
+        reject('failed to load image ' + url);
+      })
+    });
+  }
+
+  /**
+  * Returns an object that can be serialized using JSON.stringify.
+  * @param {object} meta - an object holding json ressources. The result of this function will be added to it.
+  * @returns {object} A json object
+  */
+  AMTHREE.Image.prototype.toJSON = function(meta) {
+    var output = {};
+
+    output.uuid = this.uuid;
+    output.url = this.url;
+
+    meta.images[output.uuid] = output;
+
+    return output;
+  }
 
 
-    <h3> </h3>
-
-
-
-
-
-
-
-
-
-
-    
-
-
-
-
-
+}
+else {
+  AMTHREE.ImageTexture = function() {
+    console.warn('ImageTexture.js: THREE undefined');
+  };
+}
+</code></pre>
+        </article>
+    </section>
 
 
 
