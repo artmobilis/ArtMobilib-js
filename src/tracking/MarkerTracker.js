@@ -218,8 +218,17 @@ AM.MarkerTracker = function() {
    * @inner
    * @returns {AM.match_t[]}
    */
-  this.Getmatches = function () {
+  this.GetMatches = function () {
     return _matching.GetMatches();
+  };
+
+ /**
+   * Returns the buffer of matches validated by homography ()
+   * @inner
+   * @returns {AM.match_t[]}
+   */
+  this.GetMatchesMask = function () {
+    return _pose.GetMatchesMask();
   };
 
 /**
