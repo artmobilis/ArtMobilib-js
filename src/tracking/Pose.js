@@ -105,11 +105,14 @@ AM.Pose = function() {
    * @param {number} marker_height
    * @returns {Point2D[]} The corners
    */
-  this.GetPoseCorners = function(marker_width, marker_height) {
+   this.GetPoseCorners = function(marker_width, marker_height) {
     return tCorners(_homo3x3.data, marker_width, marker_height);
   };
 
 
+  this.GetMatchesMask = function() {
+    return _match_mask;
+  };
 };
 
 
