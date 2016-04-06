@@ -13,6 +13,11 @@ if (typeof THREE !== 'undefined') {
     this.url = null;
   };
 
+  /**
+  * Loads an image
+  * @param {string} url
+  * @returns {Promise.<undefined, string>} A promise that resolves when the image is loaded.
+  */
   AMTHREE.Image.prototype.Load = function(url) {
     var scope = this;
     this.url = url;
@@ -28,6 +33,11 @@ if (typeof THREE !== 'undefined') {
     });
   }
 
+  /**
+  * Returns an object that can be serialized using JSON.stringify.
+  * @param {object} meta - an object holding json ressources. The result of this function will be added to it.
+  * @returns {object} A json object
+  */
   AMTHREE.Image.prototype.toJSON = function(meta) {
     var output = {};
 

@@ -1,32 +1,13 @@
 /*************************
 
-
-GifTexture
-A class helper to use a gif image as a Threejs texture
-inherit THREE.texture
-
-Constructor
-
-GifTexture(src: string = '')
-
-
-Methods
-
-play()
-update()
-pause()
-stop()
-setGif(src: string)
-
-
 Dependency
 
 Threejs
 
 libgif: https://github.com/buzzfeed/libgif-js
 
-
 *************************/
+
 
 /** @namespace */
 var AMTHREE = AMTHREE || {};
@@ -34,6 +15,7 @@ var AMTHREE = AMTHREE || {};
 if (typeof THREE !== 'undefined') {
 
   /**
+   * A helper class to use a gif image as a Threejs texture
    * @class
    * @augments THREE.Texture
    */
@@ -105,6 +87,11 @@ if (typeof THREE !== 'undefined') {
     }
   };
 
+  /**
+  * Returns the json representation of the texture
+  * @param {object} meta - an object holding json ressources. The result of this function will be added to it.
+  * @returns {object} A json object
+  */
   AMTHREE.GifTexture.prototype.toJSON = function(meta) {
     var output = {};
 
