@@ -1,6 +1,11 @@
 var AM = AM || {};
 
-// give a color from green (0) to red (max)
+/**
+  * give a color from green (0) to red (max)
+  * @param {number} value
+  * @param {number} max value
+  * @return {hex} color value
+  */
 getGradientGreenRedColor = function (n, max){
 
   function intToHex(i) {
@@ -13,7 +18,10 @@ getGradientGreenRedColor = function (n, max){
   return "#" + intToHex(red) + intToHex(green) + "00";
 };
 
-
+/**
+ * Display images and informations to debug image marker training and matching stages
+ * @class
+ */
 AM.ImageDebugger = function() {
 
   var _training = new AM.Training;
@@ -51,7 +59,11 @@ AM.ImageDebugger = function() {
   var _debugMatches=false;
   var _debugTraining=true;
 
-
+  /**
+   * Draw corners and timings for each processed image
+   * @inner
+   * @param {object} corner and matching information
+  */
   this.DrawCorners = function(marker_corners) {
     if(!_debugMatches) return;
     if(!marker_corners) return;
@@ -98,6 +110,12 @@ AM.ImageDebugger = function() {
 
   };
 
+  /**
+   * Input function for debugging image training and matching
+   * @inner
+   * @param {object} corner and matching information
+   * @param {url} url of the image marker that has been detected
+   */
   this.DebugMatching = function(marker_corners, trained_image_url) {
     if(!_debugMatches) return;
     if(!marker_corners) return;
@@ -138,6 +156,11 @@ AM.ImageDebugger = function() {
    }
  };
 
+  /**
+   * Trained images are squared for learning. This function corrects the location of corners inside the trained image
+   * by computing _template_offsetx and _template_offsety
+   * @inner
+   */
   correctTrainingImageOffsets = function () {
     // correct position in template image
     if(_last_trained_image_data.width>_last_trained_image_data.height){
@@ -152,6 +175,10 @@ AM.ImageDebugger = function() {
     }
   };
 
+  /**
+   * Draw the rectangle contour around the detected image pattern in the live image
+   * @inner
+   */
   drawContour = function(){
     // draw Image corners  (Todo: because we squared initial marquer, result is the square, size should be reduced)
     _context2d.strokeStyle="green";
@@ -165,6 +192,11 @@ AM.ImageDebugger = function() {
     _context2d.stroke();
   };
 
+  /**
+   * Draw the matches between corners in live image and corners of trained image (consider levels)
+   * @inner
+   * @param {bool} use all trained levels or all concatene in one image
+   */
   drawMatches = function (all_in_first_image=false) {
     // draw matched trained corners    
     _context2d.lineWidth=2;
@@ -208,7 +240,13 @@ AM.ImageDebugger = function() {
 
   };
 
-  jsFeat2ImageData = function (src){
+  /**
+   * Convert a jsfeat matrix in imageData for context drawing
+   * @inner
+   * @param {jsfeat.matrix_t} image
+   * @returns {imageData} image
+   */
+   jsFeat2ImageData = function (src){
     var dst = _context2d.createImageData(src.cols, src.rows);
     var i = src.data.length, j = (i * 4) + 3;
 
@@ -220,13 +258,23 @@ AM.ImageDebugger = function() {
   };
 
 
-  displayColor= function (originx, originy) {
+  /**
+   * Display color trained image
+   * @inner
+   * @param {originx} x location in canvas
+   * @param {originy} y location in canvas
+   */
+   displayColor= function (originx, originy) {
     // display color
     _context2d.putImageData(_last_trained_image_data, originx, originy);
   };
 
-  //todo, there is maybe a better location to put those images
-  displayTrainingImages = function (upperLeft) {
+  /**
+   * Display all image levels (blured images) 
+   * @inner
+   * @param {bool} select upperleft or bottomLeft part
+  */
+   displayTrainingImages = function (upperLeft) {
     _training.Empty();
     _training.TrainFull(_last_trained_image_data);
 
@@ -248,8 +296,13 @@ AM.ImageDebugger = function() {
     }
   };
 
-// there is too much corners per levels, we only shows the most important (they are ordered)
-drawTrainedCorners = function (number_per_level=50) {
+  /**
+   * Draw the corners detected at each level during image training
+   * there is too much corners per levels, we only shows the most important (red stronger)
+   * @inner
+   * @param {number} number of coirners to display for each level
+   */
+  drawTrainedCorners = function (number_per_level=50) {
   var bluredImages=_training.getBluredImages();
   var trained_image = new AM.TrainedImage(_uuid);
   _training.SetResultToTrainedImage(trained_image);
@@ -277,6 +330,12 @@ drawTrainedCorners = function (number_per_level=50) {
   }
 };
 
+  /**
+   * Update the location of live image corners (samall resized image) with respect to canvas and its borders
+   * @inner
+   * @param {canvas} current canvas 
+   * @param {number} target size of the proceesed image (largest of width and height)
+   */
   // todo, there is still a small offset, might be: (1) inaccuracy due to corner location in low resolution, (2) misunderstanding of canvas/live image location
   // but corners stay almost at  fixed locations when resizing, so should be correct.
   // Live mage seems drawed in full canvas then menu bars are on top of it
@@ -303,7 +362,13 @@ drawTrainedCorners = function (number_per_level=50) {
     }
   };
 
-
+  /**
+   * Set data at initialisation
+   * @inner
+   * @param {context2D} current canvas 
+   * @param {video element} webcam element to compute initial video size
+   * @param {bool} display or not debugging information
+   */
   this.SetData = function ( context2d, camera_video_element, debugMatches) {
     _context2d=context2d;
     _camera_video_element= camera_video_element;
