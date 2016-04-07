@@ -101,15 +101,17 @@ AM.ImageDebugger = function() {
       _image_loader.GetImageData(trained_image_url, function(image_data) {
             _last_trained_image_data=image_data;
             correctTrainingImageOffsets();
+            displayTrainingImages(true);
+            if(_debugTraining) displayTrainingImages(false);
             drawImage();
-            if(_debugTraining) debugTraining();
           }, false);
     }
 
     if(_last_trained_image_data){
       correctTrainingImageOffsets();
+      displayTrainingImages(true);
+      if(_debugTraining) displayTrainingImages(false);
       drawImage();
-      if(_debugTraining) debugTraining();
     }
   };
 
@@ -128,9 +130,6 @@ AM.ImageDebugger = function() {
   };
 
   drawImage = function () {
-    //console.log("Trained image size=" + _last_trained_image_data.width + " " + _last_trained_image_data.height);
-    _context2d.putImageData(_last_trained_image_data, 0, _hbands);
-
     // draw Image corners  (Todo: because we squared initial marquer, result is the square, size should be reduced)
     _context2d.strokeStyle="green";
     _context2d.lineWidth=5;
@@ -189,30 +188,29 @@ AM.ImageDebugger = function() {
   };
 
 
+
+  displayColor= function (originx, originy) {
+    // display color
+    _context2d.putImageData(_last_trained_image_data, originx, originy);
+  };
+
   //todo, there is maybe a better location to put those images
-  debugTraining = function () {
+  displayTrainingImages = function (upperLeft) {
     _training.TrainFull(_last_trained_image_data);
-    var trained_image = new AM.TrainedImage(uuid);
-    _training.SetResultToTrainedImage(trained_image);
     _training.Empty();
 
-    var imgGray=jsFeat2ImageData(_training.getGrayData());
+    // display grey
+    /*var imgGray=jsFeat2ImageData(_training.getGrayData());
+    _context2d.putImageData(imgGray, 0, _canvas_height-35-_hbands-imgGray.height);*/
+
     var bluredImages=_training.getBluredImages();
-    _context2d.putImageData(imgGray, 0, _canvas_height-35-_hbands-imgGray.height);
-    var offset=imgGray.width;
+    var originx=0; // or imgGray.width;
     for(var i=0; i < bluredImages.length; ++i) {
-      _context2d.putImageData(jsFeat2ImageData(bluredImages[i]), offset, _canvas_height-35-_hbands-bluredImages[i].rows);
-      offset+=bluredImages[i].cols;
+      originy=_hbands;
+      if(!upperLeft) originy =_canvas_height-35-_hbands-bluredImages[i].rows;
+      _context2d.putImageData(jsFeat2ImageData(bluredImages[i]), originx, originy);
+      originx+=bluredImages[i].cols;
     }
-
-    /* too much corners (150/level), we need to show only representative for debug
-    for(var i = 0; i < _trained_corners.length; ++i) {
-      var sc = _trained_corners[i];
-
-      _context2d.beginPath();
-      _context2d.arc(sc.x+_offsetx, sc.y+_offsety, 3, 0, 2 * Math.PI);
-      _context2d.fill();
-    }*/
   };
 
 
