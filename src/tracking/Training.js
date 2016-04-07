@@ -223,5 +223,8 @@ AM.Training = function() {
     }
   };
 
+  this.GetScaleIncrement = function(){
+    return _scale_increment;
+  };
 
 };

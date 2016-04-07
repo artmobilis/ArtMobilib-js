@@ -224,6 +224,8 @@ AM.ImageDebugger = function() {
 
   var _template_offsetx;
   var _template_offsety;
+  var _offsetLevel = [];
+  var _scaleLevel = [];
 
   var _last_trained_uuid;
   var _last_trained_image_data;
@@ -319,12 +321,12 @@ AM.ImageDebugger = function() {
     if(_last_trained_image_data.width>_last_trained_image_data.height){
       var dif= _last_trained_image_data.width-_last_trained_image_data.height;
       _template_offsetx=0;
-      _template_offsety=_hbands-Math.round(dif/2);
+      _template_offsety=-Math.round(dif/2);
     }
     else{
       var dif= _last_trained_image_data.height-_last_trained_image_data.width;
       _template_offsetx=-Math.round(dif/2);
-      _template_offsety=_hbands;
+      _template_offsety=0;
     }
   };
 
@@ -341,8 +343,7 @@ AM.ImageDebugger = function() {
     _context2d.stroke();
   };
 
-  drawMatches = function () {
-
+  drawMatches = function (all_in_first_image=false) {
     // draw matched trained corners    
     _context2d.lineWidth=2;
     for(var i = 0; i < _matches.length; ++i) {
@@ -361,12 +362,20 @@ AM.ImageDebugger = function() {
         _context2d.strokeStyle="red";
       }
 
+      // compute corner location
+      var cornerx=tc.x+_template_offsetx;
+      var cornery=tc.y+_template_offsety;
+      if(!all_in_first_image){
+          cornerx=cornerx*_scaleLevel[m.pattern_lev]+_offsetLevel[m.pattern_lev] ;
+          cornery=cornery*_scaleLevel[m.pattern_lev];
+      }
+
       _context2d.beginPath();
-      _context2d.arc(tc.x+_template_offsetx, tc.y+_template_offsety, 3, 0, 2 * Math.PI);
+      _context2d.arc(cornerx, cornery+_hbands, 3, 0, 2 * Math.PI);
       _context2d.fill();
 
       _context2d.beginPath();
-      _context2d.moveTo(tc.x+_template_offsetx, tc.y+_template_offsety);
+      _context2d.moveTo(cornerx, cornery+_hbands);
       _context2d.lineTo(ts.x*_ratio+_offsetx, ts.y*_ratio+_offsety);
       _context2d.stroke();
 
@@ -405,11 +414,15 @@ AM.ImageDebugger = function() {
 
     var bluredImages=_training.getBluredImages();
     var originx=0; // or imgGray.width;
+    _offsetLevel[0]=0;
+    _scaleLevel[0]=1.0;
     for(var i=0; i < bluredImages.length; ++i) {
       originy=_hbands;
       if(!upperLeft) originy =_canvas_height-35-_hbands-bluredImages[i].rows;
       _context2d.putImageData(jsFeat2ImageData(bluredImages[i]), originx, originy);
       originx+=bluredImages[i].cols;
+      _offsetLevel[i+1]=_offsetLevel[i]+bluredImages[i].cols;
+      _scaleLevel[i+1]= _scaleLevel[i]/_training.GetScaleIncrement();
     }
   };
 
@@ -5583,5 +5596,8 @@ AM.Training = function() {
     }
   };
 
+  this.GetScaleIncrement = function(){
+    return _scale_increment;
+  };
 
 };
