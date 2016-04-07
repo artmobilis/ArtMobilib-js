@@ -83,7 +83,7 @@ AM.ImageDebugger = function() {
 
   };
 
-  this.DrawMatches = function(marker_corners, trained_image_url) {
+  this.DebugMatching = function(marker_corners, trained_image_url) {
     if(!_debugMatches) return;
     if(!marker_corners) return;
     if(!trained_image_url) return;
@@ -103,7 +103,8 @@ AM.ImageDebugger = function() {
             correctTrainingImageOffsets();
             displayTrainingImages(true);
             if(_debugTraining) displayTrainingImages(false);
-            drawImage();
+            drawContour();
+            drawMatches();
           }, false);
     }
 
@@ -111,7 +112,8 @@ AM.ImageDebugger = function() {
       correctTrainingImageOffsets();
       displayTrainingImages(true);
       if(_debugTraining) displayTrainingImages(false);
-      drawImage();
+      drawContour();
+      drawMatches();
     }
   };
 
@@ -129,7 +131,7 @@ AM.ImageDebugger = function() {
     }
   };
 
-  drawImage = function () {
+  drawContour = function(){
     // draw Image corners  (Todo: because we squared initial marquer, result is the square, size should be reduced)
     _context2d.strokeStyle="green";
     _context2d.lineWidth=5;
@@ -140,6 +142,9 @@ AM.ImageDebugger = function() {
     _context2d.lineTo(_corners[3].x*_ratio+_offsetx,  _corners[3].y*_ratio+_offsety);
     _context2d.lineTo(_corners[0].x*_ratio+_offsetx,  _corners[0].y*_ratio+_offsety);
     _context2d.stroke();
+  };
+
+  drawMatches = function () {
 
     // draw matched trained corners    
     _context2d.lineWidth=2;
@@ -175,7 +180,6 @@ AM.ImageDebugger = function() {
 
   };
 
-
   jsFeat2ImageData = function (src){
     var dst = _context2d.createImageData(src.cols, src.rows);
     var i = src.data.length, j = (i * 4) + 3;
@@ -186,7 +190,6 @@ AM.ImageDebugger = function() {
     }
     return dst;
   };
-
 
 
   displayColor= function (originx, originy) {
