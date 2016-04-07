@@ -1,5 +1,18 @@
 var AM = AM || {};
 
+// give a color from green (0) to red (max)
+getGradientGreenRedColor = function (n, max){
+
+  function intToHex(i) {
+    var hex = parseInt(i).toString(16);
+    return (hex.length < 2) ? "0" + hex : hex;
+  }   
+
+  var red = (255 * n) / max;
+  var green = (255 * (max - n)) / max ;
+  return "#" + intToHex(red) + intToHex(green) + "00";
+};
+
 
 AM.ImageDebugger = function() {
 
@@ -101,23 +114,29 @@ AM.ImageDebugger = function() {
       _last_trained_uuid=marker_corners.uuid;
 
       _image_loader.GetImageData(trained_image_url, function(image_data) {
-            _last_trained_image_data=image_data;
-            correctTrainingImageOffsets();
-            displayTrainingImages(true);
-            if(_debugTraining) displayTrainingImages(false);
-            drawContour();
-            drawMatches();
-          }, false);
+        _last_trained_image_data=image_data;
+        correctTrainingImageOffsets();
+        displayTrainingImages(true);
+        drawContour();
+        drawMatches();
+        if(_debugTraining){
+         displayTrainingImages(false);
+         drawTrainedCorners();
+       }
+     }, false);
     }
 
     if(_last_trained_image_data){
       correctTrainingImageOffsets();
       displayTrainingImages(true);
-      if(_debugTraining) displayTrainingImages(false);
       drawContour();
       drawMatches();
-    }
-  };
+      if(_debugTraining){
+       displayTrainingImages(false);
+       drawTrainedCorners();
+     }
+   }
+ };
 
   correctTrainingImageOffsets = function () {
     // correct position in template image
@@ -208,8 +227,8 @@ AM.ImageDebugger = function() {
 
   //todo, there is maybe a better location to put those images
   displayTrainingImages = function (upperLeft) {
-    _training.TrainFull(_last_trained_image_data);
     _training.Empty();
+    _training.TrainFull(_last_trained_image_data);
 
     // display grey
     /*var imgGray=jsFeat2ImageData(_training.getGrayData());
@@ -229,6 +248,34 @@ AM.ImageDebugger = function() {
     }
   };
 
+// there is too much corners per levels, we only shows the most important (they are ordered)
+drawTrainedCorners = function (number_per_level=50) {
+  var bluredImages=_training.getBluredImages();
+  var trained_image = new AM.TrainedImage(_uuid);
+  _training.SetResultToTrainedImage(trained_image);
+
+  for(var i = 0; i < trained_image.GetLevelNbr(); ++i) {
+    var corners = trained_image.GetCorners(i);
+    var descriptors = trained_image.GetDescriptors(i); // what to do with that in debug?
+    var originy =_canvas_height-35-_hbands-bluredImages[i].rows;
+    
+
+    for(var j = 0; j < number_per_level; ++j) {
+      var tc=corners[j];
+      _context2d.fillStyle=getGradientGreenRedColor(number_per_level-j,number_per_level); // strongest red
+
+      // compute corner location
+      var cornerx=tc.x+_template_offsetx;
+      var cornery=tc.y+_template_offsety;
+      cornerx=cornerx*_scaleLevel[i]+_offsetLevel[i] ;
+      cornery=cornery*_scaleLevel[i];
+
+      _context2d.beginPath();
+      _context2d.arc(cornerx, cornery+originy, 3, 0, 2 * Math.PI);
+      _context2d.fill();
+    }
+  }
+};
 
   // todo, there is still a small offset, might be: (1) inaccuracy due to corner location in low resolution, (2) misunderstanding of canvas/live image location
   // but corners stay almost at  fixed locations when resizing, so should be correct.

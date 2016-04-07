@@ -139,7 +139,7 @@ AM.Training = function() {
 
     _descriptors_levels = [];
     _corners_levels = [];
-    _images_blured = [];
+    _blured_images = [];
 
     var gray =  new jsfeat.matrix_t(image_data.width, image_data.height, jsfeat.U8_t | jsfeat.C1_t);
 
@@ -203,6 +203,7 @@ AM.Training = function() {
   this.Empty = function() {
     _descriptors_levels = undefined;
     _corners_levels = undefined;
+    _blured_images = undefined;
   };
 
   /**
