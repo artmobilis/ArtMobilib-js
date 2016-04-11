@@ -73,3 +73,12 @@ AMTHREE.PlayAnimations = function(object) {
     }
   } );
 };
+
+AMTHREE.GetFilename = function(path) {
+  return path.split('/').pop().split('\\').pop();
+}
+
+AMTHREE.IMAGE_PATH = 'images/';
+AMTHREE.MODEL_PATH = 'models/';
+AMTHREE.VIDEO_PATH = 'videos/';
+AMTHREE.SOUND_PATH = 'sounds/';
