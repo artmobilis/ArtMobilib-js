@@ -5,29 +5,16 @@ if (typeof THREE !== 'undefined') {
 
   /**
    * @class
-   * @augments THREE.Texture
+   * @param {string} [uuid] - generated if not provided
+   * @param {string} [url] - The url of the image
    */
-  AMTHREE.Image = function(uuid) {
+  AMTHREE.Image = function(uuid, url) {
     this.uuid = uuid || THREE.Math.generateUUID();
-    this.image = new Image();
-    this.url;
+    this.url = url;
   };
 
   /**
-  * Loads an image
-  * @param {string} url
-  * @returns {Promise.<undefined, string>} A promise that resolves when the image is loaded.
-  */
-  AMTHREE.Image.prototype.Load = function(url) {
-    this.url = url;
-    var scope = this;
-    return new Promise(function(resolve, reject) {
-      scope.image.src = url;
-    });
-  }
-
-  /**
-  * Returns an object that can be serialized using JSON.stringify.
+  * Returns an json object.
   * @param {object} [meta] - an object holding json ressources. The result of this function will be added to it if provided.
   * @returns {object} A json object
   */
@@ -35,7 +22,7 @@ if (typeof THREE !== 'undefined') {
     var output = {};
 
     output.uuid = this.uuid;
-    output.url = this.url;
+    output.url = AMTHREE.GetFilename(this.url);
 
     if (typeof meta === 'object') {
       if (!meta.images) meta.images = {};
@@ -48,7 +35,7 @@ if (typeof THREE !== 'undefined') {
 
 }
 else {
-  AMTHREE.ImageTexture = function() {
-    console.warn('ImageTexture.js: THREE undefined');
+  AMTHREE.Image = function() {
+    console.warn('Image.js: THREE undefined');
   };
 }

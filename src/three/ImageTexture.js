@@ -10,12 +10,26 @@ if (typeof THREE !== 'undefined') {
   AMTHREE.ImageTexture = function(image) {
     THREE.Texture.call(this);
 
-    this.image_ref = image;
-    this.image = image.image;
+    this.image = new Image();
+    this.image.addEventListener('load', function(texture) {
+      return function() {
+        texture.needsUpdate = true;
+      }
+    }(this));
+
+    this.set(image);
   };
 
   AMTHREE.ImageTexture.prototype = Object.create(THREE.Texture.prototype);
   AMTHREE.ImageTexture.prototype.constructor = AMTHREE.ImageTexture;
+
+  /*
+  *
+  */
+  AMTHREE.ImageTexture.prototype.set = function(image) {
+    this.image_ref = image;
+    this.image.src = image.url;
+  }
 
   /**
   * Returns the json representation of the texture
