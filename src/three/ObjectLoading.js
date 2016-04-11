@@ -30,12 +30,16 @@ var AMTHREE = AMTHREE || {};
 
 (function() {
 
-  function CreateConstants(json) {
+  function CreateConstants(json, root) {
     json = json || {};
 
     var constants = {};
 
-    constants.asset_path = (json.asset_path) ? (json.asset_path + '/') : './';
+    if (root)
+      constants.asset_path = root + '/';
+    else
+      constants.asset_path = '';
+    constants.asset_path += (json.asset_path) ? (json.asset_path + '/') : '';
     constants.image_path = constants.asset_path + ((json.image_path) ? json.image_path : '');
     constants.video_path = constants.asset_path + ((json.video_path) ? json.video_path : '');
     constants.model_path = constants.asset_path + ((json.model_path) ? json.model_path : '');
@@ -80,6 +84,30 @@ var AMTHREE = AMTHREE || {};
     return animations;
   }
 
+  function CreateSounds(json, path) {
+
+    var sounds = {};
+
+    if (json instanceof Array) {
+
+      for (var i = 0, c = json.length; i < c; ++i) {
+        var sound = json[i];
+
+        if (sound.uuid === undefined)
+          console.warn('failed to parse sound: no "uuid" specified for sound ' + i);
+        else if (sound.url === undefined)
+          console.warn('failed to parse sound: no "url" specified for sound ' + i);
+        else {
+          var elem = new AMTHREE.Sound(sound.uuid, path + '/' + sound.url);
+
+          sounds[sound.uuid] = elem;
+        }
+      }
+
+    }
+    return sounds;
+  }
+
   function ParseImages(json, path) {
     return new Promise(function(resolve, reject) {
       var images = {};
@@ -89,16 +117,14 @@ var AMTHREE = AMTHREE || {};
 
           return new Promise(function(resolve, reject) {
             if (image_json.url === undefined)
-              reject('AMTHREE.ObjectLoader: no "url" specified for image ' + i);
+              reject('failed to parse image: no "url" specified for image ' + i);
             else if (image_json.uuid === undefined)
-              reject('AMTHREE.ObjectLoader: no "uuid" specified for image ' + i);
+              reject('failed to parse image: no "uuid" specified for image ' + i);
             else {
-              var image = new AMTHREE.Image(image_json.uuid);
-              var url = path + '/' + image_json.url;
-              image.Load(url);
+              var image = new AMTHREE.Image(image_json.uuid, path + '/' + image_json.url);
               images[image.uuid] = image;
+              resolve();
             }
-            resolve();
           });
 
 
@@ -119,19 +145,14 @@ var AMTHREE = AMTHREE || {};
       for (var i = 0, c = json.length; i < c; i++) {
         var video = json[i];
 
-        if (video.url === undefined)
-          console.warn('AMTHREE.ObjectLoader: no "url" specified for video ' + i);
-        else if (video.uuid === undefined)
-          console.warn('AMTHREE.ObjectLoader: no "uuid" specified for video ' + i);
+        if (video.uuid === undefined)
+          console.warn('failed to parse video: no "uuid" specified for video ' + i);
+        else if (video.url === undefined)
+          console.warn('failed to parse video: no "url" specified for video ' + i);
         else {
-          var data = {
-            url: path + '/' + video.url,
-            uuid: video.uuid,
-            width: video.width || 640,
-            height: video.height || 480
-          };
+          var elem = new AMTHREE.Video(video.uuid, path + '/' + video.url);
 
-          videos[video.uuid] = data;
+          videos[video.uuid] = elem;
         }
 
       }
@@ -150,58 +171,47 @@ var AMTHREE = AMTHREE || {};
     var textures = {};
 
     if (typeof SuperGif === 'undefined')
-      console.warn('AMTHREE.ObjectLoader: SuperGif is undefined');
+      console.warn('AMTHREE.ObjectLoading: SuperGif is undefined');
 
 
     if (typeof json !== 'undefined') {
-
       for (var i = 0, l = json.length; i < l; i++) {
-
         var data = json[i];
 
+        if (!data.uuid) {
+          console.warn('failed to parse texture ' + i + ': no uuid provided');
+        }
         if (data.image === undefined && data.video === undefined ) {
-          console.warn('AMTHREE.ObjectLoader: No "image" nor "video" specified for' + data.uuid);
+          console.warn('failed to parse texture: no "image" nor "video" specified for ' + data.uuid);
           continue;
         }
 
 
         if (data.image !== undefined) {
-
           if (images[data.image] === undefined) {
-            console.warn('AMTHREE.ObjectLoader: Undefined image', data.image);
+            console.warn('failed to parse texture ' + data.uuid + ': undefined image', data.image);
             continue;
           }
 
           var image = images[data.image];
 
           if (data.animated !== undefined && data.animated) {
-
             if (typeof SuperGif == 'undefined')
               continue;
-
             var texture = new AMTHREE.GifTexture(image);
-
           } else {
             var texture = new AMTHREE.ImageTexture(image);
             texture.needsUpdate = true;
           }
         }
         else {
-
           if (videos[data.video] === undefined ) {
-            console.warn('AMTHREE.ObjectLoader: Undefined video', data.video);
+            console.warn('failed to parse texture ' + data.uuid + ': undefined video', data.video);
             continue;
           }
 
-          var video_data = videos[data.video];
-
-          var texture = new AMTHREE.VideoTexture( {
-            src: video_data.url,
-            width: video_data.width,
-            height: video_data.height,
-            loop: data.loop,
-            autoplay: data.autoplay
-          } );
+          var video = videos[data.video];
+          var texture = new AMTHREE.VideoTexture(video, data.width, data.height, data.loop, data.autoplay);
         }
 
         texture.uuid = data.uuid;
@@ -444,13 +454,13 @@ var AMTHREE = AMTHREE || {};
     return geometries;
   }
 
-  function LoadFile(url, parser) {
+  function LoadFile(url, parser, path) {
     return new Promise(function(resolve, reject) {
 
       var loader = new AM.JsonLoader();
 
       loader.Load(url, function() {
-        parser(loader.json).then(resolve, reject);
+        parser(loader.json, path).then(resolve, reject);
       }, function() {
         reject('failed to load object: ' + url);
       });
@@ -458,19 +468,20 @@ var AMTHREE = AMTHREE || {};
     });
   }
 
-  function Load(url) {
-    return LoadFile(url, Parse);
+  function Load(url, path) {
+    return LoadFile(url, Parse, path);
   }
 
-  function LoadArray(url) {
-    return LoadFile(url, ParseArray);
+  function LoadArray(url, path) {
+    return LoadFile(url, ParseArray, path);
   }
 
-  function ParseResources(json) {
-    var constants = CreateConstants(json.constants);
+  function ParseResources(json, path) {
+    var constants = CreateConstants(json.constants, path);
 
-    return ParseImages(json.images, constants.image_path).then(function(images) {
+    return ParseImages(json.images || [], constants.image_path).then(function(images) {
 
+      var sounds = CreateSounds(json.sounds || [], constants.sound_path);
       var videos = CreateVideos(json.videos || [], constants.video_path);
       var textures = CreateTextures(json.textures || [], images, videos);
       var animations = CreateAnimations(json.animations || []);
@@ -478,12 +489,13 @@ var AMTHREE = AMTHREE || {};
       var geometries = CreateGeometries(json.geometries || []);
 
       var resources = {
-        constants: constants,
-        videos: videos,
-        images: images,
-        textures: textures,
+        constants:  constants,
+        videos:     videos,
+        images:     images,
+        sounds:     sounds,
+        textures:   textures,
         animations: animations,
-        materials: materials,
+        materials:  materials,
         geometries: geometries
       }
 
@@ -491,20 +503,20 @@ var AMTHREE = AMTHREE || {};
     });
   }
 
-  function Parse(json) {
-    return ParseResources(json).then(function(res) {
-      return ParseObject(json.object, res.materials, res.geometries, res.constants.model_path)
+  function Parse(json, path) {
+    return ParseResources(json, path).then(function(res) {
+      return ParseObject(json.object, res.materials, res.geometries, res.sounds, res.constants.model_path)
       .then(function(object) {
 
         object.animations = res.animations;
-        resolve(object);
+        return object;
 
       });
     });
   }
 
-  function ParseArray(json) {
-    return ParseResources(json).then(function(res) {
+  function ParseArray(json, path) {
+    return ParseResources(json, path).then(function(res) {
 
       return ParseObjectArray(json.objects, res.materials,
         res.geometries, res.constants.model_path);
@@ -593,7 +605,19 @@ var AMTHREE = AMTHREE || {};
     return undefined;
   }
 
-  function ParseObject(json, materials, geometries, model_path) {
+  function GetSound(name, sounds) {
+    if (sounds[name] !== undefined)
+      return sounds[name];
+    else {
+      if (name === undefined)
+        console.warn('failed to get sound: no id provided');
+      else
+        console.warn('failed to get sound: no such sound: ' + name);
+    }
+    return undefined;
+  }
+
+  function ParseObject(json, materials, geometries, sounds, model_path) {
     var object;
 
     switch (json.type) {
@@ -660,8 +684,8 @@ var AMTHREE = AMTHREE || {};
       return;
       break;
 
-      case 'Sound':
-      object = new AMTHREE.Sound(json.url);
+      case 'SoundObject':
+      object = new AMTHREE.SoundObject(GetSound(json.sound, sounds));
       break;
 
       case 'Scene':
@@ -727,11 +751,11 @@ var AMTHREE = AMTHREE || {};
     return ParseObjectPostLoading(object, json, materials, geometries, model_path);
   }
 
-  function ParseObjectArray(json, materials, geometries, model_path) {
+  function ParseObjectArray(json, materials, geometries, sounds, model_path) {
     if (json instanceof Array) {
       return Promise.all(json.map(function(elem) {
 
-        return ParseObject(elem, materials, geometries, model_path);
+        return ParseObject(elem, materials, geometries, sounds, model_path);
 
       }));
     }
@@ -767,6 +791,7 @@ var AMTHREE = AMTHREE || {};
     * @function
     * @description Parses a json into an object.
     * @param {object} json - the json structure
+    * @param {string} [path] - the path of the directory containing the assets.
     * @returns {Promise.<THREE.Object3D, string>} a promise
     */
     AMTHREE.ParseObject = Parse;
@@ -775,6 +800,7 @@ var AMTHREE = AMTHREE || {};
     * @function
     * @description Parses a json into an array of objects.
     * @param {object} json - the json structure
+    * @param {string} [path] - the path of the directory containing the assets.
     * @returns {Promise.<Array.<THREE.Object3D>, string>} a promise
     */
     AMTHREE.ParseObjectArray = ParseArray;
@@ -783,6 +809,7 @@ var AMTHREE = AMTHREE || {};
     * @function
     * @description Loads a json file describing an object.
     * @param {string} url
+    * @param {string} [path] - the path of the directory containing the assets.
     * @returns {Promise.<THREE.Object3D, string>} a promise
     */
     AMTHREE.LoadObject = Load;
@@ -791,6 +818,7 @@ var AMTHREE = AMTHREE || {};
     * @function
     * @description Loads a json file describing an array of objects.
     * @param {string} url
+    * @param {string} [path] - the path of the directory containing the assets.
     * @returns {Promise.<Array.<THREE.Object3D>, string>} a promise
     */
     AMTHREE.LoadObjectArray = LoadArray;
