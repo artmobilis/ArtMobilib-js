@@ -28,33 +28,14 @@
         <article>
             <pre class="prettyprint source linenums"><code>/*************************
 
-
-GifTexture
-A class helper to use a gif image as a Threejs texture
-inherit THREE.texture
-
-Constructor
-
-GifTexture(src: string = '')
-
-
-Methods
-
-play()
-update()
-pause()
-stop()
-setGif(src: string)
-
-
 Dependency
 
 Threejs
 
 libgif: https://github.com/buzzfeed/libgif-js
 
-
 *************************/
+
 
 /** @namespace */
 var AMTHREE = AMTHREE || {};
@@ -62,10 +43,11 @@ var AMTHREE = AMTHREE || {};
 if (typeof THREE !== 'undefined') {
 
   /**
+   * A helper class to use a gif image as a Threejs texture
    * @class
    * @augments THREE.Texture
    */
-  AMTHREE.GifTexture = function(src) {
+  AMTHREE.GifTexture = function(image) {
     THREE.Texture.call(this);
 
     this.minFilter = THREE.NearestMipMapNearestFilter;
@@ -78,8 +60,8 @@ if (typeof THREE !== 'undefined') {
     this.imageElement.width = this.imageElement.naturalWidth;
     this.imageElement.height = this.imageElement.naturalHeight;
 
-    if (src)
-      this.setGif(src);
+    if (image)
+      this.setGif(image);
   };
 
   AMTHREE.GifTexture.prototype = Object.create(THREE.Texture.prototype);
@@ -118,16 +100,40 @@ if (typeof THREE !== 'undefined') {
   /**
    * Sets the source gif of the texture.
    */
-  AMTHREE.GifTexture.prototype.setGif = function(src) {
-    this.imageElement.src = src;
+  AMTHREE.GifTexture.prototype.setGif = function(image) {
+    if (image.url) {
+      this.image = image;
 
-    this.anim = new SuperGif( { gif: this.imageElement, auto_play: false } );
-    this.anim.load();
+      this.imageElement.src = image.url;
 
-    this.gifCanvas = this.anim.get_canvas();
+      this.anim = new SuperGif( { gif: this.imageElement, auto_play: false } );
+      this.anim.load();
 
-    this.gifCanvas.style.display = 'none';
+      this.gifCanvas = this.anim.get_canvas();
+
+      this.gifCanvas.style.display = 'none';
+    }
   };
+
+  /**
+  * Returns the json representation of the texture
+  * @param {object} meta - an object holding json ressources. The result of this function will be added to it.
+  * @returns {object} A json object
+  */
+  AMTHREE.GifTexture.prototype.toJSON = function(meta) {
+    var output = {};
+
+    output.uuid = this.uuid;
+    if (this.image)
+      output.image = this.image.uuid;
+    output.animated = true;
+
+    this.image.toJSON(meta);
+
+    meta.textures[output.uuid] = output;
+
+    return output;
+  }
 
 
 }
@@ -146,13 +152,13 @@ else {
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AM.Detection.html">Detection</a></li><li><a href="AM.DeviceLockScreenOrientation.html">DeviceLockScreenOrientation</a></li><li><a href="AM.DeviceOrientationControl.html">DeviceOrientationControl</a></li><li><a href="AM.GeographicCoordinatesConverter.html">GeographicCoordinatesConverter</a></li><li><a href="AM.GeolocationControl.html">GeolocationControl</a></li><li><a href="AM.ImageFilter.html">ImageFilter</a></li><li><a href="AM.MarkerTracker.html">MarkerTracker</a></li><li><a href="AM.match_t.html">match_t</a></li><li><a href="AM.Matching.html">Matching</a></li><li><a href="AM.Pose.html">Pose</a></li><li><a href="AM.PosePosit.html">PosePosit</a></li><li><a href="AM.PoseThree.html">PoseThree</a></li><li><a href="AM.TrainedImage.html">TrainedImage</a></li><li><a href="AM.Training.html">Training</a></li><li><a href="AMTHREE.GifTexture.html">GifTexture</a></li><li><a href="AMTHREE.ObjectLoader.html">ObjectLoader</a></li><li><a href="AMTHREE.Scene.html">Scene</a></li><li><a href="AMTHREE.Sound.html">Sound</a></li><li><a href="AMTHREE.TrackedObjManager.html">TrackedObjManager</a></li><li><a href="AMTHREE.VideoTexture.html">VideoTexture</a></li></ul><h3>Namespaces</h3><ul><li><a href="AM.html">AM</a></li><li><a href="AMTHREE.html">AMTHREE</a></li></ul><h3>Global</h3><ul><li><a href="global.html#compatibility">compatibility</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AM.Detection.html">Detection</a></li><li><a href="AM.DeviceLockScreenOrientation.html">DeviceLockScreenOrientation</a></li><li><a href="AM.DeviceOrientationControl.html">DeviceOrientationControl</a></li><li><a href="AM.EventManager.html">EventManager</a></li><li><a href="AM.GeographicCoordinatesConverter.html">GeographicCoordinatesConverter</a></li><li><a href="AM.GeolocationControl.html">GeolocationControl</a></li><li><a href="AM.ImageFilter.html">ImageFilter</a></li><li><a href="AM.MarkerTracker.html">MarkerTracker</a></li><li><a href="AM.match_t.html">match_t</a></li><li><a href="AM.Matching.html">Matching</a></li><li><a href="AM.Pose.html">Pose</a></li><li><a href="AM.PosePosit.html">PosePosit</a></li><li><a href="AM.PoseThree.html">PoseThree</a></li><li><a href="AM.TrainedImage.html">TrainedImage</a></li><li><a href="AM.Training.html">Training</a></li><li><a href="AMTHREE.GifTexture.html">GifTexture</a></li><li><a href="AMTHREE.Image.html">Image</a></li><li><a href="AMTHREE.ImageTexture.html">ImageTexture</a></li><li><a href="AMTHREE.ObjectLoader.html">ObjectLoader</a></li><li><a href="AMTHREE.Scene.html">Scene</a></li><li><a href="AMTHREE.Sound.html">Sound</a></li><li><a href="AMTHREE.TrackedObjManager.html">TrackedObjManager</a></li><li><a href="AMTHREE.VideoTexture.html">VideoTexture</a></li></ul><h3>Namespaces</h3><ul><li><a href="AM.html">AM</a></li><li><a href="AMTHREE.html">AMTHREE</a></li><li><a href="THREE.html">THREE</a></li></ul><h3>Global</h3><ul><li><a href="global.html#compatibility">compatibility</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Wed Mar 09 2016 16:01:48 GMT+0100 (Paris, Madrid)
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Wed Apr 06 2016 12:28:02 GMT+0200 (Paris, Madrid (heure d’été))
 </footer>
 
 <script> prettyPrint(); </script>

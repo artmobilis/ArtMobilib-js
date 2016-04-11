@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Class: ObjectLoader</title>
+    <title>JSDoc: Class: Image</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Class: ObjectLoader</h1>
+    <h1 class="page-title">Class: Image</h1>
 
     
 
@@ -29,7 +29,7 @@
 <header>
     
         <h2>
-            <span class="ancestors"><a href="AMTHREE.html">AMTHREE</a>.</span>ObjectLoader</h2>
+            <span class="ancestors"><a href="AMTHREE.html">AMTHREE</a>.</span>Image</h2>
         
     
 </header>
@@ -41,15 +41,11 @@
 
     
 
-    <h4 class="name" id="ObjectLoader"><span class="type-signature"></span>new ObjectLoader<span class="signature">()</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="Image"><span class="type-signature"></span>new Image<span class="signature">()</span><span class="type-signature"></span></h4>
 
     
 
 
-
-<div class="description">
-    A loader for loading a JSON resource.
-</div>
 
 
 
@@ -92,7 +88,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="three_ObjectLoader.js.html">three/ObjectLoader.js</a>, <a href="three_ObjectLoader.js.html#line43">line 43</a>
+        <a href="three_Image.js.html">three/Image.js</a>, <a href="three_Image.js.html#line10">line 10</a>
     </li></ul></dd>
     
 
@@ -122,6 +118,17 @@
     </div>
 
     
+        <h3 class="subsection-title">Extends</h3>
+
+        
+
+
+    <ul>
+        <li>THREE.Texture</li>
+    </ul>
+
+
+    
 
     
 
@@ -141,14 +148,14 @@
 
     
 
-    <h4 class="name" id="Load"><span class="type-signature"></span>Load<span class="signature">(url, on_load_object)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="Load"><span class="type-signature"></span>Load<span class="signature">(url)</span><span class="type-signature"> &rarr; {Promise.&lt;undefined, string>}</span></h4>
 
     
 
 
 
 <div class="description">
-    Load a JSON file
+    Loads an image
 </div>
 
 
@@ -204,29 +211,6 @@
         </tr>
 
     
-
-        <tr>
-            
-                <td class="name"><code>on_load_object</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">function</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">function called when loading ends</td>
-        </tr>
-
-    
     </tbody>
 </table>
 
@@ -264,7 +248,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="three_ObjectLoader.js.html">three/ObjectLoader.js</a>, <a href="three_ObjectLoader.js.html#line69">line 69</a>
+        <a href="three_Image.js.html">three/Image.js</a>, <a href="three_Image.js.html#line21">line 21</a>
     </li></ul></dd>
     
 
@@ -287,6 +271,28 @@
 
 
 
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    A promise that resolves when the image is loaded.
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Promise.&lt;undefined, string></span>
+
+
+    </dd>
+</dl>
+
+    
 
 
 
@@ -295,14 +301,14 @@
 
     
 
-    <h4 class="name" id="Parse"><span class="type-signature"></span>Parse<span class="signature">(json)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="toJSON"><span class="type-signature"></span>toJSON<span class="signature">(meta)</span><span class="type-signature"> &rarr; {object}</span></h4>
 
     
 
 
 
 <div class="description">
-    Parse a JSON object
+    Returns an object that can be serialized using JSON.stringify.
 </div>
 
 
@@ -338,7 +344,7 @@
 
         <tr>
             
-                <td class="name"><code>json</code></td>
+                <td class="name"><code>meta</code></td>
             
 
             <td class="type">
@@ -354,7 +360,7 @@
 
             
 
-            <td class="description last"></td>
+            <td class="description last">an object holding json ressources. The result of this function will be added to it.</td>
         </tr>
 
     
@@ -395,7 +401,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="three_ObjectLoader.js.html">three/ObjectLoader.js</a>, <a href="three_ObjectLoader.js.html#line90">line 90</a>
+        <a href="three_Image.js.html">three/Image.js</a>, <a href="three_Image.js.html#line41">line 41</a>
     </li></ul></dd>
     
 
@@ -418,6 +424,28 @@
 
 
 
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    A json object
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">object</span>
+
+
+    </dd>
+</dl>
+
+    
 
 
 

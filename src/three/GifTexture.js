@@ -1,32 +1,13 @@
 /*************************
 
-
-GifTexture
-A class helper to use a gif image as a Threejs texture
-inherit THREE.texture
-
-Constructor
-
-GifTexture(src: string = '')
-
-
-Methods
-
-play()
-update()
-pause()
-stop()
-setGif(src: string)
-
-
 Dependency
 
 Threejs
 
 libgif: https://github.com/buzzfeed/libgif-js
 
-
 *************************/
+
 
 /** @namespace */
 var AMTHREE = AMTHREE || {};
@@ -34,10 +15,11 @@ var AMTHREE = AMTHREE || {};
 if (typeof THREE !== 'undefined') {
 
   /**
+   * A helper class to use a gif image as a Threejs texture
    * @class
    * @augments THREE.Texture
    */
-  AMTHREE.GifTexture = function(src) {
+  AMTHREE.GifTexture = function(image) {
     THREE.Texture.call(this);
 
     this.minFilter = THREE.NearestMipMapNearestFilter;
@@ -50,8 +32,8 @@ if (typeof THREE !== 'undefined') {
     this.imageElement.width = this.imageElement.naturalWidth;
     this.imageElement.height = this.imageElement.naturalHeight;
 
-    if (src)
-      this.setGif(src);
+    if (image)
+      this.setGif(image);
   };
 
   AMTHREE.GifTexture.prototype = Object.create(THREE.Texture.prototype);
@@ -90,16 +72,43 @@ if (typeof THREE !== 'undefined') {
   /**
    * Sets the source gif of the texture.
    */
-  AMTHREE.GifTexture.prototype.setGif = function(src) {
-    this.imageElement.src = src;
+  AMTHREE.GifTexture.prototype.setGif = function(image) {
+    if (image.url) {
+      this.image_ref = image;
 
-    this.anim = new SuperGif( { gif: this.imageElement, auto_play: false } );
-    this.anim.load();
+      this.imageElement.src = image.url;
 
-    this.gifCanvas = this.anim.get_canvas();
+      this.anim = new SuperGif( { gif: this.imageElement, auto_play: false } );
+      this.anim.load();
 
-    this.gifCanvas.style.display = 'none';
+      this.gifCanvas = this.anim.get_canvas();
+
+      this.gifCanvas.style.display = 'none';
+    }
   };
+
+  /**
+  * Returns the json representation of the texture
+  * @param {object} [meta] - an object holding json ressources. If provided, the result of this function will be added to it.
+  * @returns {object} A json object
+  */
+  AMTHREE.GifTexture.prototype.toJSON = function(meta) {
+    var output = {};
+
+    output.uuid = this.uuid;
+    if (this.image_ref)
+      output.image = this.image_ref.uuid;
+    output.animated = true;
+
+    this.image_ref.toJSON(meta);
+
+    if (typeof meta === 'object') {
+      if (!meta.textures) meta.textures = {};
+      meta.textures[output.uuid] = output;
+    }
+
+    return output;
+  }
 
 
 }

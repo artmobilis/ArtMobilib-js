@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: three/utility.js</title>
+    <title>JSDoc: Source: EventManager.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: three/utility.js</h1>
+    <h1 class="page-title">Source: EventManager.js</h1>
 
     
 
@@ -26,81 +26,88 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>var AMTHREE = AMTHREE || {};
+            <pre class="prettyprint source linenums"><code>(function() {
+  AM = AM || {};
 
+  /**
+  * A class to manage event.
+  * @class
+  * @memberof AM
+  */
+  var EventManager = function() {
+    this._listeners = {};
+  }
 
-AMTHREE.AnimatedTextureCall = function(object, fun) {
-  object.traverse(function(s) {
-    if (s.material
-      &amp;&amp; s.material.map
-      &amp;&amp; s.material.map[fun])
-      s.material.map[fun]();
-  });
-};
-
-/**
- * Recursively play animated texture on this object and all his children.
- * @param {THREE.Object3D} object
- */
-AMTHREE.PlayAnimatedTextures = function(object) {
-  AMTHREE.AnimatedTextureCall(object, 'play');
-};
-
-/**
- * Recursively stop animated texture on this object and all his children.
- * @param {THREE.Object3D} object
- */
-AMTHREE.StopAnimatedTextures = function(object) {
-  AMTHREE.AnimatedTextureCall(object, 'stop');
-};
-
-/**
- * Recursively pause animated texture on this object and all his children.
- * @param {THREE.Object3D} object
- */
-AMTHREE.PauseAnimatedTextures = function(object) {
-  AMTHREE.AnimatedTextureCall(object, 'pause');
-};
-
-/**
- * Recursively update animated texture on this object and all his children.
- * @param {THREE.Object3D} object
- */
-AMTHREE.UpdateAnimatedTextures = function(object) {
-  AMTHREE.AnimatedTextureCall(object, 'update');
-};
-
-
-/**
- * Converts a world position to a canvas position.
- * @param {THREE.Vector3} position
- * @param {THREE.Camera} camera
- * @param {Canvas} canvas
- */
-AMTHREE.WorldToCanvasPosition = function(position, camera, canvas) {
-  var vec = new THREE.Vector3();
-
-  vec.copy(position);
-  vec.project(camera);
-
-  var x = Math.round( (vec.x + 1) * canvas.width / 2 );
-  var y = Math.round( (-vec.y + 1) * canvas.height / 2 );
-
-  return { x: x, y: y, z: vec.z };
-};
-
-/**
- * Recursively update animations on this object and all his children.
- * @param {THREE.Object3D} object
- */
-AMTHREE.PlayAnimations = function(object) {
-  object.traverse( function ( child ) {
-    if ( child instanceof THREE.SkinnedMesh ) {
-      var animation = new THREE.Animation( child, child.geometry.animation );
-      animation.play();
+  /**
+  * Adds a listener to an event.
+  * @param {string} name - The name of the event to listen to.
+  * @param {function} fun - The function that will be called every time the event fires.
+  * @returns {bool} true if the function has succefully be added, false otherwise, if the name isnt a string or if the function is already bound to this event.
+  */
+  EventManager.prototype.AddListener = function(name, fun) {
+    if (typeof name === 'string') {
+      if (typeof this._listeners[name] === 'undefined')
+        this._listeners[name] = [];
+      
+      if (this._listeners[name].indexOf(fun) == -1) {
+        this._listeners[name].push(fun);
+        return true;
+      }
     }
-  } );
-};</code></pre>
+    return false;
+  }
+
+  /**
+  * Removes a listener to an event.
+  * @param {string} name - The name of the event.
+  * @param {function} fun - The listener to remove.
+  * @returns {bool} true if the function has succefully be removed, false otherwise.
+  */
+  EventManager.prototype.RemoveListener = function(name, fun) {
+    if (typeof name === 'string') {
+      var tab = this._listeners[name];
+
+      if (typeof tab !== 'undefined') {
+
+        var index = tab.indexOf(fun);
+        if (index != -1) {
+
+          if (tab.length != 1)
+            tab.splice(index, 1);
+          else
+            delete this._listeners[name];
+
+          return true;
+        }
+
+      }
+    }
+    return false;
+  }
+
+  /**
+  * Fires an event, by calling every function bound to it.
+  * @param {string} name - The name of the event.
+  * @param {Array.&lt;value>} params - The list of parameters to be passed to the listeners.
+  * @returns {bool} true if the event has any listener bound to it, false otherwise.
+  */
+  EventManager.prototype.Fire = function(name, params) {
+    if (typeof name === 'string') {
+      var tab = this._listeners[name];
+
+      if (typeof tab !== 'undefined') {
+        for (var i = 0, c = tab.length; i &lt; c; ++i) {
+          tab[i].apply(this, params);
+        }
+        return true;
+      }
+    }
+    return false;
+  }
+
+  AM.EventManager = EventManager;
+
+})();</code></pre>
         </article>
     </section>
 

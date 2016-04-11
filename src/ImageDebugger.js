@@ -197,7 +197,10 @@ AM.ImageDebugger = function() {
    * @inner
    * @param {bool} use all trained levels or all concatene in one image
    */
-  drawMatches = function (all_in_first_image=false) {
+  drawMatches = function (all_in_first_image) {
+    if (typeof all_in_first_image === 'undefined')
+      all_in_first_image = false;
+
     // draw matched trained corners    
     _context2d.lineWidth=2;
     for(var i = 0; i < _matches.length; ++i) {
@@ -302,7 +305,10 @@ AM.ImageDebugger = function() {
    * @inner
    * @param {number} number of coirners to display for each level
    */
-  drawTrainedCorners = function (number_per_level=50) {
+  drawTrainedCorners = function (number_per_level) {
+    if (typeof number_per_level === 'undefined')
+      number_per_level = 50;
+
   var bluredImages=_training.getBluredImages();
   var trained_image = new AM.TrainedImage(_uuid);
   _training.SetResultToTrainedImage(trained_image);

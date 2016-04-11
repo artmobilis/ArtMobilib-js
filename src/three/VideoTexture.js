@@ -6,58 +6,37 @@ if (typeof THREE !== 'undefined') {
   /**
    * @class
    * @augments THREE.Texture
+   * @param {AMTHREE.Video} [video]
+   * @param {string} [uuid]
+   * @param {number} [width]
+   * @param {number} [height]
+   * @param {bool} [loop=true]
+   * @param {bool} [autoplay=false]
    */
-  AMTHREE.VideoTexture = function(params) {
+  AMTHREE.VideoTexture = function(video, uuid, width, height, loop, autoplay) {
     THREE.Texture.call(this);
+
+    this.uuid = (typeof uuid === 'string') ? uuid : THREE.Math.generateUUID();
 
     this.minFilter = THREE.NearestMipMapNearestFilter;
 
     this.videoElement = document.createElement('video');
 
-    this.setVideo(params);
+    this.needsUpdate = false;
+
+    this.set(video, width, height, loop, autoplay);
   };
 
   AMTHREE.VideoTexture.prototype = Object.create(THREE.Texture.prototype);
   AMTHREE.VideoTexture.prototype.constructor = AMTHREE.VideoTexture;
 
   /**
-   * Copies source in this.
-   * @param {AMTHREE.VideoTexture} source
-   */
-  AMTHREE.VideoTexture.prototype.copy = function(source) {
-    THREE.Texture.prototype.copy.call(this, source);
-
-    var params = {};
-
-    if (source.videoElement) {
-      params.width = source.videoElement.width;
-      params.height = source.videoElement.height;
-      params.loop = source.videoElement.loop;
-      params.autoplay = source.videoElement.autoplay;
-    }
-
-    params.src = source.src;
-
-    this.setVideo(params);
-
-    return this;
-  };
-
-  /**
-  * Clones this.
-  * @returns {AMTHREE.VideoTexture}
-  */
-  AMTHREE.VideoTexture.prototype.clone = function () {
-    return new this.constructor().copy( this );
-  };
-
-  /**
    * Plays the animated texture.
    */
   AMTHREE.VideoTexture.prototype.play = function() {
-    if (this.videoElement && !this.playing) {
+    if (this.videoElement && !this.playing && this.video) {
       if (!this.paused) {
-        this.videoElement.src = this.src;
+        this.videoElement.src = this.video.url;
       }
       this.videoElement.setAttribute('crossorigin', 'anonymous');
       this.videoElement.play();
@@ -99,26 +78,52 @@ if (typeof THREE !== 'undefined') {
   };
 
   /**
-   * Sets the source video of the texture.
+   * Sets the texture.
+   * @param {AMTHREE.Video} [video]
+   * @param {number} [width]
+   * @param {number} [height]
+   * @param {bool} [loop=true]
+   * @param {bool} [autoplay=false]
    */
-  AMTHREE.VideoTexture.prototype.setVideo = function(params) {
-
+  AMTHREE.VideoTexture.prototype.set = function(video, width, height, loop, autoplay) {
     this.stop();
 
-    if (params) {
-      this.src = params.src;
+    this.video = video;
 
-      this.videoElement.width = params.width;
-      this.videoElement.height = params.height;
-      this.videoElement.autoplay = (typeof params.autoplay !== 'undefined') ? params.autoplay : false;
-      this.videoElement.loop = (typeof params.loop !== 'undefined') ? params.loop : true;
-    }
+    this.videoElement.width = (typeof width === 'number') ? width : undefined;
+    this.videoElement.height = (typeof height === 'number') ? height : undefined;
+    this.videoElement.autoplay = (typeof autoplay === 'bool') ? autoplay : false;
+    this.videoElement.loop = (typeof loop === 'bool') ? loop : true;
 
     this.playing = false;
 
     if (this.videoElement.autoplay)
       this.play();
   };
+
+  /**
+  * Returns a json object.
+  * {object} [meta] - an object holding json ressources. The result of this function will be added to it if provided.
+  */
+  AMTHREE.VideoTexture.prototype.toJSON = function(meta) {
+    var output = {
+      uuid: this.uuid,
+      video: this.video.uuid,
+      width: this.videoElement.width,
+      height: this.videoElement.height,
+      loop: this.videoElement.loop,
+      autoplay: this.videoElement.autoplay
+    };
+
+    this.video.toJSON(meta);
+
+    if (typeof meta === 'object') {
+      if (!meta.textures) meta.textures = {};
+      meta.textures[output.uuid] = output;
+    }
+
+    return output;
+  }
 
 
 }

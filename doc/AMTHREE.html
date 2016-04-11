@@ -70,7 +70,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="three_GifTexture.js.html">three/GifTexture.js</a>, <a href="three_GifTexture.js.html#line32">line 32</a>
+        <a href="three_Image.js.html">three/Image.js</a>, <a href="three_Image.js.html#line2">line 2</a>
     </li></ul></dd>
     
 
@@ -95,6 +95,12 @@
 
         <dl>
             <dt><a href="AMTHREE.GifTexture.html">GifTexture</a></dt>
+            <dd></dd>
+        
+            <dt><a href="AMTHREE.Image.html">Image</a></dt>
+            <dd></dd>
+        
+            <dt><a href="AMTHREE.ImageTexture.html">ImageTexture</a></dt>
             <dd></dd>
         
             <dt><a href="AMTHREE.ObjectLoader.html">ObjectLoader</a></dt>
@@ -122,6 +128,771 @@
 
     
         <h3 class="subsection-title">Methods</h3>
+
+        
+            
+
+    
+
+    <h4 class="name" id=".LoadObject"><span class="type-signature">(static) </span>LoadObject<span class="signature">(url)</span><span class="type-signature"> &rarr; {Promise.&lt;<a href="THREE.html#.Object3D">THREE.Object3D</a>, string>}</span></h4>
+
+    
+
+
+
+<div class="description">
+    Loads a json file describing an object.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>url</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="three_ObjectLoading.js.html">three/ObjectLoading.js</a>, <a href="three_ObjectLoading.js.html#line788">line 788</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    a promise
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Promise.&lt;<a href="THREE.html#.Object3D">THREE.Object3D</a>, string></span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id=".LoadObjectArray"><span class="type-signature">(static) </span>LoadObjectArray<span class="signature">(url)</span><span class="type-signature"> &rarr; {Promise.&lt;Array.&lt;<a href="THREE.html#.Object3D">THREE.Object3D</a>>, string>}</span></h4>
+
+    
+
+
+
+<div class="description">
+    Loads a json file describing an array of objects.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>url</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="three_ObjectLoading.js.html">three/ObjectLoading.js</a>, <a href="three_ObjectLoading.js.html#line796">line 796</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    a promise
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Promise.&lt;Array.&lt;<a href="THREE.html#.Object3D">THREE.Object3D</a>>, string></span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id=".NormalizeObject"><span class="type-signature">(static) </span>NormalizeObject<span class="signature">(the)</span><span class="type-signature"> &rarr; {<a href="THREE.html#.Object3D">THREE.Object3D</a>}</span></h4>
+
+    
+
+
+
+<div class="description">
+    Moves and rescales an object so that it is contained in a sphere of radius 1, centered on the origin.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>the</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="THREE.html#.Object3D">THREE.Object3D</a></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">source object</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="three_ObjectLoading.js.html">three/ObjectLoading.js</a>, <a href="three_ObjectLoading.js.html#line804">line 804</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    an object containing the source
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type"><a href="THREE.html#.Object3D">THREE.Object3D</a></span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id=".ParseObject"><span class="type-signature">(static) </span>ParseObject<span class="signature">(json)</span><span class="type-signature"> &rarr; {Promise.&lt;<a href="THREE.html#.Object3D">THREE.Object3D</a>, string>}</span></h4>
+
+    
+
+
+
+<div class="description">
+    Parses a json into an object.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>json</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">the json structure</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="three_ObjectLoading.js.html">three/ObjectLoading.js</a>, <a href="three_ObjectLoading.js.html#line772">line 772</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    a promise
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Promise.&lt;<a href="THREE.html#.Object3D">THREE.Object3D</a>, string></span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id=".ParseObjectArray"><span class="type-signature">(static) </span>ParseObjectArray<span class="signature">(json)</span><span class="type-signature"> &rarr; {Promise.&lt;Array.&lt;<a href="THREE.html#.Object3D">THREE.Object3D</a>>, string>}</span></h4>
+
+    
+
+
+
+<div class="description">
+    Parses a json into an array of objects.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>json</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">the json structure</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="three_ObjectLoading.js.html">three/ObjectLoading.js</a>, <a href="three_ObjectLoading.js.html#line780">line 780</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    a promise
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Promise.&lt;Array.&lt;<a href="THREE.html#.Object3D">THREE.Object3D</a>>, string></span>
+
+
+    </dd>
+</dl>
+
+    
+
+
 
         
             
@@ -177,7 +948,7 @@
             <td class="type">
             
                 
-<span class="param-type">THREE.Object3D</span>
+<span class="param-type"><a href="THREE.html#.Object3D">THREE.Object3D</a></span>
 
 
             
@@ -308,7 +1079,7 @@
             <td class="type">
             
                 
-<span class="param-type">THREE.Object3D</span>
+<span class="param-type"><a href="THREE.html#.Object3D">THREE.Object3D</a></span>
 
 
             
@@ -439,7 +1210,7 @@
             <td class="type">
             
                 
-<span class="param-type">THREE.Object3D</span>
+<span class="param-type"><a href="THREE.html#.Object3D">THREE.Object3D</a></span>
 
 
             
@@ -570,7 +1341,7 @@
             <td class="type">
             
                 
-<span class="param-type">THREE.Object3D</span>
+<span class="param-type"><a href="THREE.html#.Object3D">THREE.Object3D</a></span>
 
 
             
@@ -701,7 +1472,7 @@
             <td class="type">
             
                 
-<span class="param-type">THREE.Object3D</span>
+<span class="param-type"><a href="THREE.html#.Object3D">THREE.Object3D</a></span>
 
 
             
@@ -832,7 +1603,7 @@
             <td class="type">
             
                 
-<span class="param-type">THREE.Object3D</span>
+<span class="param-type"><a href="THREE.html#.Object3D">THREE.Object3D</a></span>
 
 
             
@@ -963,7 +1734,7 @@
             <td class="type">
             
                 
-<span class="param-type">THREE.Object3D</span>
+<span class="param-type"><a href="THREE.html#.Object3D">THREE.Object3D</a></span>
 
 
             
@@ -1094,7 +1865,2118 @@
             <td class="type">
             
                 
-<span class="param-type">THREE.Object3D</span>
+<span class="param-type"><a href="THREE.html#.Object3D">THREE.Object3D</a></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="three_utility.js.html">three/utility.js</a>, <a href="three_utility.js.html#line41">line 41</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id=".WorldToCanvasPosition"><span class="type-signature">(static) </span>WorldToCanvasPosition<span class="signature">(position, camera, canvas)</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+<div class="description">
+    Converts a world position to a canvas position.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>position</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">THREE.Vector3</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>camera</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">THREE.Camera</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>canvas</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Canvas</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="three_utility.js.html">three/utility.js</a>, <a href="three_utility.js.html#line52">line 52</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+    
+
+    
+
+    
+</article>
+
+</section>
+
+
+
+
+
+
+
+<section>
+
+<header>
+    
+        <h2>AMTHREE</h2>
+        
+    
+</header>
+
+<article>
+    <div class="container-overview">
+    
+        
+
+        
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="three_GifTexture.js.html">three/GifTexture.js</a>, <a href="three_GifTexture.js.html#line13">line 13</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+        
+    
+    </div>
+
+    
+
+    
+
+    
+        <h3 class="subsection-title">Classes</h3>
+
+        <dl>
+            <dt><a href="AMTHREE.GifTexture.html">GifTexture</a></dt>
+            <dd></dd>
+        
+            <dt><a href="AMTHREE.Image.html">Image</a></dt>
+            <dd></dd>
+        
+            <dt><a href="AMTHREE.ImageTexture.html">ImageTexture</a></dt>
+            <dd></dd>
+        
+            <dt><a href="AMTHREE.ObjectLoader.html">ObjectLoader</a></dt>
+            <dd></dd>
+        
+            <dt><a href="AMTHREE.Scene.html">Scene</a></dt>
+            <dd></dd>
+        
+            <dt><a href="AMTHREE.Sound.html">Sound</a></dt>
+            <dd></dd>
+        
+            <dt><a href="AMTHREE.TrackedObjManager.html">TrackedObjManager</a></dt>
+            <dd></dd>
+        
+            <dt><a href="AMTHREE.VideoTexture.html">VideoTexture</a></dt>
+            <dd></dd>
+        </dl>
+    
+
+     
+
+    
+
+    
+
+    
+        <h3 class="subsection-title">Methods</h3>
+
+        
+            
+
+    
+
+    <h4 class="name" id=".LoadObject"><span class="type-signature">(static) </span>LoadObject<span class="signature">(url)</span><span class="type-signature"> &rarr; {Promise.&lt;<a href="THREE.html#.Object3D">THREE.Object3D</a>, string>}</span></h4>
+
+    
+
+
+
+<div class="description">
+    Loads a json file describing an object.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>url</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="three_ObjectLoading.js.html">three/ObjectLoading.js</a>, <a href="three_ObjectLoading.js.html#line788">line 788</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    a promise
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Promise.&lt;<a href="THREE.html#.Object3D">THREE.Object3D</a>, string></span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id=".LoadObjectArray"><span class="type-signature">(static) </span>LoadObjectArray<span class="signature">(url)</span><span class="type-signature"> &rarr; {Promise.&lt;Array.&lt;<a href="THREE.html#.Object3D">THREE.Object3D</a>>, string>}</span></h4>
+
+    
+
+
+
+<div class="description">
+    Loads a json file describing an array of objects.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>url</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="three_ObjectLoading.js.html">three/ObjectLoading.js</a>, <a href="three_ObjectLoading.js.html#line796">line 796</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    a promise
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Promise.&lt;Array.&lt;<a href="THREE.html#.Object3D">THREE.Object3D</a>>, string></span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id=".NormalizeObject"><span class="type-signature">(static) </span>NormalizeObject<span class="signature">(the)</span><span class="type-signature"> &rarr; {<a href="THREE.html#.Object3D">THREE.Object3D</a>}</span></h4>
+
+    
+
+
+
+<div class="description">
+    Moves and rescales an object so that it is contained in a sphere of radius 1, centered on the origin.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>the</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="THREE.html#.Object3D">THREE.Object3D</a></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">source object</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="three_ObjectLoading.js.html">three/ObjectLoading.js</a>, <a href="three_ObjectLoading.js.html#line804">line 804</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    an object containing the source
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type"><a href="THREE.html#.Object3D">THREE.Object3D</a></span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id=".ParseObject"><span class="type-signature">(static) </span>ParseObject<span class="signature">(json)</span><span class="type-signature"> &rarr; {Promise.&lt;<a href="THREE.html#.Object3D">THREE.Object3D</a>, string>}</span></h4>
+
+    
+
+
+
+<div class="description">
+    Parses a json into an object.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>json</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">the json structure</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="three_ObjectLoading.js.html">three/ObjectLoading.js</a>, <a href="three_ObjectLoading.js.html#line772">line 772</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    a promise
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Promise.&lt;<a href="THREE.html#.Object3D">THREE.Object3D</a>, string></span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id=".ParseObjectArray"><span class="type-signature">(static) </span>ParseObjectArray<span class="signature">(json)</span><span class="type-signature"> &rarr; {Promise.&lt;Array.&lt;<a href="THREE.html#.Object3D">THREE.Object3D</a>>, string>}</span></h4>
+
+    
+
+
+
+<div class="description">
+    Parses a json into an array of objects.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>json</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">the json structure</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="three_ObjectLoading.js.html">three/ObjectLoading.js</a>, <a href="three_ObjectLoading.js.html#line780">line 780</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    a promise
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Promise.&lt;Array.&lt;<a href="THREE.html#.Object3D">THREE.Object3D</a>>, string></span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id=".PauseAnimatedTextures"><span class="type-signature">(static) </span>PauseAnimatedTextures<span class="signature">(object)</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+<div class="description">
+    Recursively pause animated texture on this object and all his children.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>object</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="THREE.html#.Object3D">THREE.Object3D</a></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="three_utility.js.html">three/utility.js</a>, <a href="three_utility.js.html#line33">line 33</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id=".PauseSounds"><span class="type-signature">(static) </span>PauseSounds<span class="signature">(object)</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+<div class="description">
+    Recursively pauses the sounds of this object and all his children
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>object</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="THREE.html#.Object3D">THREE.Object3D</a></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="three_Sound.js.html">three/Sound.js</a>, <a href="three_Sound.js.html#line112">line 112</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id=".PlayAnimatedTextures"><span class="type-signature">(static) </span>PlayAnimatedTextures<span class="signature">(object)</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+<div class="description">
+    Recursively play animated texture on this object and all his children.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>object</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="THREE.html#.Object3D">THREE.Object3D</a></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="three_utility.js.html">three/utility.js</a>, <a href="three_utility.js.html#line17">line 17</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id=".PlayAnimations"><span class="type-signature">(static) </span>PlayAnimations<span class="signature">(object)</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+<div class="description">
+    Recursively update animations on this object and all his children.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>object</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="THREE.html#.Object3D">THREE.Object3D</a></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="three_utility.js.html">three/utility.js</a>, <a href="three_utility.js.html#line68">line 68</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id=".PlaySounds"><span class="type-signature">(static) </span>PlaySounds<span class="signature">(object)</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+<div class="description">
+    Recursively plays the sounds of this object and all his children
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>object</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="THREE.html#.Object3D">THREE.Object3D</a></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="three_Sound.js.html">three/Sound.js</a>, <a href="three_Sound.js.html#line103">line 103</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id=".StopAnimatedTextures"><span class="type-signature">(static) </span>StopAnimatedTextures<span class="signature">(object)</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+<div class="description">
+    Recursively stop animated texture on this object and all his children.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>object</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="THREE.html#.Object3D">THREE.Object3D</a></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="three_utility.js.html">three/utility.js</a>, <a href="three_utility.js.html#line25">line 25</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id=".StopSounds"><span class="type-signature">(static) </span>StopSounds<span class="signature">(object)</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+<div class="description">
+    Recursively stops the sounds of this object and all his children
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>object</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="THREE.html#.Object3D">THREE.Object3D</a></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="three_Sound.js.html">three/Sound.js</a>, <a href="three_Sound.js.html#line121">line 121</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id=".UpdateAnimatedTextures"><span class="type-signature">(static) </span>UpdateAnimatedTextures<span class="signature">(object)</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+<div class="description">
+    Recursively update animated texture on this object and all his children.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>object</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="THREE.html#.Object3D">THREE.Object3D</a></span>
 
 
             
@@ -1364,13 +4246,13 @@
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AM.Detection.html">Detection</a></li><li><a href="AM.DeviceLockScreenOrientation.html">DeviceLockScreenOrientation</a></li><li><a href="AM.DeviceOrientationControl.html">DeviceOrientationControl</a></li><li><a href="AM.GeographicCoordinatesConverter.html">GeographicCoordinatesConverter</a></li><li><a href="AM.GeolocationControl.html">GeolocationControl</a></li><li><a href="AM.ImageFilter.html">ImageFilter</a></li><li><a href="AM.MarkerTracker.html">MarkerTracker</a></li><li><a href="AM.match_t.html">match_t</a></li><li><a href="AM.Matching.html">Matching</a></li><li><a href="AM.Pose.html">Pose</a></li><li><a href="AM.PosePosit.html">PosePosit</a></li><li><a href="AM.PoseThree.html">PoseThree</a></li><li><a href="AM.TrainedImage.html">TrainedImage</a></li><li><a href="AM.Training.html">Training</a></li><li><a href="AMTHREE.GifTexture.html">GifTexture</a></li><li><a href="AMTHREE.ObjectLoader.html">ObjectLoader</a></li><li><a href="AMTHREE.Scene.html">Scene</a></li><li><a href="AMTHREE.Sound.html">Sound</a></li><li><a href="AMTHREE.TrackedObjManager.html">TrackedObjManager</a></li><li><a href="AMTHREE.VideoTexture.html">VideoTexture</a></li></ul><h3>Namespaces</h3><ul><li><a href="AM.html">AM</a></li><li><a href="AMTHREE.html">AMTHREE</a></li></ul><h3>Global</h3><ul><li><a href="global.html#compatibility">compatibility</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AM.Detection.html">Detection</a></li><li><a href="AM.DeviceLockScreenOrientation.html">DeviceLockScreenOrientation</a></li><li><a href="AM.DeviceOrientationControl.html">DeviceOrientationControl</a></li><li><a href="AM.EventManager.html">EventManager</a></li><li><a href="AM.GeographicCoordinatesConverter.html">GeographicCoordinatesConverter</a></li><li><a href="AM.GeolocationControl.html">GeolocationControl</a></li><li><a href="AM.ImageFilter.html">ImageFilter</a></li><li><a href="AM.MarkerTracker.html">MarkerTracker</a></li><li><a href="AM.match_t.html">match_t</a></li><li><a href="AM.Matching.html">Matching</a></li><li><a href="AM.Pose.html">Pose</a></li><li><a href="AM.PosePosit.html">PosePosit</a></li><li><a href="AM.PoseThree.html">PoseThree</a></li><li><a href="AM.TrainedImage.html">TrainedImage</a></li><li><a href="AM.Training.html">Training</a></li><li><a href="AMTHREE.GifTexture.html">GifTexture</a></li><li><a href="AMTHREE.Image.html">Image</a></li><li><a href="AMTHREE.ImageTexture.html">ImageTexture</a></li><li><a href="AMTHREE.ObjectLoader.html">ObjectLoader</a></li><li><a href="AMTHREE.Scene.html">Scene</a></li><li><a href="AMTHREE.Sound.html">Sound</a></li><li><a href="AMTHREE.TrackedObjManager.html">TrackedObjManager</a></li><li><a href="AMTHREE.VideoTexture.html">VideoTexture</a></li></ul><h3>Namespaces</h3><ul><li><a href="AM.html">AM</a></li><li><a href="AMTHREE.html">AMTHREE</a></li><li><a href="THREE.html">THREE</a></li></ul><h3>Global</h3><ul><li><a href="global.html#compatibility">compatibility</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Wed Mar 09 2016 16:01:48 GMT+0100 (Paris, Madrid)
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Wed Apr 06 2016 12:28:03 GMT+0200 (Paris, Madrid (heure d’été))
 </footer>
 
 <script> prettyPrint(); </script>

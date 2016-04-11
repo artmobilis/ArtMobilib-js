@@ -69,6 +69,96 @@ var compatibility = (function() {
         isLittleEndian: isLittleEndian
     };
 })();
+/**
+ * @namespace THREE
+ */
+
+/**
+ * @typedef THREE.Object3D
+ * @see {@link http://threejs.org/docs/index.html#Reference/Core/Object3D|Threejs documentation}
+ */
+(function() {
+  AM = AM || {};
+
+  /**
+  * A class to manage event.
+  * @class
+  * @memberof AM
+  */
+  var EventManager = function() {
+    this._listeners = {};
+  }
+
+  /**
+  * Adds a listener to an event.
+  * @param {string} name - The name of the event to listen to.
+  * @param {function} fun - The function that will be called every time the event fires.
+  * @returns {bool} true if the function has succefully be added, false otherwise, if the name isnt a string or if the function is already bound to this event.
+  */
+  EventManager.prototype.AddListener = function(name, fun) {
+    if (typeof name === 'string') {
+      if (typeof this._listeners[name] === 'undefined')
+        this._listeners[name] = [];
+      
+      if (this._listeners[name].indexOf(fun) == -1) {
+        this._listeners[name].push(fun);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+  * Removes a listener to an event.
+  * @param {string} name - The name of the event.
+  * @param {function} fun - The listener to remove.
+  * @returns {bool} true if the function has succefully be removed, false otherwise.
+  */
+  EventManager.prototype.RemoveListener = function(name, fun) {
+    if (typeof name === 'string') {
+      var tab = this._listeners[name];
+
+      if (typeof tab !== 'undefined') {
+
+        var index = tab.indexOf(fun);
+        if (index != -1) {
+
+          if (tab.length != 1)
+            tab.splice(index, 1);
+          else
+            delete this._listeners[name];
+
+          return true;
+        }
+
+      }
+    }
+    return false;
+  }
+
+  /**
+  * Fires an event, by calling every function bound to it.
+  * @param {string} name - The name of the event.
+  * @param {Array.<value>} params - The list of parameters to be passed to the listeners.
+  * @returns {bool} true if the event has any listener bound to it, false otherwise.
+  */
+  EventManager.prototype.Fire = function(name, params) {
+    if (typeof name === 'string') {
+      var tab = this._listeners[name];
+
+      if (typeof tab !== 'undefined') {
+        for (var i = 0, c = tab.length; i < c; ++i) {
+          tab[i].apply(this, params);
+        }
+        return true;
+      }
+    }
+    return false;
+  }
+
+  AM.EventManager = EventManager;
+
+})();
 navigator.getUserMedia = navigator.getUserMedia ||
 navigator.webkitGetUserMedia ||
 navigator.mozGetUserMedia ||
@@ -394,7 +484,10 @@ AM.ImageDebugger = function() {
    * @inner
    * @param {bool} use all trained levels or all concatene in one image
    */
-  drawMatches = function (all_in_first_image=false) {
+  drawMatches = function (all_in_first_image) {
+    if (typeof all_in_first_image === 'undefined')
+      all_in_first_image = false;
+
     // draw matched trained corners    
     _context2d.lineWidth=2;
     for(var i = 0; i < _matches.length; ++i) {
@@ -499,7 +592,10 @@ AM.ImageDebugger = function() {
    * @inner
    * @param {number} number of coirners to display for each level
    */
-  drawTrainedCorners = function (number_per_level=50) {
+  drawTrainedCorners = function (number_per_level) {
+    if (typeof number_per_level === 'undefined')
+      number_per_level = 50;
+
   var bluredImages=_training.getBluredImages();
   var trained_image = new AM.TrainedImage(_uuid);
   _training.SetResultToTrainedImage(trained_image);
@@ -1541,33 +1637,14 @@ AM.GeolocationControl = function(object, geoConverter) {
 };
 /*************************
 
-
-GifTexture
-A class helper to use a gif image as a Threejs texture
-inherit THREE.texture
-
-Constructor
-
-GifTexture(src: string = '')
-
-
-Methods
-
-play()
-update()
-pause()
-stop()
-setGif(src: string)
-
-
 Dependency
 
 Threejs
 
 libgif: https://github.com/buzzfeed/libgif-js
 
-
 *************************/
+
 
 /** @namespace */
 var AMTHREE = AMTHREE || {};
@@ -1575,10 +1652,11 @@ var AMTHREE = AMTHREE || {};
 if (typeof THREE !== 'undefined') {
 
   /**
+   * A helper class to use a gif image as a Threejs texture
    * @class
    * @augments THREE.Texture
    */
-  AMTHREE.GifTexture = function(src) {
+  AMTHREE.GifTexture = function(image) {
     THREE.Texture.call(this);
 
     this.minFilter = THREE.NearestMipMapNearestFilter;
@@ -1591,8 +1669,8 @@ if (typeof THREE !== 'undefined') {
     this.imageElement.width = this.imageElement.naturalWidth;
     this.imageElement.height = this.imageElement.naturalHeight;
 
-    if (src)
-      this.setGif(src);
+    if (image)
+      this.setGif(image);
   };
 
   AMTHREE.GifTexture.prototype = Object.create(THREE.Texture.prototype);
@@ -1631,16 +1709,43 @@ if (typeof THREE !== 'undefined') {
   /**
    * Sets the source gif of the texture.
    */
-  AMTHREE.GifTexture.prototype.setGif = function(src) {
-    this.imageElement.src = src;
+  AMTHREE.GifTexture.prototype.setGif = function(image) {
+    if (image.url) {
+      this.image_ref = image;
 
-    this.anim = new SuperGif( { gif: this.imageElement, auto_play: false } );
-    this.anim.load();
+      this.imageElement.src = image.url;
 
-    this.gifCanvas = this.anim.get_canvas();
+      this.anim = new SuperGif( { gif: this.imageElement, auto_play: false } );
+      this.anim.load();
 
-    this.gifCanvas.style.display = 'none';
+      this.gifCanvas = this.anim.get_canvas();
+
+      this.gifCanvas.style.display = 'none';
+    }
   };
+
+  /**
+  * Returns the json representation of the texture
+  * @param {object} [meta] - an object holding json ressources. If provided, the result of this function will be added to it.
+  * @returns {object} A json object
+  */
+  AMTHREE.GifTexture.prototype.toJSON = function(meta) {
+    var output = {};
+
+    output.uuid = this.uuid;
+    if (this.image_ref)
+      output.image = this.image_ref.uuid;
+    output.animated = true;
+
+    this.image_ref.toJSON(meta);
+
+    if (typeof meta === 'object') {
+      if (!meta.textures) meta.textures = {};
+      meta.textures[output.uuid] = output;
+    }
+
+    return output;
+  }
 
 
 }
@@ -1650,46 +1755,109 @@ else {
   };
 }
 
+/** @namespace */
 var AMTHREE = AMTHREE || {};
 
 if (typeof THREE !== 'undefined') {
 
-
-  AMTHREE.ImagePlane = function(url) {
-    THREE.Mesh.call(this);
-
-    this.geometry = new THREE.PlaneGeometry(1, 1);
-    this.material = new THREE.MeshBasicMaterial( { side: 2 } );
-
-    if (url)
-      this.setUrl(url);
+  /**
+   * @class
+   * @param {string} [uuid] - generated if not provided
+   * @param {string} [url] - The url of the image
+   */
+  AMTHREE.Image = function(uuid, url) {
+    this.uuid = uuid || THREE.Math.generateUUID();
+    this.url = url;
   };
 
+  /**
+  * Returns an json object.
+  * @param {object} [meta] - an object holding json ressources. The result of this function will be added to it if provided.
+  * @returns {object} A json object
+  */
+  AMTHREE.Image.prototype.toJSON = function(meta) {
+    var output = {};
 
-  AMTHREE.ImagePlane.prototype = Object.create(THREE.Mesh.prototype);
-  AMTHREE.ImagePlane.prototype.constructor = AMTHREE.ImagePlane;
+    output.uuid = this.uuid;
+    output.url = AMTHREE.GetFilename(this.url);
 
-  AMTHREE.ImagePlane.prototype.clone = function() {
-    var clone = new this.constructor(this.src).copy(this);
-    clone.material.map = this.material.map.clone();
-    return clone;
+    if (typeof meta === 'object') {
+      if (!meta.images) meta.images = {};
+      meta.images[output.uuid] = output;
+    }
+
+    return output;
   }
 
-  AMTHREE.ImagePlane.prototype.setUrl = function(url) {
-    this.url = url;
 
-    this.material.map = (new THREE.TextureLoader()).load(url, function(texture) {
-      texture.minFilter = THREE.NearestMipMapLinearFilter;
-      texture.needsUpdate = true;
-    });
-  }
 }
 else {
-  AMTHREE.ImagePlane = function() {
-     console.warn('ImagePlane.js: THREE undefined');
+  AMTHREE.Image = function() {
+    console.warn('Image.js: THREE undefined');
   };
 }
-  
+
+var AMTHREE = AMTHREE || {};
+
+if (typeof THREE !== 'undefined') {
+
+  /**
+   * @class
+   * @augments THREE.Texture
+   * @param {AMTHREE.Image} image - An image to map to the texture.
+   */
+  AMTHREE.ImageTexture = function(image) {
+    THREE.Texture.call(this);
+
+    this.image = new Image();
+    this.image.addEventListener('load', function(texture) {
+      return function() {
+        texture.needsUpdate = true;
+      }
+    }(this));
+
+    this.set(image);
+  };
+
+  AMTHREE.ImageTexture.prototype = Object.create(THREE.Texture.prototype);
+  AMTHREE.ImageTexture.prototype.constructor = AMTHREE.ImageTexture;
+
+  /*
+  *
+  */
+  AMTHREE.ImageTexture.prototype.set = function(image) {
+    this.image_ref = image;
+    this.image.src = image.url;
+  }
+
+  /**
+  * Returns the json representation of the texture
+  * @param {object} [meta] - an object holding json ressources. If provided, the result of this function will be added to it.
+  * @returns {object} A json object
+  */
+  AMTHREE.ImageTexture.prototype.toJSON = function(meta) {
+    var output = {};
+
+    output.uuid = this.uuid;
+    output.image = this.image_ref.uuid;
+
+    this.image_ref.toJSON(meta);
+
+    if (typeof meta === 'object') {
+      if (!meta.textures) meta.textures = {};
+      meta.textures[output.uuid] = output;
+    }
+
+    return output;
+  }
+
+
+}
+else {
+  AMTHREE.ImageTexture = function() {
+    console.warn('ImageTexture.js: THREE undefined');
+  };
+}
 
 /**
  * @author mrdoob / http://mrdoob.com/
@@ -2575,12 +2743,16 @@ var AMTHREE = AMTHREE || {};
 
 (function() {
 
-  function CreateConstants(json) {
+  function CreateConstants(json, root) {
     json = json || {};
 
     var constants = {};
 
-    constants.asset_path = (json.asset_path) ? (json.asset_path + '/') : './';
+    if (root)
+      constants.asset_path = root + '/';
+    else
+      constants.asset_path = '';
+    constants.asset_path += (json.asset_path) ? (json.asset_path + '/') : '';
     constants.image_path = constants.asset_path + ((json.image_path) ? json.image_path : '');
     constants.video_path = constants.asset_path + ((json.video_path) ? json.video_path : '');
     constants.model_path = constants.asset_path + ((json.model_path) ? json.model_path : '');
@@ -2625,25 +2797,47 @@ var AMTHREE = AMTHREE || {};
     return animations;
   }
 
+  function CreateSounds(json, path) {
+
+    var sounds = {};
+
+    if (json instanceof Array) {
+
+      for (var i = 0, c = json.length; i < c; ++i) {
+        var sound = json[i];
+
+        if (sound.uuid === undefined)
+          console.warn('failed to parse sound: no "uuid" specified for sound ' + i);
+        else if (sound.url === undefined)
+          console.warn('failed to parse sound: no "url" specified for sound ' + i);
+        else {
+          var elem = new AMTHREE.Sound(sound.uuid, path + '/' + sound.url);
+
+          sounds[sound.uuid] = elem;
+        }
+      }
+
+    }
+    return sounds;
+  }
+
   function ParseImages(json, path) {
     return new Promise(function(resolve, reject) {
       var images = {};
       if (json instanceof Array) {
-        var loader = new THREE.ImageLoader();
 
-        return Promise.all(json.map(function(image) {
+        return Promise.all(json.map(function(image_json) {
 
           return new Promise(function(resolve, reject) {
-            if (image.url === undefined)
-              console.warn('AMTHREE.ObjectLoader: no "url" specified for image ' + i);
-            else if (image.uuid === undefined)
-              console.warn('AMTHREE.ObjectLoader: no "uuid" specified for image ' + i);
+            if (image_json.url === undefined)
+              reject('failed to parse image: no "url" specified for image ' + i);
+            else if (image_json.uuid === undefined)
+              reject('failed to parse image: no "uuid" specified for image ' + i);
             else {
-              var url = path + '/' + image.url;
-              images[image.uuid] = loader.load(url, resolve);
-              return;
+              var image = new AMTHREE.Image(image_json.uuid, path + '/' + image_json.url);
+              images[image.uuid] = image;
+              resolve();
             }
-            resolve();
           });
 
 
@@ -2664,19 +2858,14 @@ var AMTHREE = AMTHREE || {};
       for (var i = 0, c = json.length; i < c; i++) {
         var video = json[i];
 
-        if (video.url === undefined)
-          console.warn('AMTHREE.ObjectLoader: no "url" specified for video ' + i);
-        else if (video.uuid === undefined)
-          console.warn('AMTHREE.ObjectLoader: no "uuid" specified for video ' + i);
+        if (video.uuid === undefined)
+          console.warn('failed to parse video: no "uuid" specified for video ' + i);
+        else if (video.url === undefined)
+          console.warn('failed to parse video: no "url" specified for video ' + i);
         else {
-          var data = {
-            url: path + '/' + video.url,
-            uuid: video.uuid,
-            width: video.width || 640,
-            height: video.height || 480
-          };
+          var elem = new AMTHREE.Video(video.uuid, path + '/' + video.url);
 
-          videos[video.uuid] = data;
+          videos[video.uuid] = elem;
         }
 
       }
@@ -2684,84 +2873,74 @@ var AMTHREE = AMTHREE || {};
     return videos;
   }
 
+  function ParseThreeConstant(value) {
+    if (typeof value === 'number') return value;
+    console.warn('AMTHREE.ObjectLoader.parseTexture: Constant should be in numeric form.', value);
+    return THREE[value];
+  }
+
   function CreateTextures(json, images, videos) {
 
     var textures = {};
 
     if (typeof SuperGif === 'undefined')
-      console.warn('AMTHREE.ObjectLoader: SuperGif is undefined');
+      console.warn('AMTHREE.ObjectLoading: SuperGif is undefined');
 
-    function ParseConstant(value) {
-      if (typeof value === 'number') return value;
-      console.warn('AMTHREE.ObjectLoader.parseTexture: Constant should be in numeric form.', value);
-      return THREE[value];
-    }
 
     if (typeof json !== 'undefined') {
-
       for (var i = 0, l = json.length; i < l; i++) {
-
         var data = json[i];
 
+        if (!data.uuid) {
+          console.warn('failed to parse texture ' + i + ': no uuid provided');
+        }
         if (data.image === undefined && data.video === undefined ) {
-          console.warn('AMTHREE.ObjectLoader: No "image" nor "video" specified for' + data.uuid);
+          console.warn('failed to parse texture: no "image" nor "video" specified for ' + data.uuid);
           continue;
         }
 
 
         if (data.image !== undefined) {
-
           if (images[data.image] === undefined) {
-            console.warn('AMTHREE.ObjectLoader: Undefined image', data.image);
+            console.warn('failed to parse texture ' + data.uuid + ': undefined image', data.image);
             continue;
           }
 
           var image = images[data.image];
 
           if (data.animated !== undefined && data.animated) {
-
             if (typeof SuperGif == 'undefined')
               continue;
-
-            var texture = new AMTHREE.GifTexture(image.src);
-
+            var texture = new AMTHREE.GifTexture(image);
           } else {
-            var texture = new THREE.Texture(image);
+            var texture = new AMTHREE.ImageTexture(image);
             texture.needsUpdate = true;
           }
         }
         else {
-
           if (videos[data.video] === undefined ) {
-            console.warn('AMTHREE.ObjectLoader: Undefined video', data.video);
+            console.warn('failed to parse texture ' + data.uuid + ': undefined video', data.video);
             continue;
           }
 
-          var video_data = videos[data.video];
-
-          var texture = new AMTHREE.VideoTexture( {
-            src: video_data.url,
-            width: video_data.width,
-            height: video_data.height,
-            loop: data.loop,
-            autoplay: data.autoplay
-          } );
+          var video = videos[data.video];
+          var texture = new AMTHREE.VideoTexture(video, data.width, data.height, data.loop, data.autoplay);
         }
 
         texture.uuid = data.uuid;
 
         if (data.name !== undefined) texture.name = data.name;
-        if (data.mapping !== undefined) texture.mapping = ParseConstant(data.mapping);
+        if (data.mapping !== undefined) texture.mapping = ParseThreeConstant(data.mapping);
         if (data.offset !== undefined) texture.offset = new THREE.Vector2(data.offset[0], data.offset[1]);
         if (data.repeat !== undefined) texture.repeat = new THREE.Vector2(data.repeat[0], data.repeat[1]);
-        if (data.minFilter !== undefined) texture.minFilter = ParseConstant(data.minFilter);
+        if (data.minFilter !== undefined) texture.minFilter = ParseThreeConstant(data.minFilter);
         else texture.minFilter = THREE.LinearFilter;
-        if (data.magFilter !== undefined) texture.magFilter = ParseConstant(data.magFilter);
+        if (data.magFilter !== undefined) texture.magFilter = ParseThreeConstant(data.magFilter);
         if (data.anisotropy !== undefined) texture.anisotropy = data.anisotropy;
         if (Array.isArray(data.wrap)) {
 
-          texture.wrapS = ParseConstant(data.wrap[0]);
-          texture.wrapT = ParseConstant(data.wrap[1]);
+          texture.wrapS = ParseThreeConstant(data.wrap[0]);
+          texture.wrapT = ParseThreeConstant(data.wrap[1]);
 
         }
 
@@ -2988,13 +3167,13 @@ var AMTHREE = AMTHREE || {};
     return geometries;
   }
 
-  function LoadFile(url, parser) {
+  function LoadFile(url, parser, path) {
     return new Promise(function(resolve, reject) {
 
       var loader = new AM.JsonLoader();
 
       loader.Load(url, function() {
-        parser(loader.json).then(resolve, reject);
+        parser(loader.json, path).then(resolve, reject);
       }, function() {
         reject('failed to load object: ' + url);
       });
@@ -3002,19 +3181,20 @@ var AMTHREE = AMTHREE || {};
     });
   }
 
-  function Load(url) {
-    return LoadFile(url, Parse);
+  function Load(url, path) {
+    return LoadFile(url, Parse, path);
   }
 
-  function LoadArray(url) {
-    return LoadFile(url, ParseArray);
+  function LoadArray(url, path) {
+    return LoadFile(url, ParseArray, path);
   }
 
-  function ParseResources(json) {
-    var constants = CreateConstants(json.constants);
+  function ParseResources(json, path) {
+    var constants = CreateConstants(json.constants, path);
 
-    return ParseImages(json.images, constants.image_path).then(function(images) {
+    return ParseImages(json.images || [], constants.image_path).then(function(images) {
 
+      var sounds = CreateSounds(json.sounds || [], constants.sound_path);
       var videos = CreateVideos(json.videos || [], constants.video_path);
       var textures = CreateTextures(json.textures || [], images, videos);
       var animations = CreateAnimations(json.animations || []);
@@ -3022,12 +3202,13 @@ var AMTHREE = AMTHREE || {};
       var geometries = CreateGeometries(json.geometries || []);
 
       var resources = {
-        constants: constants,
-        videos: videos,
-        images: images,
-        textures: textures,
+        constants:  constants,
+        videos:     videos,
+        images:     images,
+        sounds:     sounds,
+        textures:   textures,
         animations: animations,
-        materials: materials,
+        materials:  materials,
         geometries: geometries
       }
 
@@ -3035,20 +3216,20 @@ var AMTHREE = AMTHREE || {};
     });
   }
 
-  function Parse(json) {
-    return ParseResources(json).then(function(res) {
-      return ParseObject(json.object, res.materials, res.geometries, res.constants.model_path)
+  function Parse(json, path) {
+    return ParseResources(json, path).then(function(res) {
+      return ParseObject(json.object, res.materials, res.geometries, res.sounds, res.constants.model_path)
       .then(function(object) {
 
         object.animations = res.animations;
-        resolve(object);
+        return object;
 
       });
     });
   }
 
-  function ParseArray(json) {
-    return ParseResources(json).then(function(res) {
+  function ParseArray(json, path) {
+    return ParseResources(json, path).then(function(res) {
 
       return ParseObjectArray(json.objects, res.materials,
         res.geometries, res.constants.model_path);
@@ -3137,7 +3318,19 @@ var AMTHREE = AMTHREE || {};
     return undefined;
   }
 
-  function ParseObject(json, materials, geometries, model_path) {
+  function GetSound(name, sounds) {
+    if (sounds[name] !== undefined)
+      return sounds[name];
+    else {
+      if (name === undefined)
+        console.warn('failed to get sound: no id provided');
+      else
+        console.warn('failed to get sound: no such sound: ' + name);
+    }
+    return undefined;
+  }
+
+  function ParseObject(json, materials, geometries, sounds, model_path) {
     var object;
 
     switch (json.type) {
@@ -3204,8 +3397,8 @@ var AMTHREE = AMTHREE || {};
       return;
       break;
 
-      case 'Sound':
-      object = new AMTHREE.Sound(json.url);
+      case 'SoundObject':
+      object = new AMTHREE.SoundObject(GetSound(json.sound, sounds));
       break;
 
       case 'Scene':
@@ -3271,11 +3464,11 @@ var AMTHREE = AMTHREE || {};
     return ParseObjectPostLoading(object, json, materials, geometries, model_path);
   }
 
-  function ParseObjectArray(json, materials, geometries, model_path) {
+  function ParseObjectArray(json, materials, geometries, sounds, model_path) {
     if (json instanceof Array) {
       return Promise.all(json.map(function(elem) {
 
-        return ParseObject(elem, materials, geometries, model_path);
+        return ParseObject(elem, materials, geometries, sounds, model_path);
 
       }));
     }
@@ -3311,6 +3504,7 @@ var AMTHREE = AMTHREE || {};
     * @function
     * @description Parses a json into an object.
     * @param {object} json - the json structure
+    * @param {string} [path] - the path of the directory containing the assets.
     * @returns {Promise.<THREE.Object3D, string>} a promise
     */
     AMTHREE.ParseObject = Parse;
@@ -3319,6 +3513,7 @@ var AMTHREE = AMTHREE || {};
     * @function
     * @description Parses a json into an array of objects.
     * @param {object} json - the json structure
+    * @param {string} [path] - the path of the directory containing the assets.
     * @returns {Promise.<Array.<THREE.Object3D>, string>} a promise
     */
     AMTHREE.ParseObjectArray = ParseArray;
@@ -3327,6 +3522,7 @@ var AMTHREE = AMTHREE || {};
     * @function
     * @description Loads a json file describing an object.
     * @param {string} url
+    * @param {string} [path] - the path of the directory containing the assets.
     * @returns {Promise.<THREE.Object3D, string>} a promise
     */
     AMTHREE.LoadObject = Load;
@@ -3335,6 +3531,7 @@ var AMTHREE = AMTHREE || {};
     * @function
     * @description Loads a json file describing an array of objects.
     * @param {string} url
+    * @param {string} [path] - the path of the directory containing the assets.
     * @returns {Promise.<Array.<THREE.Object3D>, string>} a promise
     */
     AMTHREE.LoadObjectArray = LoadArray;
@@ -3685,31 +3882,63 @@ var AMTHREE = AMTHREE || {};
 
 if (typeof THREE !== 'undefined') {
 
+
+  AMTHREE.Sound = function(uuid, url) {
+    this.uuid = uuid || THREE.Math.generateUUID();
+    this.url = url;
+  };
+
+  AMTHREE.Sound.prototype.toJSON = function(meta) {
+    var output = {
+      uuid: this.uuid,
+      url: AMTHREE.GetFilename(this.url)
+    }
+
+    if (!meta.sounds)
+      meta.sounds = {};
+    if (!meta.sounds[this.uuid])
+      meta.sounds[this.uuid] = output;
+
+    return output;
+  }
+
+
+}
+else {
+  AMTHREE.Sound = function() {
+    console.warn('Sound.js: THREE undefined');
+  };
+}
+var AMTHREE = AMTHREE || {};
+
+
+if (typeof THREE !== 'undefined') {
+
   /**
    * 
    * @class
    * @augments {THREE.Object3D}
-   * @param {string} src - url of the sound
+   * @param {string} url - url of the sound
    */
-  AMTHREE.Sound = function(src) {
+  AMTHREE.SoundObject = function(sound) {
     THREE.Object3D.call(this);
 
-    this.src = src;
+    this.sound = sound;
     this.audio = new Audio();
     this.audio.loop = true;
     this.playing = false;
   };
 
-  AMTHREE.Sound.prototype = Object.create(THREE.Object3D.prototype);
-  AMTHREE.Sound.prototype.constructor = AMTHREE.Sound;
+  AMTHREE.SoundObject.prototype = Object.create(THREE.Object3D.prototype);
+  AMTHREE.SoundObject.prototype.constructor = AMTHREE.SoundObject;
 
   /**
    * Plays the sound.
    * @inner
    */
-  AMTHREE.Sound.prototype.play = function() {
+  AMTHREE.SoundObject.prototype.play = function() {
     this.playing = true;
-    this.audio.src = this.src;
+    this.audio.src = this.sound.url;
     this.audio.play();
   };
 
@@ -3717,7 +3946,7 @@ if (typeof THREE !== 'undefined') {
    * Stops the sound.
    * @inner
    */
-  AMTHREE.Sound.prototype.stop = function() {
+  AMTHREE.SoundObject.prototype.stop = function() {
     this.audio.src = '';
     this.playing = false;
   };
@@ -3726,7 +3955,7 @@ if (typeof THREE !== 'undefined') {
    * Pauses the sound.
    * @inner
    */
-  AMTHREE.Sound.prototype.pause = function() {
+  AMTHREE.SoundObject.prototype.pause = function() {
     this.audio.pause();
     this.playing = false;
   };
@@ -3734,10 +3963,10 @@ if (typeof THREE !== 'undefined') {
   /**
    * Sets the sound's url.
    * @inner
-   * @param {string} src
+   * @param {string} url
    */
-  AMTHREE.Sound.prototype.setSrc = function(src) {
-    this.src = src;
+  AMTHREE.SoundObject.prototype.setSound = function(sound) {
+    this.sound = sound;
     if (this.isPlaying())
       this.play();
   };
@@ -3747,32 +3976,33 @@ if (typeof THREE !== 'undefined') {
    * @inner
    * @returns {bool}
    */
-  AMTHREE.Sound.prototype.isPlaying = function() {
+  AMTHREE.SoundObject.prototype.isPlaying = function() {
     return this.playing;
   };
 
   /**
    * Returns a clone of this.
    * @inner
-   * @returns {AMTHREE.Sound}
+   * @returns {AMTHREE.SoundObject}
    */
-  AMTHREE.Sound.prototype.clone = function() {
-    return new AMTHREE.Sound(this.src);
+  AMTHREE.SoundObject.prototype.clone = function() {
+    return (new AMTHREE.SoundObject()).copy(this);
   };
 
   /**
    * Copies the parameter.
    * @inner
-   * @param {AMTHREE.Sound}
+   * @param {AMTHREE.SoundObject}
    */
-  AMTHREE.Sound.prototype.copy = function(sound) {
-    this.setSrc(sound.src)
+  AMTHREE.SoundObject.prototype.copy = function(src) {
+    this.setSound(src.sound);
+    return this;
   };
 
 
   AMTHREE.SoundsCall = function(object, fun) {
     object.traverse(function(s) {
-      if (s instanceof AMTHREE.Sound && s[fun])
+      if (s instanceof AMTHREE.SoundObject && s[fun])
         s[fun]();
     });
   };
@@ -3804,11 +4034,20 @@ if (typeof THREE !== 'undefined') {
     AMTHREE.SoundsCall(object, 'stop');
   };
 
+  AMTHREE.SoundObject.prototype.toJSON = function(meta) {
+    var output = THREE.Object3D.prototype.toJSON.call(this, meta);
+
+    output.object.type = 'SoundObject';
+    output.object.sound = this.sound.uuid;
+
+    return output;
+  }
+
 
 }
 else {
-  AMTHREE.Sound = function() {
-    console.warn('Sound.js: THREE undefined');
+  AMTHREE.SoundObject = function() {
+    console.warn('SoundObject.js: THREE undefined');
   };
 }
 /******************
@@ -4248,6 +4487,58 @@ AMTHREE.PlayAnimations = function(object) {
     }
   } );
 };
+
+AMTHREE.GetFilename = function(path) {
+  return path.split('/').pop().split('\\').pop();
+}
+
+AMTHREE.IMAGE_PATH = 'images/';
+AMTHREE.MODEL_PATH = 'models/';
+AMTHREE.VIDEO_PATH = 'videos/';
+AMTHREE.SOUND_PATH = 'sounds/';
+/** @namespace */
+var AMTHREE = AMTHREE || {};
+
+if (typeof THREE !== 'undefined') {
+
+  /**
+   * @class
+   * @augments THREE.Texture
+   * @param {string} [uuid] - genrated if not provided
+   * @param {string} [url] - The url of the video.
+   */
+  AMTHREE.Video = function(uuid, url) {
+    this.uuid = uuid || THREE.Math.generateUUID();
+    this.url = (typeof url === 'string') ? url : undefined;
+  };
+
+  /**
+  * Returns an object that can be serialized using JSON.stringify.
+  * @param {object} [meta] - an object holding json ressources. The result of this function will be added to it if provided.
+  * @returns {object} A json object
+  */
+  AMTHREE.Video.prototype.toJSON = function(meta) {
+    var output = {
+      uuid: this.uuid,
+      url: AMTHREE.GetFilename(this.url)
+    };
+
+    if (typeof meta === 'object') {
+      if (!meta.videos) meta.videos = {};
+      meta.videos[output.uuid] = output;
+    }
+
+    return output;
+  }
+
+
+}
+else {
+  AMTHREE.Video = function() {
+    console.warn('Video.js: THREE undefined');
+  };
+}
+
 var AMTHREE = AMTHREE || {};
 
 if (typeof THREE !== 'undefined') {
@@ -4256,58 +4547,37 @@ if (typeof THREE !== 'undefined') {
   /**
    * @class
    * @augments THREE.Texture
+   * @param {AMTHREE.Video} [video]
+   * @param {string} [uuid]
+   * @param {number} [width]
+   * @param {number} [height]
+   * @param {bool} [loop=true]
+   * @param {bool} [autoplay=false]
    */
-  AMTHREE.VideoTexture = function(params) {
+  AMTHREE.VideoTexture = function(video, uuid, width, height, loop, autoplay) {
     THREE.Texture.call(this);
+
+    this.uuid = (typeof uuid === 'string') ? uuid : THREE.Math.generateUUID();
 
     this.minFilter = THREE.NearestMipMapNearestFilter;
 
     this.videoElement = document.createElement('video');
 
-    this.setVideo(params);
+    this.needsUpdate = false;
+
+    this.set(video, width, height, loop, autoplay);
   };
 
   AMTHREE.VideoTexture.prototype = Object.create(THREE.Texture.prototype);
   AMTHREE.VideoTexture.prototype.constructor = AMTHREE.VideoTexture;
 
   /**
-   * Copies source in this.
-   * @param {AMTHREE.VideoTexture} source
-   */
-  AMTHREE.VideoTexture.prototype.copy = function(source) {
-    THREE.Texture.prototype.copy.call(this, source);
-
-    var params = {};
-
-    if (source.videoElement) {
-      params.width = source.videoElement.width;
-      params.height = source.videoElement.height;
-      params.loop = source.videoElement.loop;
-      params.autoplay = source.videoElement.autoplay;
-    }
-
-    params.src = source.src;
-
-    this.setVideo(params);
-
-    return this;
-  };
-
-  /**
-  * Clones this.
-  * @returns {AMTHREE.VideoTexture}
-  */
-  AMTHREE.VideoTexture.prototype.clone = function () {
-    return new this.constructor().copy( this );
-  };
-
-  /**
    * Plays the animated texture.
    */
   AMTHREE.VideoTexture.prototype.play = function() {
-    if (this.videoElement && !this.playing) {
+    if (this.videoElement && !this.playing && this.video) {
       if (!this.paused) {
-        this.videoElement.src = this.src;
+        this.videoElement.src = this.video.url;
       }
       this.videoElement.setAttribute('crossorigin', 'anonymous');
       this.videoElement.play();
@@ -4349,26 +4619,52 @@ if (typeof THREE !== 'undefined') {
   };
 
   /**
-   * Sets the source video of the texture.
+   * Sets the texture.
+   * @param {AMTHREE.Video} [video]
+   * @param {number} [width]
+   * @param {number} [height]
+   * @param {bool} [loop=true]
+   * @param {bool} [autoplay=false]
    */
-  AMTHREE.VideoTexture.prototype.setVideo = function(params) {
-
+  AMTHREE.VideoTexture.prototype.set = function(video, width, height, loop, autoplay) {
     this.stop();
 
-    if (params) {
-      this.src = params.src;
+    this.video = video;
 
-      this.videoElement.width = params.width;
-      this.videoElement.height = params.height;
-      this.videoElement.autoplay = (typeof params.autoplay !== 'undefined') ? params.autoplay : false;
-      this.videoElement.loop = (typeof params.loop !== 'undefined') ? params.loop : true;
-    }
+    this.videoElement.width = (typeof width === 'number') ? width : undefined;
+    this.videoElement.height = (typeof height === 'number') ? height : undefined;
+    this.videoElement.autoplay = (typeof autoplay === 'bool') ? autoplay : false;
+    this.videoElement.loop = (typeof loop === 'bool') ? loop : true;
 
     this.playing = false;
 
     if (this.videoElement.autoplay)
       this.play();
   };
+
+  /**
+  * Returns a json object.
+  * {object} [meta] - an object holding json ressources. The result of this function will be added to it if provided.
+  */
+  AMTHREE.VideoTexture.prototype.toJSON = function(meta) {
+    var output = {
+      uuid: this.uuid,
+      video: this.video.uuid,
+      width: this.videoElement.width,
+      height: this.videoElement.height,
+      loop: this.videoElement.loop,
+      autoplay: this.videoElement.autoplay
+    };
+
+    this.video.toJSON(meta);
+
+    if (typeof meta === 'object') {
+      if (!meta.textures) meta.textures = {};
+      meta.textures[output.uuid] = output;
+    }
+
+    return output;
+  }
 
 
 }
