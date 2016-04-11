@@ -305,7 +305,10 @@ AM.ImageDebugger = function() {
    * @inner
    * @param {number} number of coirners to display for each level
    */
-  drawTrainedCorners = function (number_per_level=50) {
+  drawTrainedCorners = function (number_per_level) {
+    if (typeof number_per_level === 'undefined')
+      number_per_level = 50;
+
   var bluredImages=_training.getBluredImages();
   var trained_image = new AM.TrainedImage(_uuid);
   _training.SetResultToTrainedImage(trained_image);
