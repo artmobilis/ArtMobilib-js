@@ -197,7 +197,10 @@ AM.ImageDebugger = function() {
    * @inner
    * @param {bool} use all trained levels or all concatene in one image
    */
-  drawMatches = function (all_in_first_image=false) {
+  drawMatches = function (all_in_first_image) {
+    if (typeof all_in_first_image === 'undefined')
+      all_in_first_image = false;
+
     // draw matched trained corners    
     _context2d.lineWidth=2;
     for(var i = 0; i < _matches.length; ++i) {
