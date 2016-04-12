@@ -102,7 +102,7 @@ AM.DeviceOrientationControl = function(object) {
         quaternion.setFromEuler( euler );                               // orient the device
         quaternion.multiply( q1 );                                      // camera looks out the back of the device, not the top
         quaternion.multiply( q0.setFromAxisAngle( zee, - orient ) );    // adjust for screen orientation
-      }
+      };
     }();
 
     if (_enabled) {
@@ -163,7 +163,7 @@ AM.DeviceOrientationControl.prototype.CoefMethod = function() {
 
   this.OnOrientationChange = function(e) {
     _event = e;
-  }
+  };
 
   function lerp_rad(a, b, coef) {
     return a + AM.DeviceOrientationControl.prototype.Mod2Pi(b - a) * coef;
@@ -179,7 +179,7 @@ AM.DeviceOrientationControl.prototype.CoefMethod = function() {
       that.beta = beta;
       that.gamma = gamma;
     }
-  }
+  };
 };
 
 
@@ -238,7 +238,7 @@ AM.DeviceOrientationControl.prototype.Mod2Pi = function () {
       } while (val < -n);
     }
     return val;
-  }
+  };
 }();
 
 

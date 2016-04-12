@@ -14,7 +14,7 @@ if (typeof THREE !== 'undefined') {
     this.image.addEventListener('load', function(texture) {
       return function() {
         texture.needsUpdate = true;
-      }
+      };
     }(this));
 
     this.set(image);
@@ -29,7 +29,7 @@ if (typeof THREE !== 'undefined') {
   AMTHREE.ImageTexture.prototype.set = function(image) {
     this.image_ref = image;
     this.image.src = image.url;
-  }
+  };
 
   /**
   * Returns the json representation of the texture
@@ -50,7 +50,7 @@ if (typeof THREE !== 'undefined') {
     }
 
     return output;
-  }
+  };
 
 
 }

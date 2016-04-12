@@ -126,7 +126,7 @@ AM.Training = function() {
     var dst = new jsfeat.matrix_t(img.cols, img.rows, jsfeat.U8_t | jsfeat.C1_t);
     img.copy_to(dst);
     return dst;
-  }
+  };
 
  /**
    * Trains an image, saves the intermediate results and images internally

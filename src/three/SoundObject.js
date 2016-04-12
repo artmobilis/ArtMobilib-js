@@ -130,7 +130,7 @@ if (typeof THREE !== 'undefined') {
     output.object.sound = this.sound.uuid;
 
     return output;
-  }
+  };
 
 
 }

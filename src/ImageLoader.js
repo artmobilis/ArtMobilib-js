@@ -33,7 +33,7 @@ AM.ImageLoader = function() {
         var image_data = _ctx.getImageData(0, 0, _canvas.width, _canvas.height);
 
         on_load(image_data);
-      }
+      };
     }(img, on_load, square);
     img.src = url;
   };

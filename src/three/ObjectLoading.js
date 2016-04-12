@@ -497,7 +497,7 @@ var AMTHREE = AMTHREE || {};
         animations: animations,
         materials:  materials,
         geometries: geometries
-      }
+      };
 
       return resources;
     });
@@ -679,7 +679,7 @@ var AMTHREE = AMTHREE || {};
         });
       }
       else {
-        reject('failed to load ' + json.uuid + ': THREE.ColladaLoader is undefined')
+        reject('failed to load ' + json.uuid + ': THREE.ColladaLoader is undefined');
       }
       return;
       break;

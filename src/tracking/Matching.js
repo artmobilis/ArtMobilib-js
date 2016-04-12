@@ -14,7 +14,7 @@ AM.Matching = function() {
 
   var _params = {
     match_threshold: 48
-  }
+  };
 
   /**
    *
@@ -73,7 +73,7 @@ AM.Matching = function() {
       n = n >> 8;
       r += v2b[n & m8];
       return r;
-    }
+    };
   }();
 
   var popcnt32_3 = function() {
@@ -89,7 +89,7 @@ AM.Matching = function() {
       n = n >> 16;
       r += v2b[n & m16];
       return r;
-    }
+    };
   }();
 
   function MatchPattern(screen_descriptors, pattern_descriptors) {

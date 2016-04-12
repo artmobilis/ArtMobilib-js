@@ -8,7 +8,7 @@
   */
   var EventManager = function() {
     this._listeners = {};
-  }
+  };
 
   /**
   * Adds a listener to an event.
@@ -27,7 +27,7 @@
       }
     }
     return false;
-  }
+  };
 
   /**
   * Removes a listener to an event.
@@ -55,7 +55,7 @@
       }
     }
     return false;
-  }
+  };
 
   /**
   * Fires an event, by calling every function bound to it.
@@ -75,7 +75,7 @@
       }
     }
     return false;
-  }
+  };
 
   AM.EventManager = EventManager;
 
