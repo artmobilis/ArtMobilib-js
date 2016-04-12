@@ -54,7 +54,7 @@ AM.FrontCamGrabbing = function() {
         if (sourceInfo.kind == "video" && sourceInfo.facing == "environment") {
           constraints.video = {
             optional: [{sourceId: sourceInfo.id}]
-          }
+          };
         }
       }
 
@@ -68,7 +68,7 @@ AM.FrontCamGrabbing = function() {
           on_error();
       });
 
-    }
+    };
   }
 
   function GetSourcesMST(on_error) {

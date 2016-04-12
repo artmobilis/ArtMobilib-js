@@ -91,7 +91,7 @@ if (typeof THREE !== 'undefined') {
           LerpObjectsTransforms(elem.object, elem.target, that.lerp_factor);
 
       });
-    };
+    }
 
     var _update_method = UpdateLerpMethod;
 
@@ -212,7 +212,7 @@ if (typeof THREE !== 'undefined') {
         matrix.compose(position, quaternion, scale);
 
         return that.Track(uuid, matrix);
-      }
+      };
     }();
 
     /**

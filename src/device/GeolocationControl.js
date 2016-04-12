@@ -121,7 +121,7 @@ AM.GeolocationControl = function(object, geoConverter) {
 				that.object.position.z += diffZ;
 			}
 
-		};
+		}
 	};
 
 };

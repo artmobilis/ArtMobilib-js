@@ -773,7 +773,7 @@ if (typeof THREE !== 'undefined') {
               SetAttributes(object, data);
 
               manager.itemEnd(url);
-            }
+            };
           }( object, data, manager, url ));
 
           // return object;
@@ -838,7 +838,7 @@ if (typeof THREE !== 'undefined') {
         if (parent !== undefined)
           parent.add(object);
         return object;
-      }
+      };
     }();
 
 

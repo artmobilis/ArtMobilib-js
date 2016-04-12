@@ -12,7 +12,7 @@ AM.ImageFilter = function() {
   var _params = {
     blur_size: 3,
     blur: true
-  }
+  };
 
   /**
    * Filters the image and saves the result internally
@@ -56,4 +56,4 @@ AM.ImageFilter = function() {
   };
 
 
-}
+};

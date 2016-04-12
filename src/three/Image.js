@@ -30,7 +30,7 @@ if (typeof THREE !== 'undefined') {
     }
 
     return output;
-  }
+  };
 
 
 }

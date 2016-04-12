@@ -85,19 +85,19 @@ AM.DeviceLockScreenOrientation = function() {
    */
   this.LockLandscape = function() {
     Command(LockLandscapeDoit);
-  }
+  };
 
   /**
    * @inner
    */
   this.LockPortrait = function() {
     Command(LockPortraitDoit);
-  }
+  };
 
   /**
    * @inner
    */
   this.Unlock = function() {
     Command(UnlockDoit);
-  }
+  };
 };

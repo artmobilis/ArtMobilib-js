@@ -1,82 +1,3 @@
-/**
-* this code is from all around the web :)
-* if u want to put some credits u are welcome!
-*/
-var compatibility = (function() {
-        var lastTime = 0,
-        isLittleEndian = true,
-
-        URL = window.URL || window.webkitURL|| window.mozURL || window.msURL,
-
-        requestAnimationFrame = function(callback, element) {
-            var requestAnimationFrame =
-                window.requestAnimationFrame        || 
-                window.webkitRequestAnimationFrame  || 
-                window.mozRequestAnimationFrame     || 
-                window.oRequestAnimationFrame       ||
-                window.msRequestAnimationFrame      ||
-                function(callback, element) {
-                    var currTime = new Date().getTime();
-                    var timeToCall = Math.max(0, 16 - (currTime - lastTime));
-                    var id = window.setTimeout(function() {
-                        callback(currTime + timeToCall);
-                    }, timeToCall);
-                    lastTime = currTime + timeToCall;
-                    return id;
-                };
-
-            return requestAnimationFrame.call(window, callback, element);
-        },
-
-        cancelAnimationFrame = function(id) {
-            var cancelAnimationFrame = window.cancelAnimationFrame ||
-                                        function(id) {
-                                            clearTimeout(id);
-                                        };
-            return cancelAnimationFrame.call(window, id);
-        },
-
-        getUserMedia = function(options, success, error) {
-            var getUserMedia =
-                window.navigator.getUserMedia ||
-                window.navigator.mozGetUserMedia ||
-                window.navigator.webkitGetUserMedia ||
-                window.navigator.msGetUserMedia ||
-                function(options, success, error) {
-                    error();
-                };
-
-            return getUserMedia.call(window.navigator, options, success, error);
-        },
-
-        detectEndian = function() {
-            var buf = new ArrayBuffer(8);
-            var data = new Uint32Array(buf);
-            data[0] = 0xff000000;
-            isLittleEndian = true;
-            if (buf[0] === 0xff) {
-                isLittleEndian = false;
-            }
-            return isLittleEndian;
-        };
-
-    return {
-        URL: URL,
-        requestAnimationFrame: requestAnimationFrame,
-        cancelAnimationFrame: cancelAnimationFrame,
-        getUserMedia: getUserMedia,
-        detectEndian: detectEndian,
-        isLittleEndian: isLittleEndian
-    };
-})();
-/**
- * @namespace THREE
- */
-
-/**
- * @typedef THREE.Object3D
- * @see {@link http://threejs.org/docs/index.html#Reference/Core/Object3D|Threejs documentation}
- */
 (function() {
   AM = AM || {};
 
@@ -87,7 +8,7 @@ var compatibility = (function() {
   */
   var EventManager = function() {
     this._listeners = {};
-  }
+  };
 
   /**
   * Adds a listener to an event.
@@ -106,7 +27,7 @@ var compatibility = (function() {
       }
     }
     return false;
-  }
+  };
 
   /**
   * Removes a listener to an event.
@@ -134,7 +55,7 @@ var compatibility = (function() {
       }
     }
     return false;
-  }
+  };
 
   /**
   * Fires an event, by calling every function bound to it.
@@ -154,7 +75,7 @@ var compatibility = (function() {
       }
     }
     return false;
-  }
+  };
 
   AM.EventManager = EventManager;
 
@@ -215,7 +136,7 @@ AM.FrontCamGrabbing = function() {
         if (sourceInfo.kind == "video" && sourceInfo.facing == "environment") {
           constraints.video = {
             optional: [{sourceId: sourceInfo.id}]
-          }
+          };
         }
       }
 
@@ -229,7 +150,7 @@ AM.FrontCamGrabbing = function() {
           on_error();
       });
 
-    }
+    };
   }
 
   function GetSourcesMST(on_error) {
@@ -709,7 +630,7 @@ AM.ImageLoader = function() {
         var image_data = _ctx.getImageData(0, 0, _canvas.width, _canvas.height);
 
         on_load(image_data);
-      }
+      };
     }(img, on_load, square);
     img.src = url;
   };
@@ -880,21 +801,21 @@ var stopwatch = (function() {
     stopwatch.prototype.start = function() {
         this.start_time = new Date().getTime();
         this.running = true;
-    }
+    };
 
     stopwatch.prototype.stop = function() {
         this.stop_time = new Date().getTime();
         this.run_time = (this.stop_time - this.start_time);
         this.running = false;
-    }
+    };
 
     stopwatch.prototype.get_runtime = function() {
         return this.run_time;
-    }
+    };
 
     stopwatch.prototype.reset = function() {
         this.run_time = 0;
-    }
+    };
 
     return stopwatch;
 })();
@@ -920,15 +841,15 @@ var ring_buffer = (function() {
             this.begin = (this.begin+1)%this.arr_size;
             this.arr[this.end] = elem;
         }
-    }
+    };
 
     ring_buffer.prototype.get = function(i) {
         return this.arr[(this.begin+i)%this.arr_size];
-    }
+    };
 
     ring_buffer.prototype.size = function() {
         return this.num_el;
-    }
+    };
 
     return ring_buffer;
 
@@ -948,7 +869,7 @@ var profiler = (function() {
 
     profiler.prototype.add = function(subj) {
         this.timers.push([subj, new stopwatch()]);
-    }
+    };
 
     profiler.prototype.new_frame = function() {
         ++count_frames;
@@ -970,7 +891,7 @@ var profiler = (function() {
             this.fps = size / sum * 1000;
             this.frame_timer.start();
         }
-    }
+    };
 
     profiler.prototype.find_task = function(subj) {
         var n = this.timers.length | 0;
@@ -982,17 +903,17 @@ var profiler = (function() {
             }
         }
         return null;
-    }
+    };
 
     profiler.prototype.start = function(subj) {
         var task = this.find_task(subj);
         task[1].start();
-    }
+    };
 
     profiler.prototype.stop = function(subj) {
         var task = this.find_task(subj);
         task[1].stop();
-    }
+    };
 
     profiler.prototype.log = function () {
         var n = this.timers.length | 0;
@@ -1003,7 +924,7 @@ var profiler = (function() {
             str += "<br/>" + pair[0] + ": " + pair[1].get_runtime() + "ms";
         }
         return str;
-    }
+    };
 
     profiler.prototype.log2 = function () {
         var n = this.timers.length | 0;
@@ -1014,11 +935,11 @@ var profiler = (function() {
             str += pair[0] + ": " + pair[1].get_runtime() + "ms  ";
         }
         return str;
-    }
+    };
 
     profiler.prototype.GetProfiler = function (){
         return { fps: this.fps, timers: this.timers };
-    }
+    };
 
     return profiler;
 })();
@@ -1028,6 +949,85 @@ AM.Profiler = profiler;
 
 })();
 
+/**
+* this code is from all around the web :)
+* if u want to put some credits u are welcome!
+*/
+var compatibility = (function() {
+        var lastTime = 0,
+        isLittleEndian = true,
+
+        URL = window.URL || window.webkitURL|| window.mozURL || window.msURL,
+
+        requestAnimationFrame = function(callback, element) {
+            var requestAnimationFrame =
+                window.requestAnimationFrame        || 
+                window.webkitRequestAnimationFrame  || 
+                window.mozRequestAnimationFrame     || 
+                window.oRequestAnimationFrame       ||
+                window.msRequestAnimationFrame      ||
+                function(callback, element) {
+                    var currTime = new Date().getTime();
+                    var timeToCall = Math.max(0, 16 - (currTime - lastTime));
+                    var id = window.setTimeout(function() {
+                        callback(currTime + timeToCall);
+                    }, timeToCall);
+                    lastTime = currTime + timeToCall;
+                    return id;
+                };
+
+            return requestAnimationFrame.call(window, callback, element);
+        },
+
+        cancelAnimationFrame = function(id) {
+            var cancelAnimationFrame = window.cancelAnimationFrame ||
+                                        function(id) {
+                                            clearTimeout(id);
+                                        };
+            return cancelAnimationFrame.call(window, id);
+        },
+
+        getUserMedia = function(options, success, error) {
+            var getUserMedia =
+                window.navigator.getUserMedia ||
+                window.navigator.mozGetUserMedia ||
+                window.navigator.webkitGetUserMedia ||
+                window.navigator.msGetUserMedia ||
+                function(options, success, error) {
+                    error();
+                };
+
+            return getUserMedia.call(window.navigator, options, success, error);
+        },
+
+        detectEndian = function() {
+            var buf = new ArrayBuffer(8);
+            var data = new Uint32Array(buf);
+            data[0] = 0xff000000;
+            isLittleEndian = true;
+            if (buf[0] === 0xff) {
+                isLittleEndian = false;
+            }
+            return isLittleEndian;
+        };
+
+    return {
+        URL: URL,
+        requestAnimationFrame: requestAnimationFrame,
+        cancelAnimationFrame: cancelAnimationFrame,
+        getUserMedia: getUserMedia,
+        detectEndian: detectEndian,
+        isLittleEndian: isLittleEndian
+    };
+})();
+/**
+ * @namespace THREE
+ */
+
+/**
+ * @typedef THREE.Object3D
+ * @see {@link http://threejs.org/docs/index.html#Reference/Core/Object3D|Threejs documentation}
+ */
 /**************
 
 DeviceLockScreenOrientation
@@ -1115,21 +1115,21 @@ AM.DeviceLockScreenOrientation = function() {
    */
   this.LockLandscape = function() {
     Command(LockLandscapeDoit);
-  }
+  };
 
   /**
    * @inner
    */
   this.LockPortrait = function() {
     Command(LockPortraitDoit);
-  }
+  };
 
   /**
    * @inner
    */
   this.Unlock = function() {
     Command(UnlockDoit);
-  }
+  };
 };
 /******************
 
@@ -1235,7 +1235,7 @@ AM.DeviceOrientationControl = function(object) {
         quaternion.setFromEuler( euler );                               // orient the device
         quaternion.multiply( q1 );                                      // camera looks out the back of the device, not the top
         quaternion.multiply( q0.setFromAxisAngle( zee, - orient ) );    // adjust for screen orientation
-      }
+      };
     }();
 
     if (_enabled) {
@@ -1296,7 +1296,7 @@ AM.DeviceOrientationControl.prototype.CoefMethod = function() {
 
   this.OnOrientationChange = function(e) {
     _event = e;
-  }
+  };
 
   function lerp_rad(a, b, coef) {
     return a + AM.DeviceOrientationControl.prototype.Mod2Pi(b - a) * coef;
@@ -1312,7 +1312,7 @@ AM.DeviceOrientationControl.prototype.CoefMethod = function() {
       that.beta = beta;
       that.gamma = gamma;
     }
-  }
+  };
 };
 
 
@@ -1371,7 +1371,7 @@ AM.DeviceOrientationControl.prototype.Mod2Pi = function () {
       } while (val < -n);
     }
     return val;
-  }
+  };
 }();
 
 
@@ -1473,7 +1473,7 @@ AM.GeographicCoordinatesConverter = function(latitude, longitude) {
    */
   this.GetLocalCoordinatesFromDegres = function(latitude, longitude) {
     return that.GetLocalCoordinates(THREE.Math.degToRad(latitude), THREE.Math.degToRad(longitude));
-  }
+  };
 
   /**
    * @inner
@@ -1483,7 +1483,7 @@ AM.GeographicCoordinatesConverter = function(latitude, longitude) {
   this.SetOrigin = function(latitude, longitude) {
     _origin.latitude = latitude;
     _origin.longitude = longitude;
-  }
+  };
 
   /**
    * @inner
@@ -1493,7 +1493,7 @@ AM.GeographicCoordinatesConverter = function(latitude, longitude) {
   this.SetOriginFromDegres = function(latitude, longitude) {
     _origin.latitude = THREE.Math.degToRad(latitude);
     _origin.longitude = THREE.Math.degToRad(longitude);
-  }
+  };
 
   /**
    * @inner
@@ -1501,7 +1501,7 @@ AM.GeographicCoordinatesConverter = function(latitude, longitude) {
    */
   this.GetOrigin = function() {
     return _origin;
-  }
+  };
 
   this.SetOrigin(latitude || 0, longitude || 0);
 
@@ -1631,7 +1631,7 @@ AM.GeolocationControl = function(object, geoConverter) {
 				that.object.position.z += diffZ;
 			}
 
-		};
+		}
 	};
 
 };
@@ -1745,7 +1745,7 @@ if (typeof THREE !== 'undefined') {
     }
 
     return output;
-  }
+  };
 
 
 }
@@ -1787,7 +1787,7 @@ if (typeof THREE !== 'undefined') {
     }
 
     return output;
-  }
+  };
 
 
 }
@@ -1813,7 +1813,7 @@ if (typeof THREE !== 'undefined') {
     this.image.addEventListener('load', function(texture) {
       return function() {
         texture.needsUpdate = true;
-      }
+      };
     }(this));
 
     this.set(image);
@@ -1828,7 +1828,7 @@ if (typeof THREE !== 'undefined') {
   AMTHREE.ImageTexture.prototype.set = function(image) {
     this.image_ref = image;
     this.image.src = image.url;
-  }
+  };
 
   /**
   * Returns the json representation of the texture
@@ -1849,7 +1849,7 @@ if (typeof THREE !== 'undefined') {
     }
 
     return output;
-  }
+  };
 
 
 }
@@ -2634,7 +2634,7 @@ if (typeof THREE !== 'undefined') {
               SetAttributes(object, data);
 
               manager.itemEnd(url);
-            }
+            };
           }( object, data, manager, url ));
 
           // return object;
@@ -2699,7 +2699,7 @@ if (typeof THREE !== 'undefined') {
         if (parent !== undefined)
           parent.add(object);
         return object;
-      }
+      };
     }();
 
 
@@ -3210,7 +3210,7 @@ var AMTHREE = AMTHREE || {};
         animations: animations,
         materials:  materials,
         geometries: geometries
-      }
+      };
 
       return resources;
     });
@@ -3392,7 +3392,7 @@ var AMTHREE = AMTHREE || {};
         });
       }
       else {
-        reject('failed to load ' + json.uuid + ': THREE.ColladaLoader is undefined')
+        reject('failed to load ' + json.uuid + ': THREE.ColladaLoader is undefined');
       }
       return;
       break;
@@ -3721,7 +3721,7 @@ if (typeof THREE !== 'undefined') {
           THREE.AnimationHandler.update(clock.getDelta());
 
         AMTHREE.UpdateAnimatedTextures(_three_scene);
-      }
+      };
     }();
 
     /**
@@ -3761,7 +3761,7 @@ if (typeof THREE !== 'undefined') {
             if (on_load_assets)
               on_load_assets();
 
-          }
+          };
         }(new_scene);
 
         _loading_manager.onLoad = OnLoadAssets;
@@ -3892,7 +3892,7 @@ if (typeof THREE !== 'undefined') {
     var output = {
       uuid: this.uuid,
       url: AMTHREE.GetFilename(this.url)
-    }
+    };
 
     if (!meta.sounds)
       meta.sounds = {};
@@ -3900,7 +3900,7 @@ if (typeof THREE !== 'undefined') {
       meta.sounds[this.uuid] = output;
 
     return output;
-  }
+  };
 
 
 }
@@ -4041,7 +4041,7 @@ if (typeof THREE !== 'undefined') {
     output.object.sound = this.sound.uuid;
 
     return output;
-  }
+  };
 
 
 }
@@ -4143,7 +4143,7 @@ if (typeof THREE !== 'undefined') {
           LerpObjectsTransforms(elem.object, elem.target, that.lerp_factor);
 
       });
-    };
+    }
 
     var _update_method = UpdateLerpMethod;
 
@@ -4264,7 +4264,7 @@ if (typeof THREE !== 'undefined') {
         matrix.compose(position, quaternion, scale);
 
         return that.Track(uuid, matrix);
-      }
+      };
     }();
 
     /**
@@ -4412,90 +4412,6 @@ else {
     console.warn('TrackedObjManager.js: THREE undefined');
   };
 }
-var AMTHREE = AMTHREE || {};
-
-
-AMTHREE.AnimatedTextureCall = function(object, fun) {
-  object.traverse(function(s) {
-    if (s.material
-      && s.material.map
-      && s.material.map[fun])
-      s.material.map[fun]();
-  });
-};
-
-/**
- * Recursively play animated texture on this object and all his children.
- * @param {THREE.Object3D} object
- */
-AMTHREE.PlayAnimatedTextures = function(object) {
-  AMTHREE.AnimatedTextureCall(object, 'play');
-};
-
-/**
- * Recursively stop animated texture on this object and all his children.
- * @param {THREE.Object3D} object
- */
-AMTHREE.StopAnimatedTextures = function(object) {
-  AMTHREE.AnimatedTextureCall(object, 'stop');
-};
-
-/**
- * Recursively pause animated texture on this object and all his children.
- * @param {THREE.Object3D} object
- */
-AMTHREE.PauseAnimatedTextures = function(object) {
-  AMTHREE.AnimatedTextureCall(object, 'pause');
-};
-
-/**
- * Recursively update animated texture on this object and all his children.
- * @param {THREE.Object3D} object
- */
-AMTHREE.UpdateAnimatedTextures = function(object) {
-  AMTHREE.AnimatedTextureCall(object, 'update');
-};
-
-
-/**
- * Converts a world position to a canvas position.
- * @param {THREE.Vector3} position
- * @param {THREE.Camera} camera
- * @param {Canvas} canvas
- */
-AMTHREE.WorldToCanvasPosition = function(position, camera, canvas) {
-  var vec = new THREE.Vector3();
-
-  vec.copy(position);
-  vec.project(camera);
-
-  var x = Math.round( (vec.x + 1) * canvas.width / 2 );
-  var y = Math.round( (-vec.y + 1) * canvas.height / 2 );
-
-  return { x: x, y: y, z: vec.z };
-};
-
-/**
- * Recursively update animations on this object and all his children.
- * @param {THREE.Object3D} object
- */
-AMTHREE.PlayAnimations = function(object) {
-  object.traverse( function ( child ) {
-    if ( child instanceof THREE.SkinnedMesh ) {
-      var animation = new THREE.Animation( child, child.geometry.animation );
-      animation.play();
-    }
-  } );
-};
-
-AMTHREE.GetFilename = function(path) {
-  return path.split('/').pop().split('\\').pop();
-}
-
-AMTHREE.IMAGE_PATH = 'images/';
-AMTHREE.MODEL_PATH = 'models/';
-AMTHREE.VIDEO_PATH = 'videos/';
-AMTHREE.SOUND_PATH = 'sounds/';
 /** @namespace */
 var AMTHREE = AMTHREE || {};
 
@@ -4529,7 +4445,7 @@ if (typeof THREE !== 'undefined') {
     }
 
     return output;
-  }
+  };
 
 
 }
@@ -4664,7 +4580,7 @@ if (typeof THREE !== 'undefined') {
     }
 
     return output;
-  }
+  };
 
 
 }
@@ -4673,6 +4589,90 @@ else {
     console.warn('VideoTexture.js: THREE undefined');
   };
 }
+var AMTHREE = AMTHREE || {};
+
+
+AMTHREE.AnimatedTextureCall = function(object, fun) {
+  object.traverse(function(s) {
+    if (s.material
+      && s.material.map
+      && s.material.map[fun])
+      s.material.map[fun]();
+  });
+};
+
+/**
+ * Recursively play animated texture on this object and all his children.
+ * @param {THREE.Object3D} object
+ */
+AMTHREE.PlayAnimatedTextures = function(object) {
+  AMTHREE.AnimatedTextureCall(object, 'play');
+};
+
+/**
+ * Recursively stop animated texture on this object and all his children.
+ * @param {THREE.Object3D} object
+ */
+AMTHREE.StopAnimatedTextures = function(object) {
+  AMTHREE.AnimatedTextureCall(object, 'stop');
+};
+
+/**
+ * Recursively pause animated texture on this object and all his children.
+ * @param {THREE.Object3D} object
+ */
+AMTHREE.PauseAnimatedTextures = function(object) {
+  AMTHREE.AnimatedTextureCall(object, 'pause');
+};
+
+/**
+ * Recursively update animated texture on this object and all his children.
+ * @param {THREE.Object3D} object
+ */
+AMTHREE.UpdateAnimatedTextures = function(object) {
+  AMTHREE.AnimatedTextureCall(object, 'update');
+};
+
+
+/**
+ * Converts a world position to a canvas position.
+ * @param {THREE.Vector3} position
+ * @param {THREE.Camera} camera
+ * @param {Canvas} canvas
+ */
+AMTHREE.WorldToCanvasPosition = function(position, camera, canvas) {
+  var vec = new THREE.Vector3();
+
+  vec.copy(position);
+  vec.project(camera);
+
+  var x = Math.round( (vec.x + 1) * canvas.width / 2 );
+  var y = Math.round( (-vec.y + 1) * canvas.height / 2 );
+
+  return { x: x, y: y, z: vec.z };
+};
+
+/**
+ * Recursively update animations on this object and all his children.
+ * @param {THREE.Object3D} object
+ */
+AMTHREE.PlayAnimations = function(object) {
+  object.traverse( function ( child ) {
+    if ( child instanceof THREE.SkinnedMesh ) {
+      var animation = new THREE.Animation( child, child.geometry.animation );
+      animation.play();
+    }
+  } );
+};
+
+AMTHREE.GetFilename = function(path) {
+  return path.split('/').pop().split('\\').pop();
+};
+
+AMTHREE.IMAGE_PATH = 'images/';
+AMTHREE.MODEL_PATH = 'models/';
+AMTHREE.VIDEO_PATH = 'videos/';
+AMTHREE.SOUND_PATH = 'sounds/';
 var AM = AM || {};
 
 
@@ -4688,7 +4688,7 @@ AM.Detection = function() {
     detection_corners_max: 500,
     border_size: 15,
     fast_threshold: 20
-  }
+  };
 
   var _debug =false;
 
@@ -4805,7 +4805,7 @@ AM.IcAngle = (function() {
 
     // return Math.atan2(m_01, m_10);
     return AM.DiamondAngle(m_01, m_10) * half_pi;
-  }
+  };
 })();
 
 AM.DiamondAngle = function(y, x) {
@@ -4813,7 +4813,7 @@ AM.DiamondAngle = function(y, x) {
     return (x >= 0 ? y / (x + y) : 1 - x / (-x + y)); 
   else
     return (x < 0 ? 2 - y / (-x - y) : 3 + x / (x - y));
-}
+};
 
 AM.DetectKeypointsPostProc = function(img, corners, count, max_allowed) {
 
@@ -4831,7 +4831,7 @@ AM.DetectKeypointsPostProc = function(img, corners, count, max_allowed) {
   }
 
   return count;
-}
+};
 
 AM.DetectKeypointsYape06 = function(img, corners, max_allowed,
   laplacian_threshold, eigen_threshold, border_size) {
@@ -4870,7 +4870,7 @@ AM.ImageFilter = function() {
   var _params = {
     blur_size: 3,
     blur: true
-  }
+  };
 
   /**
    * Filters the image and saves the result internally
@@ -4914,7 +4914,7 @@ AM.ImageFilter = function() {
   };
 
 
-}
+};
 /*************************
 
 
@@ -4962,7 +4962,7 @@ AM.MarkerTracker = function() {
 
   var _params = {
     match_min : 8
-  }
+  };
   
   var _debug =false; 
   
@@ -5213,7 +5213,7 @@ AM.Matching = function() {
 
   var _params = {
     match_threshold: 48
-  }
+  };
 
   /**
    *
@@ -5272,7 +5272,7 @@ AM.Matching = function() {
       n = n >> 8;
       r += v2b[n & m8];
       return r;
-    }
+    };
   }();
 
   var popcnt32_3 = function() {
@@ -5288,7 +5288,7 @@ AM.Matching = function() {
       n = n >> 16;
       r += v2b[n & m16];
       return r;
-    }
+    };
   }();
 
   function MatchPattern(screen_descriptors, pattern_descriptors) {
@@ -5907,7 +5907,7 @@ AM.Training = function() {
     var dst = new jsfeat.matrix_t(img.cols, img.rows, jsfeat.U8_t | jsfeat.C1_t);
     img.copy_to(dst);
     return dst;
-  }
+  };
 
  /**
    * Trains an image, saves the intermediate results and images internally
