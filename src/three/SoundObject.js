@@ -126,6 +126,8 @@ if (typeof THREE !== 'undefined') {
   AMTHREE.SoundObject.prototype.toJSON = function(meta) {
     var output = THREE.Object3D.prototype.toJSON.call(this, meta);
 
+    this.sound.toJSON(meta);
+
     output.object.type = 'SoundObject';
     output.object.sound = this.sound.uuid;
 
