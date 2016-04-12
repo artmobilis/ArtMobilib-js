@@ -2756,6 +2756,7 @@ var AMTHREE = AMTHREE || {};
     constants.image_path = constants.asset_path + ((json.image_path) ? json.image_path : '');
     constants.video_path = constants.asset_path + ((json.video_path) ? json.video_path : '');
     constants.model_path = constants.asset_path + ((json.model_path) ? json.model_path : '');
+    constants.sound_path = constants.asset_path + ((json.sound_path) ? json.sound_path : '');
 
     return constants;
   }
@@ -3232,12 +3233,12 @@ var AMTHREE = AMTHREE || {};
     return ParseResources(json, path).then(function(res) {
 
       return ParseObjectArray(json.objects, res.materials,
-        res.geometries, res.constants.model_path);
+        res.geometries, res.sounds, res.constants.model_path);
 
     });
   }
 
-  function ParseObjectPostLoading(object, json, materials, geometries, model_path) {
+  function ParseObjectPostLoading(object, json, materials, geometries, sounds, model_path) {
     var matrix = new THREE.Matrix4();
 
     object.uuid = json.uuid;
@@ -3283,7 +3284,7 @@ var AMTHREE = AMTHREE || {};
     }
 
     if (json.children !== undefined) {
-      return ParseObjectArray(json.children, materials, geometries, model_path).then(function(array) {
+      return ParseObjectArray(json.children, materials, geometries, sounds, model_path).then(function(array) {
         for (var i = 0, c = array.length; i < c; ++i) {
           object.add(array[i]);
         }
@@ -3346,7 +3347,7 @@ var AMTHREE = AMTHREE || {};
             if (child.geometry) child.geometry.computeBoundingSphere();
           });
 
-          ParseObjectPostLoading(object, json, materials, geometries, model_path).then(resolve, reject);
+          ParseObjectPostLoading(object, json, materials, geometries, sounds, model_path).then(resolve, reject);
 
         });
       }
@@ -3368,7 +3369,7 @@ var AMTHREE = AMTHREE || {};
             if (child.geometry) child.geometry.computeBoundingSphere();
           });
 
-          ParseObjectPostLoading(object, json, materials, geometries, model_path).then(resolve, reject);
+          ParseObjectPostLoading(object, json, materials, geometries, sounds, model_path).then(resolve, reject);
 
         });
       }
@@ -3387,7 +3388,7 @@ var AMTHREE = AMTHREE || {};
         collada_loader.load(url, function(collada) {
 
           var object = collada.scene;
-          ParseObjectPostLoading(object, json, materials, geometries, model_path).then(resolve, reject);
+          ParseObjectPostLoading(object, json, materials, geometries, sounds, model_path).then(resolve, reject);
 
         });
       }
@@ -3461,7 +3462,7 @@ var AMTHREE = AMTHREE || {};
       object = new THREE.Object3D();
     }
 
-    return ParseObjectPostLoading(object, json, materials, geometries, model_path);
+    return ParseObjectPostLoading(object, json, materials, geometries, sounds, model_path);
   }
 
   function ParseObjectArray(json, materials, geometries, sounds, model_path) {
@@ -4036,6 +4037,8 @@ if (typeof THREE !== 'undefined') {
 
   AMTHREE.SoundObject.prototype.toJSON = function(meta) {
     var output = THREE.Object3D.prototype.toJSON.call(this, meta);
+
+    this.sound.toJSON(meta);
 
     output.object.type = 'SoundObject';
     output.object.sound = this.sound.uuid;
