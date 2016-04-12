@@ -16,21 +16,21 @@ var stopwatch = (function() {
     stopwatch.prototype.start = function() {
         this.start_time = new Date().getTime();
         this.running = true;
-    }
+    };
 
     stopwatch.prototype.stop = function() {
         this.stop_time = new Date().getTime();
         this.run_time = (this.stop_time - this.start_time);
         this.running = false;
-    }
+    };
 
     stopwatch.prototype.get_runtime = function() {
         return this.run_time;
-    }
+    };
 
     stopwatch.prototype.reset = function() {
         this.run_time = 0;
-    }
+    };
 
     return stopwatch;
 })();
@@ -56,15 +56,15 @@ var ring_buffer = (function() {
             this.begin = (this.begin+1)%this.arr_size;
             this.arr[this.end] = elem;
         }
-    }
+    };
 
     ring_buffer.prototype.get = function(i) {
         return this.arr[(this.begin+i)%this.arr_size];
-    }
+    };
 
     ring_buffer.prototype.size = function() {
         return this.num_el;
-    }
+    };
 
     return ring_buffer;
 
@@ -84,7 +84,7 @@ var profiler = (function() {
 
     profiler.prototype.add = function(subj) {
         this.timers.push([subj, new stopwatch()]);
-    }
+    };
 
     profiler.prototype.new_frame = function() {
         ++count_frames;
@@ -106,7 +106,7 @@ var profiler = (function() {
             this.fps = size / sum * 1000;
             this.frame_timer.start();
         }
-    }
+    };
 
     profiler.prototype.find_task = function(subj) {
         var n = this.timers.length | 0;
@@ -118,17 +118,17 @@ var profiler = (function() {
             }
         }
         return null;
-    }
+    };
 
     profiler.prototype.start = function(subj) {
         var task = this.find_task(subj);
         task[1].start();
-    }
+    };
 
     profiler.prototype.stop = function(subj) {
         var task = this.find_task(subj);
         task[1].stop();
-    }
+    };
 
     profiler.prototype.log = function () {
         var n = this.timers.length | 0;
@@ -139,7 +139,7 @@ var profiler = (function() {
             str += "<br/>" + pair[0] + ": " + pair[1].get_runtime() + "ms";
         }
         return str;
-    }
+    };
 
     profiler.prototype.log2 = function () {
         var n = this.timers.length | 0;
@@ -150,11 +150,11 @@ var profiler = (function() {
             str += pair[0] + ": " + pair[1].get_runtime() + "ms  ";
         }
         return str;
-    }
+    };
 
     profiler.prototype.GetProfiler = function (){
         return { fps: this.fps, timers: this.timers };
-    }
+    };
 
     return profiler;
 })();

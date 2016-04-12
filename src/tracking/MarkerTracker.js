@@ -45,7 +45,7 @@ AM.MarkerTracker = function() {
 
   var _params = {
     match_min : 8
-  }
+  };
   
   var _debug =false; 
   

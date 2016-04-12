@@ -13,7 +13,7 @@ AM.Detection = function() {
     detection_corners_max: 500,
     border_size: 15,
     fast_threshold: 20
-  }
+  };
 
   var _debug =false;
 
@@ -130,7 +130,7 @@ AM.IcAngle = (function() {
 
     // return Math.atan2(m_01, m_10);
     return AM.DiamondAngle(m_01, m_10) * half_pi;
-  }
+  };
 })();
 
 AM.DiamondAngle = function(y, x) {
@@ -138,7 +138,7 @@ AM.DiamondAngle = function(y, x) {
     return (x >= 0 ? y / (x + y) : 1 - x / (-x + y)); 
   else
     return (x < 0 ? 2 - y / (-x - y) : 3 + x / (x - y));
-}
+};
 
 AM.DetectKeypointsPostProc = function(img, corners, count, max_allowed) {
 
@@ -156,7 +156,7 @@ AM.DetectKeypointsPostProc = function(img, corners, count, max_allowed) {
   }
 
   return count;
-}
+};
 
 AM.DetectKeypointsYape06 = function(img, corners, max_allowed,
   laplacian_threshold, eigen_threshold, border_size) {

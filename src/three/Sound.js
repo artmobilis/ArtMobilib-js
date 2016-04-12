@@ -13,7 +13,7 @@ if (typeof THREE !== 'undefined') {
     var output = {
       uuid: this.uuid,
       url: AMTHREE.GetFilename(this.url)
-    }
+    };
 
     if (!meta.sounds)
       meta.sounds = {};
@@ -21,7 +21,7 @@ if (typeof THREE !== 'undefined') {
       meta.sounds[this.uuid] = output;
 
     return output;
-  }
+  };
 
 
 }

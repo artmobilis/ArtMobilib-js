@@ -92,7 +92,7 @@ AM.GeographicCoordinatesConverter = function(latitude, longitude) {
    */
   this.GetLocalCoordinatesFromDegres = function(latitude, longitude) {
     return that.GetLocalCoordinates(THREE.Math.degToRad(latitude), THREE.Math.degToRad(longitude));
-  }
+  };
 
   /**
    * @inner
@@ -102,7 +102,7 @@ AM.GeographicCoordinatesConverter = function(latitude, longitude) {
   this.SetOrigin = function(latitude, longitude) {
     _origin.latitude = latitude;
     _origin.longitude = longitude;
-  }
+  };
 
   /**
    * @inner
@@ -112,7 +112,7 @@ AM.GeographicCoordinatesConverter = function(latitude, longitude) {
   this.SetOriginFromDegres = function(latitude, longitude) {
     _origin.latitude = THREE.Math.degToRad(latitude);
     _origin.longitude = THREE.Math.degToRad(longitude);
-  }
+  };
 
   /**
    * @inner
@@ -120,7 +120,7 @@ AM.GeographicCoordinatesConverter = function(latitude, longitude) {
    */
   this.GetOrigin = function() {
     return _origin;
-  }
+  };
 
   this.SetOrigin(latitude || 0, longitude || 0);
 

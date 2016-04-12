@@ -170,7 +170,7 @@ if (typeof THREE !== 'undefined') {
           THREE.AnimationHandler.update(clock.getDelta());
 
         AMTHREE.UpdateAnimatedTextures(_three_scene);
-      }
+      };
     }();
 
     /**
@@ -210,7 +210,7 @@ if (typeof THREE !== 'undefined') {
             if (on_load_assets)
               on_load_assets();
 
-          }
+          };
         }(new_scene);
 
         _loading_manager.onLoad = OnLoadAssets;
