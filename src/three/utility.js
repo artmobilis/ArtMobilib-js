@@ -82,3 +82,4 @@ AMTHREE.IMAGE_PATH = 'images/';
 AMTHREE.MODEL_PATH = 'models/';
 AMTHREE.VIDEO_PATH = 'videos/';
 AMTHREE.SOUND_PATH = 'sounds/';
+AMTHREE.ASSET_PATH = 'assets/';
