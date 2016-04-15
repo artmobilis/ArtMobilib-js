@@ -83,6 +83,7 @@ AM.DeviceOrientationControl = function(object) {
     window.removeEventListener('deviceorientation', OnDeviceOrientationChangeEvent, false);
 
     _enabled = false;
+    _first_event_ignored = false;
   };
 
   /**
