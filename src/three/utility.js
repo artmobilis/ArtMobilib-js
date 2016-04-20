@@ -3,9 +3,7 @@ var AMTHREE = AMTHREE || {};
 
 AMTHREE.AnimatedTextureCall = function(object, fun) {
   object.traverse(function(s) {
-    if (s.material
-      && s.material.map
-      && s.material.map[fun])
+    if (s.material && s.material.map && s.material.map[fun])
       s.material.map[fun]();
   });
 };

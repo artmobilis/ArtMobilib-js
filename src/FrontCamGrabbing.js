@@ -169,7 +169,7 @@ var AM = AM || {};
 
     this.Load = Load;
     this.Dispose = Dispose;
-  };
+  }
 
 
   AM.FrontCamGrabbing = FrontCamGrabbing;

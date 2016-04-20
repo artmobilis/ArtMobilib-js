@@ -63,7 +63,7 @@ AM.Detection = function() {
    * @param {number} [params.fast_threshold=48] - 0 - 10
    */
   this.SetParameters = function(params) {
-    for (name in params) {
+    for (var name in params) {
       if (typeof _params[name] !== 'undefined')
         _params[name] = params[name];
     }
