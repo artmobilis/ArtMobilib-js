@@ -1,11 +1,7 @@
 /*********************
 
 
-AMTHREE.ObjectsLoader
-
-A loader for loading a JSON resource
-A THREE.ObjectLoader edited to support .GIF, .MP4 as textures,
-and can load OBJ models and Collada models.
+AMTHREE.ObjectsLoading
 
 
 Dependency:
@@ -15,11 +11,6 @@ ColladaLoader.js,
 OBJLoader.js,
 OBJMTLLoader.js,
 libgif.js
-
-
-Known bugs:
-
-Cant use the same animated texture on two objects
 
 
 *********************/
@@ -163,7 +154,7 @@ var AMTHREE = AMTHREE || {};
 
   function ParseThreeConstant(value) {
     if (typeof value === 'number') return value;
-    console.warn('AMTHREE.ObjectLoader.parseTexture: Constant should be in numeric form.', value);
+    console.warn('AMTHREE.ObjectLoading: Constant should be in numeric form.', value);
     return THREE[value];
   }
 
@@ -437,7 +428,7 @@ var AMTHREE = AMTHREE || {};
 
           default:
 
-          console.warn('AMTHREE.ObjectLoader: Unsupported geometry type "' + data.type + '"');
+          console.warn('AMTHREE.ObjectLoading: Unsupported geometry type "' + data.type + '"');
 
           continue;
 
@@ -643,7 +634,6 @@ var AMTHREE = AMTHREE || {};
         reject('failed to load ' + json.uuid + ': THREE.OBJLoader is undefined');
       }
       return;
-      break;
 
       case 'OBJMTL':
       if (THREE.OBJMTLLoader) {
@@ -665,7 +655,6 @@ var AMTHREE = AMTHREE || {};
         reject('failed to load ' + json.uuid + ': THREE.OBJMTLLoader is undefined');
       }
       return;
-      break;
 
       case 'Collada':
       if (THREE.ColladaLoader) {
@@ -684,7 +673,6 @@ var AMTHREE = AMTHREE || {};
         reject('failed to load ' + json.uuid + ': THREE.ColladaLoader is undefined');
       }
       return;
-      break;
 
       case 'SoundObject':
       object = new AMTHREE.SoundObject(GetSound(json.sound, sounds));
