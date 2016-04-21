@@ -84,7 +84,7 @@ AM.MarkerTracker = function() {
 
     _matching.SetScreenDescriptors(_detection.GetDescriptors());
 
-    for(uuid in _trained_images) {
+    for(var uuid in _trained_images) {
       var trained_image = _trained_images[uuid];
 
       if (!trained_image.IsActive())
@@ -182,7 +182,7 @@ AM.MarkerTracker = function() {
    * @param {bool} bool - Sets all active if true, inactive if false.
    */
   this.ActiveAllMarkers = function(bool) {
-    for (uuid in _trained_images) {
+    for (var uuid in _trained_images) {
       _trained_images[uuid].Active(bool);
     }
   };
@@ -269,7 +269,7 @@ AM.MarkerTracker = function() {
    * @see AM.Training
    */
   this.SetParameters = function(params) {
-    for (name in params) {
+    for (var name in params) {
       if (typeof _params[name] !== 'undefined')
         _params[name] = params[name];
     }

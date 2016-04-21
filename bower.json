@@ -21,6 +21,6 @@
     "js-aruco": "https://github.com/jcmellado/js-aruco.git",
     "jsfeat": "^0.0.8",
     "libgif-js": "https://github.com/buzzfeed/libgif-js.git#8c044e1",
-    "three.js": "https://github.com/mrdoob/three.js.git#r73"
+    "three.js": "https://github.com/mrdoob/three.js.git#r75"
   }
 }

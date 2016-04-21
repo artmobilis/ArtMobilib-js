@@ -201,11 +201,7 @@ AM.DeviceOrientationControl.prototype.AverageMethod = function() {
   };
 
   this.Update = function(alpha, beta, gamma) {
-    var alpha = 0;
-    var beta = 0;
-    var gamma = 0;
-
-    if (that.history.length != 0) {
+    if (that.history.length !== 0) {
       for (var i = 0, c = that.history.length; i < c; i++) {
         alpha += AM.DeviceOrientationControl.prototype.Mod360(that.history[i].alpha);
         beta += AM.DeviceOrientationControl.prototype.Mod360(that.history[i].beta);

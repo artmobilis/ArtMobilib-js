@@ -302,7 +302,7 @@ if (typeof THREE !== 'undefined') {
     };
 
     this.Clear = function() {
-      for (uuid in _objects)
+      for (var uuid in _objects)
         that.Remove(uuid);
     };
 
@@ -320,7 +320,7 @@ if (typeof THREE !== 'undefined') {
     };
 
     this.UpdateElapsed = function(elapsed) {
-      for (uuid in _objects) {
+      for (var uuid in _objects) {
 
         _objects[uuid].elapsed += elapsed;
       }
@@ -328,7 +328,7 @@ if (typeof THREE !== 'undefined') {
 
     this.CheckTimeout = function(timeout) {
 
-      for (uuid in _objects) {
+      for (var uuid in _objects) {
 
         var elem = _objects[uuid];
 
@@ -341,7 +341,7 @@ if (typeof THREE !== 'undefined') {
     };
 
     this.ForEach = function(fun) {
-      for (uuid in _objects) {
+      for (var uuid in _objects) {
         fun(_objects[uuid]);
       }
     };

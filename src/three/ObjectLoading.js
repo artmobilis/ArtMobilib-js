@@ -1,11 +1,7 @@
 /*********************
 
 
-AMTHREE.ObjectsLoader
-
-A loader for loading a JSON resource
-A THREE.ObjectLoader edited to support .GIF, .MP4 as textures,
-and can load OBJ models and Collada models.
+AMTHREE.ObjectsLoading
 
 
 Dependency:
@@ -15,11 +11,6 @@ ColladaLoader.js,
 OBJLoader.js,
 OBJMTLLoader.js,
 libgif.js
-
-
-Known bugs:
-
-Cant use the same animated texture on two objects
 
 
 *********************/
@@ -163,7 +154,7 @@ var AMTHREE = AMTHREE || {};
 
   function ParseThreeConstant(value) {
     if (typeof value === 'number') return value;
-    console.warn('AMTHREE.ObjectLoader.parseTexture: Constant should be in numeric form.', value);
+    console.warn('AMTHREE.ObjectLoading: Constant should be in numeric form.', value);
     return THREE[value];
   }
 
@@ -178,6 +169,7 @@ var AMTHREE = AMTHREE || {};
     if (typeof json !== 'undefined') {
       for (var i = 0, l = json.length; i < l; i++) {
         var data = json[i];
+        var texture = undefined;
 
         if (!data.uuid) {
           console.warn('failed to parse texture ' + i + ': no uuid provided');
@@ -199,9 +191,9 @@ var AMTHREE = AMTHREE || {};
           if (data.animated !== undefined && data.animated) {
             if (typeof SuperGif == 'undefined')
               continue;
-            var texture = new AMTHREE.GifTexture(image);
+            texture = new AMTHREE.GifTexture(image);
           } else {
-            var texture = new AMTHREE.ImageTexture(image);
+            texture = new AMTHREE.ImageTexture(image);
             texture.needsUpdate = true;
           }
         }
@@ -212,7 +204,7 @@ var AMTHREE = AMTHREE || {};
           }
 
           var video = videos[data.video];
-          var texture = new AMTHREE.VideoTexture(video, data.width, data.height, data.loop, data.autoplay);
+          texture = new AMTHREE.VideoTexture(video, data.width, data.height, data.loop, data.autoplay);
         }
 
         texture.uuid = data.uuid;
@@ -436,7 +428,7 @@ var AMTHREE = AMTHREE || {};
 
           default:
 
-          console.warn('AMTHREE.ObjectLoader: Unsupported geometry type "' + data.type + '"');
+          console.warn('AMTHREE.ObjectLoading: Unsupported geometry type "' + data.type + '"');
 
           continue;
 
@@ -619,7 +611,7 @@ var AMTHREE = AMTHREE || {};
   }
 
   function ParseObject(json, materials, geometries, sounds, model_path) {
-    var object;
+    var object, url;
 
     switch (json.type) {
 
@@ -627,7 +619,7 @@ var AMTHREE = AMTHREE || {};
       if (THREE.OBJLoader) {
         var obj_loader = new THREE.OBJLoader();
 
-        var url = model_path + '/' + json.url;
+        url = model_path + '/' + json.url;
         obj_loader.load(url, function(object) {
 
           object.traverse(function(child) {
@@ -642,7 +634,6 @@ var AMTHREE = AMTHREE || {};
         reject('failed to load ' + json.uuid + ': THREE.OBJLoader is undefined');
       }
       return;
-      break;
 
       case 'OBJMTL':
       if (THREE.OBJMTLLoader) {
@@ -664,14 +655,13 @@ var AMTHREE = AMTHREE || {};
         reject('failed to load ' + json.uuid + ': THREE.OBJMTLLoader is undefined');
       }
       return;
-      break;
 
       case 'Collada':
       if (THREE.ColladaLoader) {
         var collada_loader = new THREE.ColladaLoader();
         collada_loader.options.convertUpAxis = true;
 
-        var url = model_path + '/' + json.url;
+        url = model_path + '/' + json.url;
         collada_loader.load(url, function(collada) {
 
           var object = collada.scene;
@@ -683,7 +673,6 @@ var AMTHREE = AMTHREE || {};
         reject('failed to load ' + json.uuid + ': THREE.ColladaLoader is undefined');
       }
       return;
-      break;
 
       case 'SoundObject':
       object = new AMTHREE.SoundObject(GetSound(json.sound, sounds));

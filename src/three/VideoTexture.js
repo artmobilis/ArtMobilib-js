@@ -49,8 +49,7 @@ if (typeof THREE !== 'undefined') {
    * Updates the animated texture.
    */
   AMTHREE.VideoTexture.prototype.update = function() {
-    if (this.videoElement
-      && this.videoElement.readyState == this.videoElement.HAVE_ENOUGH_DATA) {
+    if (this.videoElement && this.videoElement.readyState == this.videoElement.HAVE_ENOUGH_DATA) {
       this.needsUpdate = true;
     }
   };
@@ -92,8 +91,8 @@ if (typeof THREE !== 'undefined') {
 
     this.videoElement.width = (typeof width === 'number') ? width : undefined;
     this.videoElement.height = (typeof height === 'number') ? height : undefined;
-    this.videoElement.autoplay = (typeof autoplay === 'bool') ? autoplay : false;
-    this.videoElement.loop = (typeof loop === 'bool') ? loop : true;
+    this.videoElement.autoplay = (typeof autoplay === 'boolean') ? autoplay : false;
+    this.videoElement.loop = (typeof loop === 'boolean') ? loop : true;
 
     this.playing = false;
 

@@ -47,8 +47,8 @@ AM.Training = function() {
     if (level !== 0) {
       // fix the coordinates due to scale level
       for(i = 0; i < corners_num; ++i) {
-        corners[i].x *= 1. / scale;
-        corners[i].y *= 1. / scale;
+        corners[i].x *= 1 / scale;
+        corners[i].y *= 1 / scale;
       }
     }
 
@@ -218,7 +218,7 @@ AM.Training = function() {
    * @params {number} [params.eigen_threshold=25]
    */
   this.SetParameters = function(params) {
-    for (name in params) {
+    for (var name in params) {
       if (typeof _params[name] !== 'undefined')
         _params[name] = params[name];
     }

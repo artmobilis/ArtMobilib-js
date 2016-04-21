@@ -25,8 +25,10 @@ AM.Pose = function() {
     var pattern_xy = [];
     var screen_xy = [];
 
+    var i;
+
     // construct correspondences
-    for(var i = 0; i < count; ++i) {
+    for(i = 0; i < count; ++i) {
       var m = matches[i];
       var s_kp = screen_corners[m.screen_idx];
       var p_kp = pattern_corners[m.pattern_lev][m.pattern_idx];
@@ -42,7 +44,7 @@ AM.Pose = function() {
     // extract good matches and re-estimate
     var good_cnt = 0;
     if (ok) {
-      for(var i = 0; i < count; ++i) {
+      for(i = 0; i < count; ++i) {
         if(match_mask.data[i]) {
           pattern_xy[good_cnt].x = pattern_xy[i].x;
           pattern_xy[good_cnt].y = pattern_xy[i].y;
@@ -133,7 +135,7 @@ AM.PosePosit = function() {
    */
 
   this.posit = new POS.Posit(10, 1);
-  this.pose;
+  this.pose = undefined;
 };
 
 /**

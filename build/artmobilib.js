@@ -330,7 +330,7 @@ var AM = AM || {};
 
     this.Load = Load;
     this.Dispose = Dispose;
-  };
+  }
 
 
   AM.FrontCamGrabbing = FrontCamGrabbing;
@@ -362,7 +362,7 @@ getGradientGreenRedColor = function (n, max){
  */
 AM.ImageDebugger = function() {
 
-  var _training = new AM.Training;
+  var _training = new AM.Training();
 
   var _context2d;
   var _camera_video_element;
@@ -403,6 +403,8 @@ AM.ImageDebugger = function() {
    * @param {object} corner and matching information
   */
   this.DrawCorners = function(marker_corners) {
+    var i, sc;
+
     if(!_debugMatches) return;
     if(!marker_corners) return;
 
@@ -415,8 +417,8 @@ AM.ImageDebugger = function() {
 
     _context2d.fillStyle="red";
   
-    for(var i = 0; i < _screen_corners.length; ++i) {
-      var sc = _screen_corners[i];
+    for(i = 0; i < _screen_corners.length; ++i) {
+      sc = _screen_corners[i];
 
       _context2d.beginPath();
       _context2d.arc(sc.x*_ratio+_offsetx, sc.y*_ratio+_offsety, 3, 0, 2 * Math.PI);
@@ -425,8 +427,8 @@ AM.ImageDebugger = function() {
 
     // draw image data and corners
     _context2d.putImageData(_image_data, _canvas_width-_image_data.width, _hbands);
-    for(var i = 0; i < _screen_corners.length; ++i) {
-      var sc = _screen_corners[i];
+    for(i = 0; i < _screen_corners.length; ++i) {
+      sc = _screen_corners[i];
 
       _context2d.beginPath();
       _context2d.arc(sc.x+_canvas_width-_image_data.width, sc.y+_hbands, 3, 0, 2 * Math.PI);
@@ -500,14 +502,15 @@ AM.ImageDebugger = function() {
    * @inner
    */
   correctTrainingImageOffsets = function () {
+    var dif;
     // correct position in template image
     if(_last_trained_image_data.width>_last_trained_image_data.height){
-      var dif= _last_trained_image_data.width-_last_trained_image_data.height;
+      dif= _last_trained_image_data.width-_last_trained_image_data.height;
       _template_offsetx=0;
       _template_offsety=-Math.round(dif/2);
     }
     else{
-      var dif= _last_trained_image_data.height-_last_trained_image_data.width;
+      dif= _last_trained_image_data.height-_last_trained_image_data.width;
       _template_offsetx=-Math.round(dif/2);
       _template_offsety=0;
     }
@@ -918,164 +921,160 @@ var AM = AM || {};
 (function() {
 
 
-var stopwatch = (function() {
-    "use strict";
-    //
+  var stopwatch = (function() {
+    
     function stopwatch() {
-        this.start_time = 0;
-        this.stop_time = 0;
-        this.run_time = 0;
-        this.running = false;
+      this.start_time = 0;
+      this.stop_time = 0;
+      this.run_time = 0;
+      this.running = false;
     }
 
     stopwatch.prototype.start = function() {
-        this.start_time = new Date().getTime();
-        this.running = true;
+      this.start_time = new Date().getTime();
+      this.running = true;
     };
 
     stopwatch.prototype.stop = function() {
-        this.stop_time = new Date().getTime();
-        this.run_time = (this.stop_time - this.start_time);
-        this.running = false;
+      this.stop_time = new Date().getTime();
+      this.run_time = (this.stop_time - this.start_time);
+      this.running = false;
     };
 
     stopwatch.prototype.get_runtime = function() {
-        return this.run_time;
+      return this.run_time;
     };
 
     stopwatch.prototype.reset = function() {
-        this.run_time = 0;
+      this.run_time = 0;
     };
 
     return stopwatch;
-})();
+  })();
 
-var ring_buffer = (function() {
-    "use strict";
-    
+  var ring_buffer = (function() {
+
     function ring_buffer(size) {
-        this.arr = new Int32Array(size);
-        this.begin = 0;
-        this.end = -1;
-        this.num_el = 0;
-        this.arr_size = size;
+      this.arr = new Int32Array(size);
+      this.begin = 0;
+      this.end = -1;
+      this.num_el = 0;
+      this.arr_size = size;
     }
 
     ring_buffer.prototype.push_back = function(elem) {
-        if (this.num_el<this.arr_size) {
-            this.end++;
-            this.arr[this.end] = elem;
-            this.num_el++;
-        } else {
-            this.end = (this.end+1)%this.arr_size;
-            this.begin = (this.begin+1)%this.arr_size;
-            this.arr[this.end] = elem;
-        }
+      if (this.num_el<this.arr_size) {
+        this.end++;
+        this.arr[this.end] = elem;
+        this.num_el++;
+      } else {
+        this.end = (this.end+1)%this.arr_size;
+        this.begin = (this.begin+1)%this.arr_size;
+        this.arr[this.end] = elem;
+      }
     };
 
     ring_buffer.prototype.get = function(i) {
-        return this.arr[(this.begin+i)%this.arr_size];
+      return this.arr[(this.begin+i)%this.arr_size];
     };
 
     ring_buffer.prototype.size = function() {
-        return this.num_el;
+      return this.num_el;
     };
 
     return ring_buffer;
 
-})();
+  })();
 
-var profiler = (function() {
-    "use strict";
-    //
+  var profiler = (function() {
+
     var count_frames = 0;
     var ringbuff = new ring_buffer(20);
     function profiler() {
-        this.fps = 0.0; // yeah float
-        this.timers = [];
-        //this.names = [];
-        this.frame_timer = new stopwatch();
+      this.fps = 0;
+      this.timers = [];
+      this.frame_timer = new stopwatch();
     }
 
     profiler.prototype.add = function(subj) {
-        this.timers.push([subj, new stopwatch()]);
+      this.timers.push([subj, new stopwatch()]);
     };
 
     profiler.prototype.new_frame = function() {
-        ++count_frames;
-        var i = 0;
-        var n = this.timers.length | 0;
-        for(i = 0; i < n; ++i) {
-            var sw = this.timers[i][1];
-            sw.reset();
-        }
+      ++count_frames;
+      var i = 0;
+      var n = this.timers.length | 0;
+      for(i = 0; i < n; ++i) {
+        var sw = this.timers[i][1];
+        sw.reset();
+      }
 
-        if(count_frames >= 1) {
-            this.frame_timer.stop();
-            ringbuff.push_back(this.frame_timer.get_runtime());
-            var size = ringbuff.size();
-            var sum = 0;
-            for(i = 0; i < size; ++i) {
-                sum += ringbuff.get(i);
-            }
-            this.fps = size / sum * 1000;
-            this.frame_timer.start();
+      if(count_frames >= 1) {
+        this.frame_timer.stop();
+        ringbuff.push_back(this.frame_timer.get_runtime());
+        var size = ringbuff.size();
+        var sum = 0;
+        for(i = 0; i < size; ++i) {
+          sum += ringbuff.get(i);
         }
+        this.fps = size / sum * 1000;
+        this.frame_timer.start();
+      }
     };
 
     profiler.prototype.find_task = function(subj) {
-        var n = this.timers.length | 0;
-        var i = 0;
-        for(i = 0; i < n; ++i) {
-            var pair = this.timers[i];
-            if(pair[0] === subj) {
-                return pair;
-            }
+      var n = this.timers.length | 0;
+      var i = 0;
+      for(i = 0; i < n; ++i) {
+        var pair = this.timers[i];
+        if(pair[0] === subj) {
+          return pair;
         }
-        return null;
+      }
+      return null;
     };
 
     profiler.prototype.start = function(subj) {
-        var task = this.find_task(subj);
-        task[1].start();
+      var task = this.find_task(subj);
+      task[1].start();
     };
 
     profiler.prototype.stop = function(subj) {
-        var task = this.find_task(subj);
-        task[1].stop();
+      var task = this.find_task(subj);
+      task[1].stop();
     };
 
     profiler.prototype.log = function () {
-        var n = this.timers.length | 0;
-        var i = 0;
-        var str = "<strong>FPS: " + this.fps.toFixed(2) + "</strong>";
-        for (i = 0; i < n; ++i) {
-            var pair = this.timers[i];
-            str += "<br/>" + pair[0] + ": " + pair[1].get_runtime() + "ms";
-        }
-        return str;
+      var n = this.timers.length | 0;
+      var i = 0;
+      var str = "<strong>FPS: " + this.fps.toFixed(2) + "</strong>";
+      for (i = 0; i < n; ++i) {
+        var pair = this.timers[i];
+        str += "<br/>" + pair[0] + ": " + pair[1].get_runtime() + "ms";
+      }
+      return str;
     };
 
     profiler.prototype.log2 = function () {
-        var n = this.timers.length | 0;
-        var i = 0;
-        var str = "FPS: " + this.fps.toFixed(2) + "  ";
-        for (i = 0; i < n; ++i) {
-            var pair = this.timers[i];
-            str += pair[0] + ": " + pair[1].get_runtime() + "ms  ";
-        }
-        return str;
+      var n = this.timers.length | 0;
+      var i = 0;
+      var str = "FPS: " + this.fps.toFixed(2) + "  ";
+      for (i = 0; i < n; ++i) {
+        var pair = this.timers[i];
+        str += pair[0] + ": " + pair[1].get_runtime() + "ms  ";
+      }
+      return str;
     };
 
     profiler.prototype.GetProfiler = function (){
-        return { fps: this.fps, timers: this.timers };
+      return { fps: this.fps, timers: this.timers };
     };
 
     return profiler;
-})();
+  })();
 
 
-AM.Profiler = profiler;
+  AM.Profiler = profiler;
 
 })();
 
@@ -1385,11 +1384,7 @@ AM.DeviceOrientationControl.prototype.AverageMethod = function() {
   };
 
   this.Update = function(alpha, beta, gamma) {
-    var alpha = 0;
-    var beta = 0;
-    var gamma = 0;
-
-    if (that.history.length != 0) {
+    if (that.history.length !== 0) {
       for (var i = 0, c = that.history.length; i < c; i++) {
         alpha += AM.DeviceOrientationControl.prototype.Mod360(that.history[i].alpha);
         beta += AM.DeviceOrientationControl.prototype.Mod360(that.history[i].beta);
@@ -1911,866 +1906,36 @@ else {
   };
 }
 
-/**
- * @author mrdoob / http://mrdoob.com/
- */
-//
-
-/*********************
-
-Edited for ArtMobilis
-
-
-AMTHREE.ObjectLoader
-
-A loader for loading a JSON resource
-A THREE.ObjectLoader edited to support .GIF, .MP4 as textures,
-and can load OBJ models and Collada models.
-
-
-Dependency:
-
-three.js,
-ColladaLoader.js,
-OBJLoader.js,
-OBJMTLLoader.js,
-libgif.js
-
-
-Known bugs:
-
-Cant use the same animated texture on two objects
-
-
-*********************/
-
 var AMTHREE = AMTHREE || {};
 
 
-if (typeof THREE !== 'undefined') {
-
-  /**
-   * A loader for loading a JSON resource.
-   * @class
-   */
-  AMTHREE.ObjectLoader = function (manager) {
-
-    var that = this;
-
-    this.manager = ( manager !== undefined ) ? manager : THREE.DefaultLoadingManager;
-
-    this.constants = {};
-
-    this.geometries = {};
-    this.materials = {};
-    this.animations = [];
-    this.images = {};
-    this.videos = {};
-    this.textures = {};
-
-    this.json = {};
-
-    this.root;
+(function() {
 
 
-    /**
-     * Load a JSON file
-     * @param {string} url
-     * @param {function} on_load_object - function called when loading ends
-     * @inner
-     */
-    this.Load = function ( url, on_load_object ) {
+  function ObjectConvert(object) {
+    object.traverse(function(child) {
 
-      var loader = new THREE.XHRLoader( that.manager );
-
-      loader.load( url, function( on_load_object ) {
-
-        return function ( text ) {
-
-          that.json = JSON.parse( text );
-
-          on_load_object(that.Parse( that.json ));
-
-        };
-      }(on_load_object));
-    };
-
-    /**
-     * Parse a JSON object
-     * @param {object} json
-     * @inner
-     */
-    this.Parse = function ( json ) {
-      that.json = json;
-
-      that.ParseConstants( json.constants );
-      that.ParseGeometries( json.geometries );
-      that.ParseImages( json.images );
-      that.ParseVideos( json.videos );
-      that.ParseTextures( json.textures );
-      that.ParseMaterials( json.materials );
-      that.ParseAnimations( json.animations );
-
-      var object = that.ParseObject( json.object );
-
-      object.animations = that.animations;
-
-      return object;
-    };
-
-    this.ParseConstants = function ( json ) {
-      data = (json !== undefined) ? json : {};
-
-      that.constants.asset_path = (that.root) ? that.root + '/' : '';
-      if (data.asset_path)
-        that.constants.asset_path = that.constants.asset_path + data.asset_path + '/';
-      that.constants.image_path = that.constants.asset_path + ((data.image_path !== undefined) ? data.image_path : '');
-      that.constants.video_path = that.constants.asset_path + ((data.video_path !== undefined) ? data.video_path : '');
-      that.constants.model_path = that.constants.asset_path + ((data.model_path !== undefined) ? data.model_path : '');
-    };
-
-    this.ParseMaterials = function ( json ) {
-
-      if ( json !== undefined ) {
-
-        var loader = new THREE.MaterialLoader();
-        loader.setTextures( that.textures );
-
-        for ( var i = 0, l = json.length; i < l; i ++ ) {
-
-          var material = loader.parse( json[ i ] );
-          that.materials[ material.uuid ] = material;
-
-        }
-
-      }
-    };
-
-    this.ParseAnimations = function ( json ) {
-      if (json === undefined) return;
-
-      that.animations = [];
-
-      for ( var i = 0; i < json.length; i ++ ) {
-
-        var clip = THREE.AnimationClip.parse( json[i] );
-
-        that.animations.push( clip );
-
-      }
-    };
-
-    this.ParseImages = function ( json ) {
-
-      function LoadImage( url ) {
-
-        that.manager.itemStart( url );
-
-        return loader.load( url, function () {
-
-         that.manager.itemEnd( url );
-
-       } );
-
-      }
-
-      if ( json !== undefined && json.length > 0 ) {
-
-        var manager = new THREE.LoadingManager();
-
-        var loader = new THREE.ImageLoader( manager );
-
-        for ( var i = 0, l = json.length; i < l; i ++ ) {
-
-          var image = json[ i ];
-
-          if (image.url === undefined)
-            console.warn('AMTHREE.ObjectLoader: no "url" specified for image ' + i);
-          else if (image.uuid === undefined)
-            console.warn('AMTHREE.ObjectLoader: no "uuid" specified for image ' + i);
-          else {
-
-            var url = that.constants.image_path + '/' + image.url;
-
-            that.images[ image.uuid ] = LoadImage( url );
-          }
+      if (child.material && child.material.map) {
+        if (child.material.map.image) {
+          var image = new AMTHREE.Image(undefined, child.material.map.image.src);
+          var texture = new AMTHREE.ImageTexture(image);
+          child.material.map = texture;
+          child.material.needsUpdate = true;
         }
       }
-    };
 
-    this.ParseVideos = function ( json ) {
+    });
+  }
 
-      if ( json !== undefined ) {
 
-        for ( var i = 0, l = json.length; i < l; i ++ ) {
+  AMTHREE.ObjectConvert = ObjectConvert;
 
-          var video = json[ i ];
 
-          if (video.url === undefined)
-            console.warn('AMTHREE.ObjectLoader: no "url" specified for video ' + i);
-          else if (video.uuid === undefined)
-            console.warn('AMTHREE.ObjectLoader: no "uuid" specified for video ' + i);
-          else {
-
-            var data =
-            {
-              url: that.constants.video_path + '/' + video.url,
-              uuid: video.uuid,
-              width: video.width || 640,
-              height: video.height || 480
-            };
-
-            that.videos[ video.uuid ] = data;
-          }
-        }
-      }
-    };
-
-    this.ParseTextures = function ( json ) {
-
-      if (typeof SuperGif == 'undefined')
-        console.warn('AMTHREE.ObjectLoader: SuperGif is undefined');
-
-      function ParseConstant( value ) {
-
-        if ( typeof( value ) === 'number' ) return value;
-
-        console.warn( 'AMTHREE.ObjectLoader.parseTexture: Constant should be in numeric form.', value );
-
-        return THREE[ value ];
-
-      }
-
-      if ( json !== undefined ) {
-
-        for ( var i = 0, l = json.length; i < l; i ++ ) {
-
-          var data = json[ i ];
-
-          if ( data.image === undefined && data.video === undefined ) {
-            console.warn( 'AMTHREE.ObjectLoader: No "image" nor "video" specified for', data.uuid );
-            continue;
-          }
-
-
-          if ( data.image !== undefined ) {
-
-            if ( that.images[ data.image ] === undefined ) {
-              console.warn( 'AMTHREE.ObjectLoader: Undefined image', data.image );
-              continue;
-            }
-
-            var image = that.images[ data.image ];
-
-            if (data.animated !== undefined && data.animated) {
-
-              if (typeof SuperGif == 'undefined')
-                continue;
-
-              var texture = new AMTHREE.GifTexture(image.src);
-
-            } else {
-              var texture = new THREE.Texture( image );
-              texture.needsUpdate = true;
-            }
-          }
-          else {
-
-            if ( that.videos[ data.video ] === undefined ) {
-              console.warn( 'AMTHREE.ObjectLoader: Undefined video', data.video );
-              continue;
-            }
-
-            var video_data = that.videos [ data.video ];
-
-            var texture = new AMTHREE.VideoTexture( {
-              src: video_data.url,
-              width: video_data.width,
-              height: video_data.height,
-              loop: data.loop,
-              autoplay: data.autoplay
-            } );
-          }
-
-          texture.uuid = data.uuid;
-
-          if ( data.name !== undefined ) texture.name = data.name;
-          if ( data.mapping !== undefined ) texture.mapping = ParseConstant( data.mapping );
-          if ( data.offset !== undefined ) texture.offset = new THREE.Vector2( data.offset[ 0 ], data.offset[ 1 ] );
-          if ( data.repeat !== undefined ) texture.repeat = new THREE.Vector2( data.repeat[ 0 ], data.repeat[ 1 ] );
-          if ( data.minFilter !== undefined ) texture.minFilter = ParseConstant( data.minFilter );
-          else texture.minFilter = THREE.LinearFilter;
-          if ( data.magFilter !== undefined ) texture.magFilter = ParseConstant( data.magFilter );
-          if ( data.anisotropy !== undefined ) texture.anisotropy = data.anisotropy;
-          if ( Array.isArray( data.wrap ) ) {
-
-            texture.wrapS = ParseConstant( data.wrap[ 0 ] );
-            texture.wrapT = ParseConstant( data.wrap[ 1 ] );
-
-          }
-
-          that.textures[ data.uuid ] = texture;
-
-        }
-
-      }
-    };
-
-    this.ParseGeometries = function ( json ) {
-
-      if ( json !== undefined ) {
-
-        var geometry_loader = new THREE.JSONLoader();
-        var buffer_geometry_loader = new THREE.BufferGeometryLoader();
-
-        for ( var i = 0, l = json.length; i < l; i ++ ) {
-
-          var data = json[ i ];
-
-          var geometry;
-
-          switch ( data.type ) {
-
-            case 'PlaneGeometry':
-            case 'PlaneBufferGeometry':
-
-            geometry = new THREE[ data.type ](
-              data.width,
-              data.height,
-              data.widthSegments,
-              data.heightSegments
-              );
-
-            break;
-
-            case 'BoxGeometry':
-            case 'CubeGeometry':
-            geometry = new THREE.BoxGeometry(
-              data.width,
-              data.height,
-              data.depth,
-              data.widthSegments,
-              data.heightSegments,
-              data.depthSegments
-              );
-
-            break;
-
-            case 'CircleBufferGeometry':
-
-            geometry = new THREE.CircleBufferGeometry(
-              data.radius,
-              data.segments,
-              data.thetaStart,
-              data.thetaLength
-              );
-
-            break;
-
-            case 'CircleGeometry':
-
-            geometry = new THREE.CircleGeometry(
-              data.radius,
-              data.segments,
-              data.thetaStart,
-              data.thetaLength
-              );
-
-            break;
-
-            case 'CylinderGeometry':
-
-            geometry = new THREE.CylinderGeometry(
-              data.radiusTop,
-              data.radiusBottom,
-              data.height,
-              data.radialSegments,
-              data.heightSegments,
-              data.openEnded,
-              data.thetaStart,
-              data.thetaLength
-              );
-
-            break;
-
-            case 'SphereGeometry':
-
-            geometry = new THREE.SphereGeometry(
-              data.radius,
-              data.widthSegments,
-              data.heightSegments,
-              data.phiStart,
-              data.phiLength,
-              data.thetaStart,
-              data.thetaLength
-              );
-
-            break;
-
-            case 'SphereBufferGeometry':
-
-            geometry = new THREE.SphereBufferGeometry(
-              data.radius,
-              data.widthSegments,
-              data.heightSegments,
-              data.phiStart,
-              data.phiLength,
-              data.thetaStart,
-              data.thetaLength
-              );
-
-            break;
-
-            case 'DodecahedronGeometry':
-
-            geometry = new THREE.DodecahedronGeometry(
-              data.radius,
-              data.detail
-              );
-
-            break;
-
-            case 'IcosahedronGeometry':
-
-            geometry = new THREE.IcosahedronGeometry(
-              data.radius,
-              data.detail
-              );
-
-            break;
-
-            case 'OctahedronGeometry':
-
-            geometry = new THREE.OctahedronGeometry(
-              data.radius,
-              data.detail
-              );
-
-            break;
-
-            case 'TetrahedronGeometry':
-
-            geometry = new THREE.TetrahedronGeometry(
-              data.radius,
-              data.detail
-              );
-
-            break;
-
-            case 'RingGeometry':
-
-            geometry = new THREE.RingGeometry(
-              data.innerRadius,
-              data.outerRadius,
-              data.thetaSegments,
-              data.phiSegments,
-              data.thetaStart,
-              data.thetaLength
-              );
-
-            break;
-
-            case 'TorusGeometry':
-
-            geometry = new THREE.TorusGeometry(
-              data.radius,
-              data.tube,
-              data.radialSegments,
-              data.tubularSegments,
-              data.arc
-              );
-
-            break;
-
-            case 'TorusKnotGeometry':
-
-            geometry = new THREE.TorusKnotGeometry(
-              data.radius,
-              data.tube,
-              data.radialSegments,
-              data.tubularSegments,
-              data.p,
-              data.q,
-              data.heightScale
-              );
-
-            break;
-
-            case 'BufferGeometry':
-
-            geometry = buffer_geometry_loader.parse( data );
-
-            break;
-
-            case 'Geometry':
-
-            geometry = geometry_loader.parse( data.data, this.texturePath ).geometry;
-
-            break;
-
-            default:
-
-            console.warn( 'AMTHREE.ObjectLoader: Unsupported geometry type "' + data.type + '"' );
-
-            continue;
-
-          }
-
-          geometry.uuid = data.uuid;
-
-          if ( data.name !== undefined ) geometry.name = data.name;
-
-          that.geometries[ data.uuid ] = geometry;
-
-        }
-
-      }
-    };
-
-    this.ParseObject = function () {
-
-      if (THREE.ColladaLoader) {
-        var collada_loader = new THREE.ColladaLoader();
-        collada_loader.options.convertUpAxis = true;
-      }
-      else
-        console.warn('AMTHREE.ObjectLoader: THREE.ColladaLoader undefined');
-      if (THREE.OBJLoader)
-        var obj_loader = new THREE.OBJLoader();
-      else
-        console.warn('AMTHREE.ObjectLoader: THREE.OBJLoader undefined');
-      if (THREE.OBJMTLLoader)
-        var obj_mtl_loader = new THREE.OBJMTLLoader();
-      else
-        console.warn('AMTHREE.ObjectLoader: THREE.OBJMTLLoader undefined');
-
-      function SetAttributes( object, data ) {
-
-        var matrix = new THREE.Matrix4();
-
-        object.uuid = data.uuid;
-
-        if ( data.name !== undefined ) object.name = data.name;
-        if ( data.matrix !== undefined ) {
-
-          matrix.fromArray( data.matrix );
-          matrix.decompose( object.position, object.quaternion, object.scale );
-
-        } else {
-
-          if ( data.position !== undefined ) object.position.fromArray( data.position );
-          if ( data.rotation !== undefined ) object.rotation.fromArray( data.rotation );
-          if ( data.scale !== undefined ) object.scale.fromArray( data.scale );
-          if ( data.scaleXYZ !== undefined ) {
-            object.scale.x *= data.scaleXYZ;
-            object.scale.y *= data.scaleXYZ;
-            object.scale.z *= data.scaleXYZ;
-          }
-        }
-
-        if ( data.castShadow !== undefined ) object.castShadow = data.castShadow;
-        if ( data.receiveShadow !== undefined ) object.receiveShadow = data.receiveShadow;
-
-        if ( data.visible !== undefined ) object.visible = data.visible;
-        if ( data.userData !== undefined ) object.userData = data.userData;
-      }
-
-      return function ( data, parent ) {
-
-        var object;
-
-        function getGeometry( name ) {
-          if ( name === undefined ) return undefined;
-          if ( that.geometries[ name ] === undefined ) {
-            console.warn( 'AMTHREE.ObjectLoader: Undefined geometry', name );
-          }
-          return that.geometries[ name ];
-        }
-
-        function getMaterial( name ) {
-          if ( name === undefined ) return undefined;
-          if ( that.materials[ name ] === undefined ) {
-            console.warn( 'AMTHREE.ObjectLoader: Undefined material', name );
-          }
-          return that.materials[ name ];
-        }
-
-        switch ( data.type ) {
-
-          case 'Scene':
-
-          object = new THREE.Scene();
-
-          break;
-
-          case 'PerspectiveCamera':
-
-          object = new THREE.PerspectiveCamera( data.fov, data.aspect, data.near, data.far );
-
-          break;
-
-          case 'OrthographicCamera':
-
-          object = new THREE.OrthographicCamera( data.left, data.right, data.top, data.bottom, data.near, data.far );
-
-          break;
-
-          case 'AmbientLight':
-
-          object = new THREE.AmbientLight( data.color );
-
-          break;
-
-          case 'DirectionalLight':
-
-          object = new THREE.DirectionalLight( data.color, data.intensity );
-
-          break;
-
-          case 'PointLight':
-
-          object = new THREE.PointLight( data.color, data.intensity, data.distance, data.decay );
-
-          break;
-
-          case 'SpotLight':
-
-          object = new THREE.SpotLight( data.color, data.intensity, data.distance, data.angle, data.exponent, data.decay );
-
-          break;
-
-          case 'HemisphereLight':
-
-          object = new THREE.HemisphereLight( data.color, data.groundColor, data.intensity );
-
-          break;
-
-          case 'Mesh':
-
-          object = new THREE.Mesh( getGeometry( data.geometry ), getMaterial( data.material ) );
-
-          break;
-
-          case 'LOD':
-
-          object = new THREE.LOD();
-
-          break;
-
-          case 'Line':
-
-          object = new THREE.Line( getGeometry( data.geometry ), getMaterial( data.material ), data.mode );
-
-          break;
-
-          case 'PointCloud':
-          case 'Points':
-
-          object = new THREE.Points( getGeometry( data.geometry ), getMaterial( data.material ) );
-
-          break;
-
-          case 'Sprite':
-
-          object = new THREE.Sprite( getMaterial( data.material ) );
-
-          break;
-
-          case 'Group':
-
-          object = new THREE.Group();
-
-          break;
-
-          case 'OBJ':
-
-          if (typeof obj_loader == 'undefined') {
-            console.warn('AMTHREE.ObjectLoader: failed to load ' + data.uuid + ': THREE.OBJLoader is undefined');
-            return undefined;
-          }
-
-          object = new THREE.Object3D();
-
-          var url = that.constants.model_path + '/' + data.url;
-
-          that.manager.itemStart(url);
-
-          obj_loader.load( url, function ( object, data, manager, url ) {
-            return function ( model ) {
-
-              object.copy(model);
-
-              object.traverse(function(child) {
-                if (child.geometry)
-                  child.geometry.computeBoundingSphere();
-              });
-
-              SetAttributes(object, data);
-
-              manager.itemEnd(url);
-
-            };
-          }( object, data, that.manager, url ));
-
-          // return object;
-
-          break;
-
-          case 'OBJMTL':
-
-          if (typeof obj_mtl_loader == 'undefined') {
-            console.warn('AMTHREE.ObjectLoader: failed to load ' + data.uuid + ': THREE.OBJMTLLoader is undefined');
-            return undefined;
-          }
-
-          object = new THREE.Group();
-
-          var obj_url = that.constants.model_path + '/' + data.objUrl;
-          var mtl_url = that.constants.model_path + '/' + data.mtlUrl;
-
-          that.manager.itemStart(obj_url);
-          that.manager.itemStart(mtl_url);
-
-          obj_mtl_loader.load( obj_url, mtl_url,
-            function ( object, data, manager, obj_url, mtl_url ) {
-              return function ( model ) {
-
-                object.copy(model);
-
-                object.traverse(function(child) {
-                  if (child.geometry)
-                    child.geometry.computeBoundingSphere();
-                });
-
-                SetAttributes(object, data);
-
-                manager.itemEnd(obj_url);
-                manager.itemEnd(mtl_url);
-
-              };
-            }( object, data, that.manager, obj_url, mtl_url ));
-
-          // return object;
-
-          break;
-
-          case 'Collada':
-
-          if (typeof collada_loader === 'undefined') {
-            console.warn('ObjectLoader: failed to load ' + data.uuid + ': THREE.ColladaLoader is undefined');
-            return undefined;
-          }
-
-          object = new THREE.Group();
-
-          var url = that.constants.model_path + '/' + data.url;
-
-          that.manager.itemStart(url);
-
-          collada_loader.load( url, function ( object, data, manager, url ) {
-            return function ( collada ) {
-
-              var dae = collada.scene;
-
-              object.copy(dae);
-
-              if (typeof(THREE.Animation) !== 'undefined') {
-                object.traverse( function ( child ) {
-                  if ( child instanceof THREE.SkinnedMesh ) {
-                    var animation = new THREE.Animation( child, child.geometry.animation );
-                    animation.play();
-                  }
-                } );
-              }
-
-              SetAttributes(object, data);
-
-              manager.itemEnd(url);
-            };
-          }( object, data, manager, url ));
-
-          // return object;
-
-          case 'Sound':
-
-          object = new AMTHREE.Sound(data.url);
-
-          break;
-
-          case 'ImagePlane':
-
-          var url;
-          if (that.constants.image_path)
-            url = that.constants.image_path + '/' + data.url;
-          else
-            url = data.url;
-
-          object = new AMTHREE.ImagePlane(url);
-
-          break;
-
-          default:
-
-          object = new THREE.Object3D();
-
-        }
-
-        SetAttributes( object, data );
-
-        if ( data.children !== undefined ) {
-
-          for ( var child in data.children ) {
-
-            var o = that.ParseObject( data.children[ child ], object );
-            if (o !== undefined) {
-              object.add( o );
-            }
-
-          }
-
-        }
-
-        if ( data.type === 'LOD' ) {
-
-          var levels = data.levels;
-
-          for ( var l = 0; l < levels.length; l ++ ) {
-
-            var level = levels[ l ];
-            var child = object.getObjectByProperty( 'uuid', level.object );
-
-            if ( child !== undefined ) {
-
-              object.addLevel( child, level.distance );
-
-            }
-
-          }
-
-        }
-        if (parent !== undefined)
-          parent.add(object);
-        return object;
-      };
-    }();
-
-
-  };
-
-}
-else {
-  AMTHREE.ObjectLoader = function() {
-    console.warn('ObjectLoader.js: THREE undefined');
-  };
-}
+})();
 /*********************
 
 
-AMTHREE.ObjectsLoader
-
-A loader for loading a JSON resource
-A THREE.ObjectLoader edited to support .GIF, .MP4 as textures,
-and can load OBJ models and Collada models.
+AMTHREE.ObjectsLoading
 
 
 Dependency:
@@ -2780,11 +1945,6 @@ ColladaLoader.js,
 OBJLoader.js,
 OBJMTLLoader.js,
 libgif.js
-
-
-Known bugs:
-
-Cant use the same animated texture on two objects
 
 
 *********************/
@@ -2928,7 +2088,7 @@ var AMTHREE = AMTHREE || {};
 
   function ParseThreeConstant(value) {
     if (typeof value === 'number') return value;
-    console.warn('AMTHREE.ObjectLoader.parseTexture: Constant should be in numeric form.', value);
+    console.warn('AMTHREE.ObjectLoading: Constant should be in numeric form.', value);
     return THREE[value];
   }
 
@@ -2943,6 +2103,7 @@ var AMTHREE = AMTHREE || {};
     if (typeof json !== 'undefined') {
       for (var i = 0, l = json.length; i < l; i++) {
         var data = json[i];
+        var texture = undefined;
 
         if (!data.uuid) {
           console.warn('failed to parse texture ' + i + ': no uuid provided');
@@ -2964,9 +2125,9 @@ var AMTHREE = AMTHREE || {};
           if (data.animated !== undefined && data.animated) {
             if (typeof SuperGif == 'undefined')
               continue;
-            var texture = new AMTHREE.GifTexture(image);
+            texture = new AMTHREE.GifTexture(image);
           } else {
-            var texture = new AMTHREE.ImageTexture(image);
+            texture = new AMTHREE.ImageTexture(image);
             texture.needsUpdate = true;
           }
         }
@@ -2977,7 +2138,7 @@ var AMTHREE = AMTHREE || {};
           }
 
           var video = videos[data.video];
-          var texture = new AMTHREE.VideoTexture(video, data.width, data.height, data.loop, data.autoplay);
+          texture = new AMTHREE.VideoTexture(video, data.width, data.height, data.loop, data.autoplay);
         }
 
         texture.uuid = data.uuid;
@@ -3201,7 +2362,7 @@ var AMTHREE = AMTHREE || {};
 
           default:
 
-          console.warn('AMTHREE.ObjectLoader: Unsupported geometry type "' + data.type + '"');
+          console.warn('AMTHREE.ObjectLoading: Unsupported geometry type "' + data.type + '"');
 
           continue;
 
@@ -3384,7 +2545,7 @@ var AMTHREE = AMTHREE || {};
   }
 
   function ParseObject(json, materials, geometries, sounds, model_path) {
-    var object;
+    var object, url;
 
     switch (json.type) {
 
@@ -3392,7 +2553,7 @@ var AMTHREE = AMTHREE || {};
       if (THREE.OBJLoader) {
         var obj_loader = new THREE.OBJLoader();
 
-        var url = model_path + '/' + json.url;
+        url = model_path + '/' + json.url;
         obj_loader.load(url, function(object) {
 
           object.traverse(function(child) {
@@ -3407,7 +2568,6 @@ var AMTHREE = AMTHREE || {};
         reject('failed to load ' + json.uuid + ': THREE.OBJLoader is undefined');
       }
       return;
-      break;
 
       case 'OBJMTL':
       if (THREE.OBJMTLLoader) {
@@ -3429,14 +2589,13 @@ var AMTHREE = AMTHREE || {};
         reject('failed to load ' + json.uuid + ': THREE.OBJMTLLoader is undefined');
       }
       return;
-      break;
 
       case 'Collada':
       if (THREE.ColladaLoader) {
         var collada_loader = new THREE.ColladaLoader();
         collada_loader.options.convertUpAxis = true;
 
-        var url = model_path + '/' + json.url;
+        url = model_path + '/' + json.url;
         collada_loader.load(url, function(collada) {
 
           var object = collada.scene;
@@ -3448,7 +2607,6 @@ var AMTHREE = AMTHREE || {};
         reject('failed to load ' + json.uuid + ': THREE.ColladaLoader is undefined');
       }
       return;
-      break;
 
       case 'SoundObject':
       object = new AMTHREE.SoundObject(GetSound(json.sound, sounds));
@@ -3602,334 +2760,6 @@ var AMTHREE = AMTHREE || {};
   }
 
 })();
-/*********************
-
-Scene
-
-A class to handle a THREE.Scene, with a unique camera,
-and that can Load a scene from a JSON file,
-and place objects according to geographic coordinates.
-
-
-Constructor
-
-Scene(parameters)
-parameters: holds optionnal parameters
-parameters.canvas: canvas used for rendering
-parameters.fov: sets the fov of the camera
-parameters.gps_converter: a GeographicCoordinatesConverter used to import objects with gps coordinates
-
-
-Methods
-
-SetFullWindow()
-Resizes the canvas when the window resizes
-
-StopFullWindow()
-Stops resizing the canvas
-
-Render()
-
-Update()
-Updates animations and textures (video, gif)
-
-AddObject(object)
-Adds an object to the scene. If possible, places the object occordingly to the geographic coordinates
-
-RemoveObject(object)
-
-Clear()
-Clears the scene.
-
-Parse(json, on_load_assets)
-Loads a scene from a JSON structure. no-op if ObjectLoaderAM is unavailable.
-When every asset is loaded and added to the scene, 'on_load_assets' is called.
-
-Load(url, on_load_assets)
-Loads a scene from json file. no-op if ObjectLoaderAM is unavailable.
-When every asset is loaded and added to the scene, 'on_load_assets' is called.
-
-GetCamera()
-Returns the camera, a THREE.PerspectiveCamera, and a child of cameraBody.
-
-GetCameraBody()
-Returns the cameraBody, a THREE.Object3D, parent of the camera, and on the scene.
-
-GetScene()
-
-GetRenderer()
-
-ResizeRenderer()
-Resizes the renderer, and updates the camera
-
-Dependency
-
-three.js
-
-Optionnal: GeographicCoordinatesConverter, ObjectLoaderAM
-
-**********************/
-
-var AMTHREE = AMTHREE || {};
-
-
-if (typeof THREE !== 'undefined') {
-
-
-  /**
-   * A utility class to load a THREE.Scene, and render on a canvas
-   * @class
-   * @param {object} parameters - An object of optionnal parameters
-   * @param {number} parameters.fov - The fov of the THREE.Camera
-   * @param {canvas} parameters.canvas - A canvas to be used by the THREE.Renderer
-   * @param {AM.GeographicCoordinatesConverter} parameters.gps_converter - Used to convert coordinates to scene position
-   */
-  AMTHREE.Scene = function(parameters) {
-    if (typeof AMTHREE.ObjectLoader === 'undefined')
-      console.warn('AMTHREE.Scene: AMTHREE.ObjectLoader undefined');
-
-    parameters = parameters || {};
-
-    var that = this;
-
-    var _renderer = new THREE.WebGLRenderer( { alpha: true, canvas: parameters.canvas } );
-    var _three_scene = new THREE.Scene();
-    var _camera = new THREE.PerspectiveCamera(parameters.fov || 80,
-      _renderer.domElement.width / _renderer.domElement.height, 0.0001, 10000);
-    var _camera_body = new THREE.Object3D();
-    var _obj_loader;
-    var _loading_manager = new THREE.LoadingManager();
-
-
-    _camera_body.add(_camera);
-
-    _three_scene.add(_camera_body);
-
-    if (!parameters.canvas) {
-      _renderer.setSize(window.innerWidth, window.innerHeight);
-      document.body.appendChild(_renderer.domElement);
-    }
-    _renderer.setClearColor(0x9999cf, 0);
-
-    if (typeof AMTHREE.ObjectLoader !== 'undefined')
-      _obj_loader = new AMTHREE.ObjectLoader(_loading_manager);
-
-
-    this.gps_converter = parameters.gps_converter;
-
-
-    /**
-     * Empties the THREE.Scene
-     * @inner
-     */
-    this.Clear = function() {
-      _three_scene.children = [];
-      _three_scene.copy(new THREE.Scene(), false);
-    };
-
-    function OnWindowResize() {
-      _camera.aspect = window.innerWidth / window.innerHeight;
-      _camera.updateProjectionMatrix();
-
-      _renderer.setSize(window.innerWidth, window.innerHeight);
-    }
-
-    /**
-     * Adds listeners to resize the renderer, the canvas, and the camera's aspect ratio.
-     * @inner
-     */
-    this.SetFullWindow = function() {
-      window.addEventListener('resize', OnWindowResize, false);
-      OnWindowResize();
-    };
-
-    /**
-     * Removes the listeners.
-     * @inner
-     * @see #SetFullWindow
-     */
-    this.StopFullWindow = function() {
-      window.removeEventListener('resize', OnWindowResize, false);
-    };
-
-    /**
-     * Renders the scene.
-     * @inner
-     */
-    this.Render = function() {
-      _renderer.render(_three_scene, _camera);
-    };
-
-    /**
-     * Updates animations and animated textures.
-     * @inner
-     */
-    this.Update = function() {
-
-      var clock = new THREE.Clock();
-
-      return function() {
-
-        if (THREE.AnimationHandler)
-          THREE.AnimationHandler.update(clock.getDelta());
-
-        AMTHREE.UpdateAnimatedTextures(_three_scene);
-      };
-    }();
-
-    /**
-     * Adds an object to the scene
-     * @inner
-     * @param {THREE.Object3D} object
-     */
-    this.AddObject = function(object) {
-      MoveObjectToGPSCoords(object);
-      _three_scene.add(object);
-    };
-
-    /**
-     * Removes an object of the scene
-     * @inner
-     * @param {THREE.Object3D} object
-     */
-    this.RemoveObject = function(object) {
-      _three_scene.remove(object);
-    };
-
-    var OnLoadThreeScene = function(on_load_assets) {
-      return function(new_scene) {
-
-        var OnLoadAssets = function(new_scene) {
-          return function() {
-            while(new_scene.children.length) {
-              var child = new_scene.children[0];
-              new_scene.remove(child);
-              that.AddObject(child);
-            }
-            _three_scene.copy(new_scene, false);
-
-
-            AMTHREE.PlayAnimations(_three_scene);
-
-            if (on_load_assets)
-              on_load_assets();
-
-          };
-        }(new_scene);
-
-        _loading_manager.onLoad = OnLoadAssets;
-
-      };
-    };
-
-    /**
-     * Parses a JSON object describing a THREE.Scene.
-     * @inner
-     * @param {object} json
-     * @param {function} on_load_assets - A function to be called when all the assets are loaded and added to the scene.
-     */
-    this.Parse = function(json, on_load_assets) {
-      if (_obj_loader) {
-
-        var on_load_scene = new OnLoadThreeScene(on_load_assets);
-
-        var new_scene = _obj_loader.parse(json);
-
-        on_load_scene(new_scene);
-      }
-      else
-        console.warn('AMTHREE.Scene: Parse failed: AMTHREE.ObjectLoader undefined');
-    };
-
-    /**
-     * Load a JSON file describing a THREE.Scene.
-     * @inner
-     * @param {string} url
-     * @param {function} on_load_assets - A function to be called when all the assets are loaded and added to the scene.
-     */
-    this.Load = function(url, on_load_assets) {
-      if (_obj_loader)
-        _obj_loader.Load(url, new OnLoadThreeScene(on_load_assets));
-      else
-        console.warn('AMTHREE.Scene: Load failed: AMTHREE.ObjectLoader undefined');
-    };
-
-    /**
-     * Returns the camera.
-     * @inner
-     * @returns {THREE.PerspectiveCamera}
-     */
-    this.GetCamera = function() {
-      return _camera;
-    };
-
-    /**
-     * The camera is a child of this object. Returns this object.
-     * @inner
-     * @returns {THREE.Object3D}
-     */
-    this.GetCameraBody = function() {
-      return _camera_body;
-    };
-
-    /**
-     * Returns the scene.
-     * @inner
-     * @returns {THREE.Scene}
-     */
-    this.GetScene = function() {
-      return _three_scene;
-    };
-
-    /**
-     * Returns the renderer.
-     * @returns {THREE.WebGLRenderer}
-     */
-    this.GetRenderer = function() {
-      return _renderer;
-    };
-
-    /**
-     * Resizes the renderer, the canvas and sets the camera's aspect ratio.
-     * @inner
-     * @param {number} width
-     * @param {number} height
-     */
-    this.ResizeRenderer = function(width, height) {
-      _renderer.setSize(width, height);
-      _camera.aspect = _renderer.domElement.width / _renderer.domElement.height;
-      _camera.updateProjectionMatrix();
-    };
-
-    function MoveObjectToGPSCoords(object) {
-      if (that.gps_converter) {
-
-        if (object.userData !== undefined && object.position !== undefined) {
-          var data = object.userData;
-
-          if (data.latitude !== undefined && data.longitude !== undefined) {
-            var pos = that.gps_converter(data.latitude, data.longitude);
-            object.position.z = pos.y;
-            object.position.x = pos.x;
-          }
-          if (data.altitude !== undefined) {
-            object.position.y = data.altitude;
-          }
-        }
-
-      }
-    }
-
-
-  };
-
-
-}
-else {
-  AMTHREE.Scene = function() {
-    console.warn('Scene.js: THREE undefined');
-  };
-}
 var AMTHREE = AMTHREE || {};
 
 
@@ -4409,7 +3239,7 @@ if (typeof THREE !== 'undefined') {
     };
 
     this.Clear = function() {
-      for (uuid in _objects)
+      for (var uuid in _objects)
         that.Remove(uuid);
     };
 
@@ -4427,7 +3257,7 @@ if (typeof THREE !== 'undefined') {
     };
 
     this.UpdateElapsed = function(elapsed) {
-      for (uuid in _objects) {
+      for (var uuid in _objects) {
 
         _objects[uuid].elapsed += elapsed;
       }
@@ -4435,7 +3265,7 @@ if (typeof THREE !== 'undefined') {
 
     this.CheckTimeout = function(timeout) {
 
-      for (uuid in _objects) {
+      for (var uuid in _objects) {
 
         var elem = _objects[uuid];
 
@@ -4448,7 +3278,7 @@ if (typeof THREE !== 'undefined') {
     };
 
     this.ForEach = function(fun) {
-      for (uuid in _objects) {
+      for (var uuid in _objects) {
         fun(_objects[uuid]);
       }
     };
@@ -4472,9 +3302,7 @@ var AMTHREE = AMTHREE || {};
 
 AMTHREE.AnimatedTextureCall = function(object, fun) {
   object.traverse(function(s) {
-    if (s.material
-      && s.material.map
-      && s.material.map[fun])
+    if (s.material && s.material.map && s.material.map[fun])
       s.material.map[fun]();
   });
 };
@@ -4646,8 +3474,7 @@ if (typeof THREE !== 'undefined') {
    * Updates the animated texture.
    */
   AMTHREE.VideoTexture.prototype.update = function() {
-    if (this.videoElement
-      && this.videoElement.readyState == this.videoElement.HAVE_ENOUGH_DATA) {
+    if (this.videoElement && this.videoElement.readyState == this.videoElement.HAVE_ENOUGH_DATA) {
       this.needsUpdate = true;
     }
   };
@@ -4689,8 +3516,8 @@ if (typeof THREE !== 'undefined') {
 
     this.videoElement.width = (typeof width === 'number') ? width : undefined;
     this.videoElement.height = (typeof height === 'number') ? height : undefined;
-    this.videoElement.autoplay = (typeof autoplay === 'bool') ? autoplay : false;
-    this.videoElement.loop = (typeof loop === 'bool') ? loop : true;
+    this.videoElement.autoplay = (typeof autoplay === 'boolean') ? autoplay : false;
+    this.videoElement.loop = (typeof loop === 'boolean') ? loop : true;
 
     this.playing = false;
 
@@ -4794,7 +3621,7 @@ AM.Detection = function() {
    * @param {number} [params.fast_threshold=48] - 0 - 10
    */
   this.SetParameters = function(params) {
-    for (name in params) {
+    for (var name in params) {
       if (typeof _params[name] !== 'undefined')
         _params[name] = params[name];
     }
@@ -4963,7 +3790,7 @@ AM.ImageFilter = function() {
    * @param {bool} [params.blur=true] - compute blur ?
    */
   this.SetParameters = function(params) {
-    for (name in params) {
+    for (var name in params) {
       if (typeof _params[name] !== 'undefined')
         _params[name] = params[name];
     }
@@ -5057,7 +3884,7 @@ AM.MarkerTracker = function() {
 
     _matching.SetScreenDescriptors(_detection.GetDescriptors());
 
-    for(uuid in _trained_images) {
+    for(var uuid in _trained_images) {
       var trained_image = _trained_images[uuid];
 
       if (!trained_image.IsActive())
@@ -5155,7 +3982,7 @@ AM.MarkerTracker = function() {
    * @param {bool} bool - Sets all active if true, inactive if false.
    */
   this.ActiveAllMarkers = function(bool) {
-    for (uuid in _trained_images) {
+    for (var uuid in _trained_images) {
       _trained_images[uuid].Active(bool);
     }
   };
@@ -5242,7 +4069,7 @@ AM.MarkerTracker = function() {
    * @see AM.Training
    */
   this.SetParameters = function(params) {
-    for (name in params) {
+    for (var name in params) {
       if (typeof _params[name] !== 'undefined')
         _params[name] = params[name];
     }
@@ -5445,7 +4272,7 @@ AM.Matching = function() {
    * @param {number} [params.match_threshold=48] 16 - 128
    */
   this.SetParameters = function(params) {
-    for (name in params) {
+    for (var name in params) {
       if (typeof _params[name] !== 'undefined')
         _params[name] = params[name];
     }
@@ -5495,8 +4322,10 @@ AM.Pose = function() {
     var pattern_xy = [];
     var screen_xy = [];
 
+    var i;
+
     // construct correspondences
-    for(var i = 0; i < count; ++i) {
+    for(i = 0; i < count; ++i) {
       var m = matches[i];
       var s_kp = screen_corners[m.screen_idx];
       var p_kp = pattern_corners[m.pattern_lev][m.pattern_idx];
@@ -5512,7 +4341,7 @@ AM.Pose = function() {
     // extract good matches and re-estimate
     var good_cnt = 0;
     if (ok) {
-      for(var i = 0; i < count; ++i) {
+      for(i = 0; i < count; ++i) {
         if(match_mask.data[i]) {
           pattern_xy[good_cnt].x = pattern_xy[i].x;
           pattern_xy[good_cnt].y = pattern_xy[i].y;
@@ -5603,7 +4432,7 @@ AM.PosePosit = function() {
    */
 
   this.posit = new POS.Posit(10, 1);
-  this.pose;
+  this.pose = undefined;
 };
 
 /**
@@ -5884,8 +4713,8 @@ AM.Training = function() {
     if (level !== 0) {
       // fix the coordinates due to scale level
       for(i = 0; i < corners_num; ++i) {
-        corners[i].x *= 1. / scale;
-        corners[i].y *= 1. / scale;
+        corners[i].x *= 1 / scale;
+        corners[i].y *= 1 / scale;
       }
     }
 
@@ -6055,7 +4884,7 @@ AM.Training = function() {
    * @params {number} [params.eigen_threshold=25]
    */
   this.SetParameters = function(params) {
-    for (name in params) {
+    for (var name in params) {
       if (typeof _params[name] !== 'undefined')
         _params[name] = params[name];
     }

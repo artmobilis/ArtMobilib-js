@@ -24,7 +24,7 @@ getGradientGreenRedColor = function (n, max){
  */
 AM.ImageDebugger = function() {
 
-  var _training = new AM.Training;
+  var _training = new AM.Training();
 
   var _context2d;
   var _camera_video_element;
@@ -65,6 +65,8 @@ AM.ImageDebugger = function() {
    * @param {object} corner and matching information
   */
   this.DrawCorners = function(marker_corners) {
+    var i, sc;
+
     if(!_debugMatches) return;
     if(!marker_corners) return;
 
@@ -77,8 +79,8 @@ AM.ImageDebugger = function() {
 
     _context2d.fillStyle="red";
   
-    for(var i = 0; i < _screen_corners.length; ++i) {
-      var sc = _screen_corners[i];
+    for(i = 0; i < _screen_corners.length; ++i) {
+      sc = _screen_corners[i];
 
       _context2d.beginPath();
       _context2d.arc(sc.x*_ratio+_offsetx, sc.y*_ratio+_offsety, 3, 0, 2 * Math.PI);
@@ -87,8 +89,8 @@ AM.ImageDebugger = function() {
 
     // draw image data and corners
     _context2d.putImageData(_image_data, _canvas_width-_image_data.width, _hbands);
-    for(var i = 0; i < _screen_corners.length; ++i) {
-      var sc = _screen_corners[i];
+    for(i = 0; i < _screen_corners.length; ++i) {
+      sc = _screen_corners[i];
 
       _context2d.beginPath();
       _context2d.arc(sc.x+_canvas_width-_image_data.width, sc.y+_hbands, 3, 0, 2 * Math.PI);
@@ -162,14 +164,15 @@ AM.ImageDebugger = function() {
    * @inner
    */
   correctTrainingImageOffsets = function () {
+    var dif;
     // correct position in template image
     if(_last_trained_image_data.width>_last_trained_image_data.height){
-      var dif= _last_trained_image_data.width-_last_trained_image_data.height;
+      dif= _last_trained_image_data.width-_last_trained_image_data.height;
       _template_offsetx=0;
       _template_offsety=-Math.round(dif/2);
     }
     else{
-      var dif= _last_trained_image_data.height-_last_trained_image_data.width;
+      dif= _last_trained_image_data.height-_last_trained_image_data.width;
       _template_offsetx=-Math.round(dif/2);
       _template_offsety=0;
     }
