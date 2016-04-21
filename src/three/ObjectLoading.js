@@ -758,9 +758,9 @@ var AMTHREE = AMTHREE || {};
     var sphere = new THREE.Sphere();
     var mesh = new THREE.Object3D();
 
-    mesh.add(elem);
+    mesh.add(object);
 
-    box.setFromObject(elem);
+    box.setFromObject(object);
     box.getBoundingSphere(sphere);
 
     mesh.scale.multiplyScalar(1 / sphere.radius);
@@ -772,6 +772,22 @@ var AMTHREE = AMTHREE || {};
     parent.add(mesh);
 
     return parent;
+  }
+
+  function ComputeBoundingBox(object) {
+    object.traverse(function(child) {
+      if (child instanceof THREE.Mesh && child.geometry) {
+        child.geometry.computeBoundingBox();
+      }
+    });
+  }
+
+  function ComputeBoundingSphere(object) {
+    object.traverse(function(child) {
+      if (child instanceof THREE.Mesh && child.geometry) {
+        child.geometry.computeBoundingSphere();
+      }
+    });
   }
 
 
@@ -820,6 +836,20 @@ var AMTHREE = AMTHREE || {};
     * @returns {THREE.Object3D} an object containing the source
     */
     AMTHREE.NormalizeObject = NormalizeObject;
+
+    /**
+    * @function
+    * @description Compute the bounding box of an object's geometry and every descending.
+    * @param {THREE.Object3D}
+    */
+    AMTHREE.ComputeBoundingBox = ComputeBoundingBox;
+
+    /**
+    * @function
+    * @description Compute the bounding sphere of an object's geometry and every descending.
+    * @param {THREE.Object3D}
+    */
+    AMTHREE.ComputeBoundingSphere = ComputeBoundingSphere;
 
   }
   else {
