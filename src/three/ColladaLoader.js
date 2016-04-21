@@ -29,6 +29,7 @@ AMTHREE.ColladaLoader = function () {
 	var visualScenes;
 	var kinematicsModels;
 	var baseUrl;
+  var texturePath;
 	var morphs;
 	var skins;
 
@@ -58,7 +59,7 @@ AMTHREE.ColladaLoader = function () {
 	var colladaUp = 'Y';
 	var upConversion = null;
 
-	function load ( url, readyCallback, progressCallback, failCallback ) {
+	function load ( url, texture_path, readyCallback, progressCallback, failCallback ) {
 
 		var length = 0;
 
@@ -75,7 +76,7 @@ AMTHREE.ColladaLoader = function () {
 						if ( request.response ) {
 
 							readyCallbackFunc = readyCallback;
-							parse( request.response, undefined, url );
+							parse( request.response, undefined, url, texture_path );
 
 						} else {
 
@@ -122,7 +123,9 @@ AMTHREE.ColladaLoader = function () {
 
 	}
 
-	function parse( text, callBack, url ) {
+	function parse( text, callBack, url, texture_path ) {
+
+    texturePath = texture_path;
 
 		COLLADA = new DOMParser().parseFromString( text, 'text/xml' );
 		callBack = callBack || readyCallbackFunc;
@@ -3692,7 +3695,10 @@ AMTHREE.ColladaLoader = function () {
 
 									if ( image ) {
 
-										var url = baseUrl + image.init_from;
+                    var url = image.init_from;
+
+                    if (texturePath) url = texturePath + url;
+                    else url = baseUrl + url;
 
 										var texture;
 										var loader = THREE.Loader.Handlers.get( url );
