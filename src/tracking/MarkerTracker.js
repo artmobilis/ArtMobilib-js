@@ -246,7 +246,7 @@ AM.MarkerTracker = function() {
    * @returns {jsfeat.keypoint_t[]}
    */
   this.GetTrainedCorners = function () {
-    var trained_image = _trained_images[uuid];
+    var trained_image = _trained_images[_matching_image.GetUuid()];
     return trained_image.GetCornersLevels();
   };
 
