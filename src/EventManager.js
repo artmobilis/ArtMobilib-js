@@ -69,7 +69,8 @@
 
       if (typeof tab !== 'undefined') {
         for (var i = 0, c = tab.length; i < c; ++i) {
-          tab[i].apply(this, params);
+          if (typeof tab[i] === 'function')
+            tab[i].apply(this, params);
         }
         return true;
       }
