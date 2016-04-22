@@ -7203,7 +7203,7 @@ if (typeof THREE !== 'undefined') {
 
 (function() {
 
-  var SELECT_BOX_GEOMETRY = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+  var SELECT_BOX_GEOMETRY = new THREE.BoxGeometry(0.7, 0.7, 0.7);
   SELECT_BOX_GEOMETRY.uuid = '71EB1490-B411-48E3-B187-D4A9B1836ACA';
   SELECT_BOX_GEOMETRY.name = 'SELECT_BOX_GEOMETRY';
 
@@ -7218,25 +7218,17 @@ if (typeof THREE !== 'undefined') {
   SELECT_BOX_MATERIAL.opacity = 0;
 
 
-  var ColladaChild = function() {
-    THREE.Object3D.call(this);
-  }
-
-  ColladaChild.prototype = Object.create(THREE.Object3D.prototype);
-  ColladaChild.prototype.constructor = ColladaChild;
-
-
   var ColladaObject = function() {
-    THREE.Mesh.call(this, SELECT_BOX_GEOMETRY, SELECT_BOX_MATERIAL);
+    THREE.Object3D.call(this);
 
     this.model_url = '';
 
-    this.model_object = new ColladaChild();
+    this.model_object = new THREE.Object3D();
 
     this.add(this.model_object);
   }
 
-  ColladaObject.prototype = Object.create(THREE.Mesh.prototype);
+  ColladaObject.prototype = Object.create(THREE.Object3D.prototype);
   ColladaObject.prototype.constructor = ColladaObject;
 
   ColladaObject.prototype.load = function(url, texture_path) {
@@ -7248,8 +7240,29 @@ if (typeof THREE !== 'undefined') {
 
       loader.load(url, texture_path,
         function(collada) {
+        var box = new THREE.Box3();
+        var center = new THREE.Vector3();
+        var object = collada.scene;
+        var mesh = new THREE.Mesh(SELECT_BOX_GEOMETRY, SELECT_BOX_MATERIAL);
+
+
+        mesh.add(object);
+
         scope.model_url = url;
-        scope.model_object.add(AMTHREE.NormalizeObject(collada.scene));
+        while(scope.model_object.children.length !== 0)
+          scope.model_object.remove(scope.model_object.children[0]);
+        scope.model_object.add(mesh);
+
+
+        box.setFromObject(object);
+        box.size(mesh.scale);
+        scope.updateMatrix();
+
+        box.center(center);
+        object.scale.divide(mesh.scale);
+        object.position.sub(center.divide(mesh.scale));
+
+        object.updateMatrix();
         AMTHREE.ObjectConvert(scope.model_object);
         resolve(scope);
       },
