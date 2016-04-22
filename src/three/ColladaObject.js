@@ -51,8 +51,7 @@ if (typeof THREE !== 'undefined') {
         mesh.add(object);
 
         scope.model_url = url;
-        while(scope.model_object.children.length !== 0)
-          scope.model_object.remove(scope.model_object.children[0]);
+        scope.model_object.remove.apply(scope.model_object, scope.model_object.children);
         scope.model_object.add(mesh);
 
 
