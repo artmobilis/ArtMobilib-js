@@ -1,5 +1,8 @@
 var AMTHREE = AMTHREE || {};
 
+if (typeof THREE !== 'undefined') {
+
+
 (function() {
 
 
@@ -58,3 +61,6 @@ var AMTHREE = AMTHREE || {};
 
 
 })();
+
+
+}
