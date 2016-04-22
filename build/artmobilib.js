@@ -7249,8 +7249,7 @@ if (typeof THREE !== 'undefined') {
         mesh.add(object);
 
         scope.model_url = url;
-        while(scope.model_object.children.length !== 0)
-          scope.model_object.remove(scope.model_object.children[0]);
+        scope.model_object.remove.apply(scope.model_object, scope.model_object.children);
         scope.model_object.add(mesh);
 
 
@@ -8986,19 +8985,6 @@ AMTHREE.WorldToCanvasPosition = function(position, camera, canvas) {
   var y = Math.round( (-vec.y + 1) * canvas.height / 2 );
 
   return { x: x, y: y, z: vec.z };
-};
-
-/**
- * Recursively update animations on this object and all his children.
- * @param {THREE.Object3D} object
- */
-AMTHREE.PlayAnimations = function(object) {
-  object.traverse( function ( child ) {
-    if ( child instanceof THREE.SkinnedMesh ) {
-      var animation = new THREE.Animation( child, child.geometry.animation );
-      animation.play();
-    }
-  } );
 };
 
 AMTHREE.GetFilename = function(path) {
