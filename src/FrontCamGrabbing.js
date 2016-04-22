@@ -9,7 +9,10 @@ window.URL = window.URL || window.webkitURL;
 var AM = AM || {};
 
 (function() {
-    
+  
+  /**
+  * Class to start the front camera of the device, or a webcam, on a computer.
+  */
   function FrontCamGrabbing() {
     var _dom_element = document.createElement('video');
     var _stream;
@@ -30,6 +33,10 @@ var AM = AM || {};
 
     Stop();
 
+    /**
+    * Starts the camera, if not already started.
+    * @returns {Promise<undefined, string>} A promise that resolves when the video is loaded.
+    */
     function Start() {
       if (!_started) {
         if (_loader) {
@@ -46,6 +53,9 @@ var AM = AM || {};
       return _load_promise;
     }
 
+    /**
+    * Stops the camera.
+    */
     function Stop() {
       if (_stream) {
         _stream.getTracks()[0].stop();
@@ -59,6 +69,10 @@ var AM = AM || {};
       _started = false;
     }
 
+    /**
+    * Returns true if the camera is active, or if is being started, false otherwise.
+    * @returns {bool}
+    */
     function IsActive() {
       return _started;
     }
