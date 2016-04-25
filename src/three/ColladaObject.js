@@ -28,7 +28,7 @@ if (typeof THREE !== 'undefined') {
     this.model_object = new THREE.Object3D();
 
     this.add(this.model_object);
-  }
+  };
 
   ColladaObject.prototype = Object.create(THREE.Object3D.prototype);
   ColladaObject.prototype.constructor = ColladaObject;
