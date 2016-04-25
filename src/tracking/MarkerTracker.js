@@ -262,7 +262,7 @@ AM.MarkerTracker = function() {
    * Sets optionnals parameters
    * @inner
    * @param {object} params
-   * @param {number} [match_min=8] minimum number of matching corners necessary for a match to be valid.
+   * @param {number} [match_min] minimum number of matching corners necessary for a match to be valid. default 8
    * @see AM.ImageFilter
    * @see AM.Detection
    * @see AM.Matching

@@ -187,7 +187,7 @@ AM.Matching = function() {
    * Sets parameters of the matching
    * @inner
    * @param {object} params
-   * @param {number} [params.match_threshold=48] 16 - 128
+   * @param {number} [params.match_threshold] 16 - 128, default 48
    */
   this.SetParameters = function(params) {
     for (var name in params) {

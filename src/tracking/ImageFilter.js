@@ -45,8 +45,8 @@ AM.ImageFilter = function() {
    * Sets parameters, all optionnal
    * @inner
    * @param {object} params
-   * @param {number} [params.blur_size=3]
-   * @param {bool} [params.blur=true] - compute blur ?
+   * @param {number} [params.blur_size] default 3
+   * @param {bool} [params.blur] - compute blur ? default true
    */
   this.SetParameters = function(params) {
     for (var name in params) {
