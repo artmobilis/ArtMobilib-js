@@ -777,8 +777,13 @@ var AM = AM || {};
   */
   AM.ImageToImageData = (function() {
 
-    var _canvas = document.createElement('canvas');
-    var _ctx = _canvas.getContext('2d');
+    var _canvas;
+    var _ctx;
+
+    if (typeof document !== 'undefined') {
+      _canvas = document.createElement('canvas');
+      _ctx = _canvas.getContext('2d');
+    }
 
     return function(img, square) {
       if (square) {
@@ -1250,220 +1255,240 @@ Remove the listeners
 var AM = AM || {};
 
 
-/**
- * Wrapper class for the Cordova plugin
- * @class
- * @param {Object3D}
- */
-AM.DeviceOrientationControl = function(object) {
-	var that = this;
-
-  this.object = object;
-  this.object.rotation.reorder("YXZ");
-
-  var _first_event_ignored = false;
-  var _enabled = false;
-
-  var _screen_orientation = 0;
-
-  var _smooth = new this.CoefMethod();
-
-
-  var OnDeviceOrientationChangeEvent = function (event) {
-    if (_first_event_ignored) {
-      _smooth.OnOrientationChange(event);
-      _enabled = true;
-    }
-    else
-      _first_event_ignored = true;
-  };
-
-  var OnScreenOrientationChangeEvent = function () {
-    _screen_orientation = window.orientation || 0;
-  };
-
-  // The angles alpha, beta and gamma form a set of intrinsic Tait-Bryan angles of type Z-X'-Y''
+(function() {
 
   /**
-   * Listen to the orientation events
-   * @inner
+   * Wrapper class for the Cordova plugin
+   * @class
+   * @param {Object3D}
    */
-  this.Connect = function() {
-    OnScreenOrientationChangeEvent();
+  AM.DeviceOrientationControl = function(object) {
+  	var that = this;
 
-    window.addEventListener('orientationchange', OnScreenOrientationChangeEvent, false);
-    window.addEventListener('deviceorientation', OnDeviceOrientationChangeEvent, false);
-  };
+    this.object = object;
+    this.object.rotation.reorder("YXZ");
 
-  /**
-   * Listen to the orientation events
-   * @inner
-   */
-  this.Disconnect = function() {
-    window.removeEventListener('orientationchange', OnScreenOrientationChangeEvent, false);
-    window.removeEventListener('deviceorientation', OnDeviceOrientationChangeEvent, false);
+    this.alpha = 0;
+    this.beta  = 0;
+    this.gamma = 0;
 
-    _enabled = false;
-    _first_event_ignored = false;
-  };
+    var _first_event_ignored = false;
+    var _enabled = false;
 
-  /**
-   * Sets the rotation of the object accordingly to the last orientation event
-   * @inner
-   */
-  this.Update = function () {
+    var _screen_orientation = 0;
 
-    var SetObjectQuaternion = function () {
-      var zee = new THREE.Vector3( 0, 0, 1 );
-      var euler = new THREE.Euler();
-      var q0 = new THREE.Quaternion();
-      var q1 = new THREE.Quaternion( - Math.sqrt( 0.5 ), 0, 0, Math.sqrt( 0.5 ) ); // - PI/2 around the x-axis
-
-      return function (quaternion, alpha, beta, gamma, orient) {
-        euler.set( beta, alpha, - gamma, 'YXZ' );                       // 'ZXY' for the device, but 'YXZ' for us
-        quaternion.setFromEuler( euler );                               // orient the device
-        quaternion.multiply( q1 );                                      // camera looks out the back of the device, not the top
-        quaternion.multiply( q0.setFromAxisAngle( zee, - orient ) );    // adjust for screen orientation
-      };
-    }();
-
-    if (_enabled) {
-      var orient = _screen_orientation ? THREE.Math.degToRad(_screen_orientation) : 0;
-
-      _smooth.Update();
-
-      SetObjectQuaternion(that.object.quaternion, _smooth.alpha, _smooth.beta, _smooth.gamma, orient);
-    }
-
-  };
-};
+    var _smooth = new this.CoefMethod();
 
 
-AM.DeviceOrientationControl.prototype.PowerMethod = function() {
-  var that = this;
-
-  var _event;
-
-  var _power = 2;
-
-
-  this.alpha = 0;
-  this.beta = 0;
-  this.gamma = 0;
-
-  this.OnOrientationChange = function(e) {
-    _event = e;
-  };
-
-  function power_lerp_rad(a, b, power) {
-    var diff = AM.DeviceOrientationControl.prototype.Mod2Pi(b - a);
-    var sign = Math.sign(diff);
-    var coef = Math.abs(diff / Math.PI);
-    coef = Math.pow(coef, power);
-
-    return AM.DeviceOrientationControl.prototype.Mod2Pi(a + coef * Math.PI * sign);
-  }
-
-  this.Update = function() {
-    that.alpha = power_lerp_rad(that.alpha, THREE.Math.degToRad(_event.alpha), _power);
-    that.beta  = power_lerp_rad(that.beta,  THREE.Math.degToRad(_event.beta),  _power);
-    that.gamma = power_lerp_rad(that.gamma, THREE.Math.degToRad(_event.gamma), _power);
-  };
-};
-
-
-AM.DeviceOrientationControl.prototype.CoefMethod = function() {
-  var that = this;
-
-  this.coef = 0.2;
-
-  this.alpha = 0;
-  this.beta = 0;
-  this.gamma = 0;
-
-  var _event = false;
-
-  this.OnOrientationChange = function(e) {
-    _event = e;
-  };
-
-  function lerp_rad(a, b, coef) {
-    return a + AM.DeviceOrientationControl.prototype.Mod2Pi(b - a) * coef;
-  }
-
-  this.Update = function() {
-    if (_event) {
-      var alpha = lerp_rad(that.alpha, THREE.Math.degToRad(_event.alpha), that.coef);
-      var beta  = lerp_rad(that.beta,  THREE.Math.degToRad(_event.beta),  that.coef);
-      var gamma = lerp_rad(that.gamma, THREE.Math.degToRad(_event.gamma), that.coef);
-
-      that.alpha = alpha;
-      that.beta = beta;
-      that.gamma = gamma;
-    }
-  };
-};
-
-
-AM.DeviceOrientationControl.prototype.AverageMethod = function() {
-  var that = this;
-
-  this.history = [];
-  this.history_max = 10;
-
-  this.alpha = 0;
-  this.beta = 0;
-  this.gamma = 0;
-
-  this.OnOrientationChange = function(event) {
-    if (that.history.length > that.history_max)
-      that.history.shift();
-    that.history.push(event);
-  };
-
-  this.Update = function(alpha, beta, gamma) {
-    if (that.history.length !== 0) {
-      for (var i = 0, c = that.history.length; i < c; i++) {
-        alpha += AM.DeviceOrientationControl.prototype.Mod360(that.history[i].alpha);
-        beta += AM.DeviceOrientationControl.prototype.Mod360(that.history[i].beta);
-        gamma += AM.DeviceOrientationControl.prototype.Mod360(that.history[i].gamma);
+    var OnDeviceOrientationChangeEvent = function (event) {
+      if (_first_event_ignored) {
+        _smooth.OnOrientationChange(event);
+        _enabled = true;
       }
-      alpha /= that.history.length;
-      beta /= that.history.length;
-      gamma /= that.history.length;
-      that.alpha = THREE.Math.degToRad(alpha);
-      that.beta = THREE.Math.degToRad(beta);
-      that.gamma = THREE.Math.degToRad(gamma);
-    }
+      else
+        _first_event_ignored = true;
+    };
+
+    var OnScreenOrientationChangeEvent = function () {
+      _screen_orientation = window.orientation || 0;
+    };
+
+    // The angles alpha, beta and gamma form a set of intrinsic Tait-Bryan angles of type Z-X'-Y''
+
+    /**
+     * Listen to the orientation events
+     * @inner
+     */
+    this.Connect = function() {
+      OnScreenOrientationChangeEvent();
+
+      window.addEventListener('orientationchange', OnScreenOrientationChangeEvent, false);
+      window.addEventListener('deviceorientation', OnDeviceOrientationChangeEvent, false);
+    };
+
+    /**
+     * Listen to the orientation events
+     * @inner
+     */
+    this.Disconnect = function() {
+      window.removeEventListener('orientationchange', OnScreenOrientationChangeEvent, false);
+      window.removeEventListener('deviceorientation', OnDeviceOrientationChangeEvent, false);
+
+      _enabled = false;
+      _first_event_ignored = false;
+    };
+
+    /**
+     * Sets the rotation of the object accordingly to the last orientation event
+     * @inner
+     */
+    this.Update = function () {
+
+      var SetObjectQuaternion = function () {
+        var zee = new THREE.Vector3( 0, 0, 1 );
+        var euler = new THREE.Euler();
+        var q0 = new THREE.Quaternion();
+        var q1 = new THREE.Quaternion( - Math.sqrt( 0.5 ), 0, 0, Math.sqrt( 0.5 ) ); // - PI/2 around the x-axis
+
+        return function (quaternion, alpha, beta, gamma, orient) {
+          euler.set( beta, alpha, - gamma, 'YXZ' );                       // 'ZXY' for the device, but 'YXZ' for us
+          quaternion.setFromEuler( euler );                               // orient the device
+          quaternion.multiply( q1 );                                      // camera looks out the back of the device, not the top
+          quaternion.multiply( q0.setFromAxisAngle( zee, - orient ) );    // adjust for screen orientation
+        };
+      }();
+
+      if (_enabled) {
+        var orient = _screen_orientation ? THREE.Math.degToRad(_screen_orientation) : 0;
+
+        _smooth.Update();
+
+        that.alpha = _smooth.alpha;
+        that.beta  = _smooth.beta;
+        that.gamma = _smooth.gamma;
+        SetObjectQuaternion(that.object.quaternion, _smooth.alpha, _smooth.beta, _smooth.gamma, orient);
+      }
+
+    };
   };
-};
 
 
+  AM.DeviceOrientationControl.prototype.PowerMethod = function() {
+    var that = this;
 
-AM.DeviceOrientationControl.prototype.Mod2Pi = function () {
-  var n = Math.PI;
-  var k = Math.PI * 2;
+    var _event;
 
-  return function(val) {
-    if (val > n) {
-      do {
-        val -= k;
-      } while (val > n);
+    var _power = 2;
+
+
+    this.alpha = 0;
+    this.beta = 0;
+    this.gamma = 0;
+
+    this.OnOrientationChange = function(e) {
+      _event = e;
+    };
+
+    function power_lerp_rad(a, b, power) {
+      var diff = Mod2Pi(b - a);
+      var sign = Math.sign(diff);
+      var coef = Math.abs(diff / Math.PI);
+      coef = Math.pow(coef, power);
+
+      return Mod2Pi(a + coef * Math.PI * sign);
     }
-    else if (val < -n) {
-      do {
-        val += k;
-      } while (val < -n);
-    }
-    return val;
+
+    this.Update = function() {
+      that.alpha = power_lerp_rad(that.alpha, THREE.Math.degToRad(_event.alpha), _power);
+      that.beta  = power_lerp_rad(that.beta,  THREE.Math.degToRad(_event.beta),  _power);
+      that.gamma = power_lerp_rad(that.gamma, THREE.Math.degToRad(_event.gamma), _power);
+    };
   };
-}();
 
 
-AM.DeviceOrientationControl.prototype.Mod360 = function(val) {
-  val = val % 360;
-  return (val < 180) ? val : val - 360;
-};
+  AM.DeviceOrientationControl.prototype.CoefMethod = function() {
+    var that = this;
+
+    this.coef = 0.2;
+
+    this.alpha = 0;
+    this.beta = 0;
+    this.gamma = 0;
+
+    var _events = [];
+
+    this.OnOrientationChange = function(e) {
+      _events.push(e);
+    };
+
+    function lerp_rad(a, b, coef) {
+      return a + Mod2Pi(b - a) * coef;
+    }
+
+    this.Update = function() {
+      if (_events.length > 0) {
+        var alpha = that.alpha;
+        var beta  = that.beta;
+        var gamma = that.gamma;
+        var event;
+
+        for (var i = 0, c = _events.length; i < c; ++i) {
+          event = _events[i];
+          alpha = Mod2Pi(lerp_rad(alpha, THREE.Math.degToRad(event.alpha), that.coef));
+          beta  = Mod2Pi(lerp_rad(beta,  THREE.Math.degToRad(event.beta),  that.coef));
+          gamma = Mod2Pi(lerp_rad(gamma, THREE.Math.degToRad(event.gamma), that.coef));
+        }
+
+        that.alpha = alpha;
+        that.beta = beta;
+        that.gamma = gamma;
+
+        _events.length = 0;
+      }
+    };
+  };
+
+
+  AM.DeviceOrientationControl.prototype.AverageMethod = function() {
+    var that = this;
+
+    this.history = [];
+    this.history_max = 10;
+
+    this.alpha = 0;
+    this.beta = 0;
+    this.gamma = 0;
+
+    this.OnOrientationChange = function(event) {
+      if (that.history.length > that.history_max)
+        that.history.shift();
+      that.history.push(event);
+    };
+
+    this.Update = function(alpha, beta, gamma) {
+      if (that.history.length !== 0) {
+        for (var i = 0, c = that.history.length; i < c; i++) {
+          alpha += Mod360(that.history[i].alpha);
+          beta += Mod360(that.history[i].beta);
+          gamma += Mod360(that.history[i].gamma);
+        }
+        alpha /= that.history.length;
+        beta /= that.history.length;
+        gamma /= that.history.length;
+        that.alpha = THREE.Math.degToRad(alpha);
+        that.beta = THREE.Math.degToRad(beta);
+        that.gamma = THREE.Math.degToRad(gamma);
+      }
+    };
+  };
+
+
+  var Mod2Pi = (function() {
+    var n = Math.PI;
+    var k = Math.PI * 2;
+
+    return function(val) {
+      if (val > n) {
+        do {
+          val -= k;
+        } while (val > n);
+      }
+      else if (val < -n) {
+        do {
+          val += k;
+        } while (val < -n);
+      }
+      return val;
+    };
+  })();
+
+
+  function Mod360(val) {
+    val = val % 360;
+    return (val < 180) ? val : val - 360;
+  }
+
+})();
 /********************
 
 
@@ -2044,6 +2069,7 @@ AMTHREE.ColladaLoader = function () {
 
 		var n = visualScene.getChildById( node.colladaId, true ),
 			newData = null;
+    var i, il;
 
 		if ( n && n.keys ) {
 
@@ -2061,7 +2087,7 @@ AMTHREE.ColladaLoader = function () {
 
 			animData.push(newData);
 
-			for ( var i = 0, il = n.keys.length; i < il; i ++ ) {
+			for ( i = 0, il = n.keys.length; i < il; i ++ ) {
 
 				newData.length = Math.max( newData.length, n.keys[i].time );
 
@@ -2074,11 +2100,11 @@ AMTHREE.ColladaLoader = function () {
 					keys: [],
 					sids: []
 				} ]
-			}
+			};
 
 		}
 
-		for ( var i = 0, il = node.children.length; i < il; i ++ ) {
+		for ( i = 0, il = node.children.length; i < il; i ++ ) {
 
 			var d = recurseHierarchy( node.children[i] );
 
@@ -2255,6 +2281,7 @@ AMTHREE.ColladaLoader = function () {
 	}
 
 	function setupSkinningMatrices ( bones, skin ) {
+    var j;
 
 		// FIXME: this is dumb...
 
@@ -2265,7 +2292,7 @@ AMTHREE.ColladaLoader = function () {
 
 			if ( bone.type != 'JOINT' ) continue;
 
-			for ( var j = 0; j < skin.joints.length; j ++ ) {
+			for ( j = 0; j < skin.joints.length; j ++ ) {
 
 				if ( bone.sid === skin.joints[ j ] ) {
 
@@ -2288,7 +2315,7 @@ AMTHREE.ColladaLoader = function () {
 				bone.animatrix.copy(bone.localworld);
 				bone.weights = [];
 
-				for ( var j = 0; j < skin.weights.length; j ++ ) {
+				for ( j = 0; j < skin.weights.length; j ++ ) {
 
 					for (var k = 0; k < skin.weights[ j ].length; k ++ ) {
 
@@ -2356,8 +2383,9 @@ AMTHREE.ColladaLoader = function () {
 		setupSkinningMatrices( bones, skinController.skin );
 		var v = new THREE.Vector3();
 		var skinned = [];
+    var i;
 
-		for (var i = 0; i < geometry.vertices.length; i ++) {
+		for (i = 0; i < geometry.vertices.length; i ++) {
 
 			skinned.push(new THREE.Vector3());
 
@@ -2389,7 +2417,7 @@ AMTHREE.ColladaLoader = function () {
 
 		}
 
-		for (var i = 0; i < geometry.vertices.length; i ++) {
+		for (i = 0; i < geometry.vertices.length; i ++) {
 
 			geometry.vertices[i] = skinned[i];
 
@@ -2400,6 +2428,7 @@ AMTHREE.ColladaLoader = function () {
 	function applySkin ( geometry, instanceCtrl, frame ) {
 
 		var skinController = controllers[ instanceCtrl.url ];
+    var i, j;
 
 		frame = frame !== undefined ? frame : 40;
 
@@ -2426,9 +2455,9 @@ AMTHREE.ColladaLoader = function () {
 
 		//sort that list so that the order reflects the order in the joint list
 		var sortedbones = [];
-		for (var i = 0; i < joints.length; i ++) {
+		for (i = 0; i < joints.length; i ++) {
 
-			for (var j = 0; j < bonelist.length; j ++) {
+			for (j = 0; j < bonelist.length; j ++) {
 
 				if (bonelist[j].name === joints[i]) {
 
@@ -2441,9 +2470,9 @@ AMTHREE.ColladaLoader = function () {
 		}
 
 		//hook up the parents by index instead of name
-		for (var i = 0; i < sortedbones.length; i ++) {
+		for (i = 0; i < sortedbones.length; i ++) {
 
-			for (var j = 0; j < sortedbones.length; j ++) {
+			for (j = 0; j < sortedbones.length; j ++) {
 
 				if (sortedbones[i].parent === sortedbones[j].name) {
 
@@ -2456,7 +2485,7 @@ AMTHREE.ColladaLoader = function () {
 		}
 
 
-		var i, j, w, vidx, weight;
+		var w, vidx, weight;
 		var v = new THREE.Vector3(), o, s;
 
 		// move vertices to bind shape
@@ -2470,10 +2499,10 @@ AMTHREE.ColladaLoader = function () {
 
 		// hook up the skin weights
 		// TODO - this might be a good place to choose greatest 4 weights
-		for ( var i =0; i < weights.length; i ++ ) {
+		for ( i = 0; i < weights.length; i ++ ) {
 
 			var indicies = new THREE.Vector4(weights[i][0] ? weights[i][0].joint : 0,weights[i][1] ? weights[i][1].joint : 0,weights[i][2] ? weights[i][2].joint : 0,weights[i][3] ? weights[i][3].joint : 0);
-			var weight = new THREE.Vector4(weights[i][0] ? weights[i][0].weight : 0,weights[i][1] ? weights[i][1].weight : 0,weights[i][2] ? weights[i][2].weight : 0,weights[i][3] ? weights[i][3].weight : 0);
+			weight = new THREE.Vector4(weights[i][0] ? weights[i][0].weight : 0,weights[i][1] ? weights[i][1].weight : 0,weights[i][2] ? weights[i][2].weight : 0,weights[i][3] ? weights[i][3].weight : 0);
 
 			skinIndices.push(indicies);
 			skinWeights.push(weight);
@@ -2489,7 +2518,7 @@ AMTHREE.ColladaLoader = function () {
 		//NOTE: this has no effect when using morphtargets
 		var animationdata = { "name":animationBounds.ID,"fps":30,"length":animationBounds.frames / 30,"hierarchy":[] };
 
-		for (var j = 0; j < sortedbones.length; j ++) {
+		for (j = 0; j < sortedbones.length; j ++) {
 
 			animationdata.hierarchy.push({ parent:sortedbones[j].parent, name:sortedbones[j].name, keys:[] });
 
@@ -2512,9 +2541,9 @@ AMTHREE.ColladaLoader = function () {
 			setupSkeleton( skeleton, bones, frame );
 			setupSkinningMatrices( bones, skinController.skin );
 
-			for (var i = 0; i < bones.length; i ++) {
+			for (i = 0; i < bones.length; i ++) {
 
-				for (var j = 0; j < animationdata.hierarchy.length; j ++) {
+				for (j = 0; j < animationdata.hierarchy.length; j ++) {
 
 					if (animationdata.hierarchy[j].name === bones[i].sid) {
 
@@ -2621,7 +2650,7 @@ AMTHREE.ColladaLoader = function () {
 						var axis = joint.axis;
 						var transforms = jointData.transforms;
 
-						var matrix = new THREE.Matrix4();
+						var matrix = new THREE.Matrix4(), m1 = new THREE.Matrix4();
 
 						for (i = 0; i < transforms.length; i ++ ) {
 
@@ -2651,8 +2680,6 @@ AMTHREE.ColladaLoader = function () {
 								}
 
 							} else {
-
-								var m1 = new THREE.Matrix4();
 
 								switch ( transform.type ) {
 
@@ -2759,6 +2786,7 @@ AMTHREE.ColladaLoader = function () {
 		var skinController;
 		var morphController;
 		var i, j;
+    var inst_geom;
 
 		// FIXME: controllers
 
@@ -2772,7 +2800,7 @@ AMTHREE.ColladaLoader = function () {
 
 					if ( geometries[ controller.skin.source ] ) {
 
-						var inst_geom = new InstanceGeometry();
+						inst_geom = new InstanceGeometry();
 
 						inst_geom.url = controller.skin.source;
 						inst_geom.instance_material = node.controllers[ i ].instance_material;
@@ -2792,7 +2820,7 @@ AMTHREE.ColladaLoader = function () {
 
 						if ( second.morph && geometries[ second.morph.source ] ) {
 
-							var inst_geom = new InstanceGeometry();
+							inst_geom = new InstanceGeometry();
 
 							inst_geom.url = second.morph.source;
 							inst_geom.instance_material = node.controllers[ i ].instance_material;
@@ -2809,7 +2837,7 @@ AMTHREE.ColladaLoader = function () {
 
 					if ( geometries[ controller.morph.source ] ) {
 
-						var inst_geom = new InstanceGeometry();
+						inst_geom = new InstanceGeometry();
 
 						inst_geom.url = controller.morph.source;
 						inst_geom.instance_material = node.controllers[ i ].instance_material;
@@ -2820,6 +2848,8 @@ AMTHREE.ColladaLoader = function () {
 					}
 
 					console.log( 'ColladaLoader: Morph-controller partially supported.' );
+
+          break;
 
 				default:
 					break;
@@ -3093,9 +3123,9 @@ AMTHREE.ColladaLoader = function () {
 
 				var channel = animation.channel[i];
 				var sampler = animation.sampler[i];
-				var id = channel.target.split('/')[0];
+				var target_id = channel.target.split('/')[0];
 
-				if ( id == node.id ) {
+				if ( target_id == node.id ) {
 
 					sampler.create();
 					channel.sampler = sampler;
@@ -3144,12 +3174,13 @@ AMTHREE.ColladaLoader = function () {
 	function calcMatrixAt( node, t ) {
 
 		var animated = {};
+    var channel;
 
 		var i, j;
 
 		for ( i = 0; i < node.channels.length; i ++ ) {
 
-			var channel = node.channels[ i ];
+			channel = node.channels[ i ];
 			animated[ channel.sid ] = channel;
 
 		}
@@ -3159,7 +3190,7 @@ AMTHREE.ColladaLoader = function () {
 		for ( i = 0; i < node.transforms.length; i ++ ) {
 
 			var transform = node.transforms[ i ];
-			var channel = animated[ transform.sid ];
+			channel = animated[ transform.sid ];
 
 			if ( channel !== undefined ) {
 
@@ -3211,13 +3242,14 @@ AMTHREE.ColladaLoader = function () {
 	}
 
 	function bakeAnimations ( node ) {
+    var i, j, key;
 
 		if ( node.channels && node.channels.length ) {
 
 			var keys = [],
 				sids = [];
 
-			for ( var i = 0, il = node.channels.length; i < il; i ++ ) {
+			for ( i = 0, il = node.channels.length; i < il; i ++ ) {
 
 				var channel = node.channels[i],
 					fullSid = channel.fullSid,
@@ -3230,7 +3262,7 @@ AMTHREE.ColladaLoader = function () {
 
 					member = [];
 
-					for ( var j = 0, jl = channel.arrIndices.length; j < jl; j ++ ) {
+					for ( j = 0, jl = channel.arrIndices.length; j < jl; j ++ ) {
 
 						member[ j ] = getConvertedIndex( channel.arrIndices[ j ] );
 
@@ -3250,11 +3282,11 @@ AMTHREE.ColladaLoader = function () {
 
 					}
 
-					for ( var j = 0, jl = input.length; j < jl; j ++ ) {
+					for ( j = 0, jl = input.length; j < jl; j ++ ) {
 
-						var time = input[j],
-							data = sampler.getData( transform.type, j, member ),
-							key = findKey( keys, time );
+						var time = input[j];
+						var data = sampler.getData( transform.type, j, member );
+						key = findKey( keys, time );
 
 						if ( !key ) {
 
@@ -3277,13 +3309,13 @@ AMTHREE.ColladaLoader = function () {
 			}
 
 			// post process
-			for ( var i = 0; i < sids.length; i ++ ) {
+			for ( i = 0; i < sids.length; i ++ ) {
 
 				var sid = sids[ i ];
 
-				for ( var j = 0; j < keys.length; j ++ ) {
+				for ( j = 0; j < keys.length; j ++ ) {
 
-					var key = keys[ j ];
+					key = keys[ j ];
 
 					if ( !key.hasTarget( sid ) ) {
 
@@ -3511,7 +3543,7 @@ AMTHREE.ColladaLoader = function () {
 
 		var sources = {};
 		var inputs = [];
-		var i;
+		var i, source;
 
 		this.method = element.getAttribute( 'method' );
 		this.source = element.getAttribute( 'source' ).replace( /^#/, '' );
@@ -3525,7 +3557,7 @@ AMTHREE.ColladaLoader = function () {
 
 				case 'source':
 
-					var source = ( new Source() ).parse( child );
+					source = ( new Source() ).parse( child );
 					sources[ source.id ] = source;
 					break;
 
@@ -3546,7 +3578,7 @@ AMTHREE.ColladaLoader = function () {
 		for ( i = 0; i < inputs.length; i ++ ) {
 
 			var input = inputs[ i ];
-			var source = sources[ input.source ];
+			source = sources[ input.source ];
 
 			switch ( input.semantic ) {
 
@@ -3696,8 +3728,9 @@ AMTHREE.ColladaLoader = function () {
 	Skin.prototype.parseWeights = function ( element, sources ) {
 
 		var v, vcount, inputs = [];
+    var i, j, k;
 
-		for ( var i = 0; i < element.childNodes.length; i ++ ) {
+		for ( i = 0; i < element.childNodes.length; i ++ ) {
 
 			var child = element.childNodes[ i ];
 			if ( child.nodeType != 1 ) continue;
@@ -3728,16 +3761,16 @@ AMTHREE.ColladaLoader = function () {
 
 		var index = 0;
 
-		for ( var i = 0; i < vcount.length; i ++ ) {
+		for ( i = 0; i < vcount.length; i ++ ) {
 
 			var numBones = vcount[i];
 			var vertex_weights = [];
 
-			for ( var j = 0; j < numBones; j ++ ) {
+			for ( j = 0; j < numBones; j ++ ) {
 
 				var influence = {};
 
-				for ( var k = 0; k < inputs.length; k ++ ) {
+				for ( k = 0; k < inputs.length; k ++ ) {
 
 					var input = inputs[ k ];
 					var value = v[ index + input.offset ];
@@ -3765,7 +3798,7 @@ AMTHREE.ColladaLoader = function () {
 				index += inputs.length;
 			}
 
-			for ( var j = 0; j < vertex_weights.length; j ++ ) {
+			for ( j = 0; j < vertex_weights.length; j ++ ) {
 
 				vertex_weights[ j ].index = i;
 
@@ -4117,6 +4150,7 @@ AMTHREE.ColladaLoader = function () {
 			case 'rotate':
 
 				this.angle = THREE.Math.degToRad( this.data[3] );
+        break;
 
 			case 'translate':
 
@@ -4480,9 +4514,11 @@ AMTHREE.ColladaLoader = function () {
 
 	Mesh.prototype.parse = function ( element ) {
 
+    var i;
+
 		this.primitives = [];
 
-		for ( var i = 0; i < element.childNodes.length; i ++ ) {
+		for ( i = 0; i < element.childNodes.length; i ++ ) {
 
 			var child = element.childNodes[ i ];
 
@@ -4535,15 +4571,15 @@ AMTHREE.ColladaLoader = function () {
 
 		}
 
-		var vertexData = sources[ this.vertices.input['POSITION'].source ].data;
+		var vertexData = sources[ this.vertices.input.POSITION.source ].data;
 
-		for ( var i = 0; i < vertexData.length; i += 3 ) {
+		for ( i = 0; i < vertexData.length; i += 3 ) {
 
 			this.geometry3js.vertices.push( getConvertedVec3( vertexData, i ).clone() );
 
 		}
 
-		for ( var i = 0; i < this.primitives.length; i ++ ) {
+		for ( i = 0; i < this.primitives.length; i ++ ) {
 
 			var primitive = this.primitives[ i ];
 			primitive.setVertices( this.vertices );
@@ -4578,6 +4614,7 @@ AMTHREE.ColladaLoader = function () {
 		var source, numParams;
 		var vcIndex = 0, vcount = 3, maxOffset = 0;
 		var texture_sets = [];
+    var ndx, len;
 
 		for ( j = 0; j < inputs.length; j ++ ) {
 
@@ -4678,7 +4715,7 @@ AMTHREE.ColladaLoader = function () {
 						source = sources[ input.source ];
 						numParams = source.accessor.params.length;
 
-						for ( var ndx = 0, len = vs.length; ndx < len; ndx ++ ) {
+						for ( ndx = 0, len = vs.length; ndx < len; ndx ++ ) {
 
 							ns.push( getConvertedVec3( source.data, vs[ ndx ] * numParams ) );
 
@@ -4704,7 +4741,7 @@ AMTHREE.ColladaLoader = function () {
 						source = sources[ input.source ];
 						numParams = source.accessor.params.length;
 
-						for ( var ndx = 0, len = vs.length; ndx < len; ndx ++ ) {
+						for ( ndx = 0, len = vs.length; ndx < len; ndx ++ ) {
 
 							idx32 = vs[ ndx ] * numParams;
 							if ( ts[ input.set ] === undefined ) ts[ input.set ] = [ ];
@@ -4727,7 +4764,7 @@ AMTHREE.ColladaLoader = function () {
 						source = sources[ input.source ];
 						numParams = source.accessor.params.length;
 
-						for ( var ndx = 0, len = vs.length; ndx < len; ndx ++ ) {
+						for ( ndx = 0, len = vs.length; ndx < len; ndx ++ ) {
 
 							idx32 = vs[ ndx ] * numParams;
 							cs.push( new THREE.Color().setRGB( source.data[ idx32 ], source.data[ idx32 + 1 ], source.data[ idx32 + 2 ] ) );
@@ -4767,7 +4804,7 @@ AMTHREE.ColladaLoader = function () {
 
 				if ( faces.length ) {
 
-					for ( var ndx = 0, len = faces.length; ndx < len; ndx ++ ) {
+					for ( ndx = 0, len = faces.length; ndx < len; ndx ++ ) {
 
 						face = faces[ndx];
 						face.daeMaterial = primitive.material;
@@ -4843,7 +4880,7 @@ AMTHREE.ColladaLoader = function () {
 
 			if ( this.inputs[ i ].source === vertices.id ) {
 
-				this.inputs[ i ].source = vertices.input[ 'POSITION' ].source;
+				this.inputs[ i ].source = vertices.input.POSITION.source;
 
 			}
 
@@ -4949,8 +4986,8 @@ AMTHREE.ColladaLoader = function () {
 			if ( child.nodeName === 'param' ) {
 
 				var param = {};
-				param[ 'name' ] = child.getAttribute( 'name' );
-				param[ 'type' ] = child.getAttribute( 'type' );
+				param.name = child.getAttribute( 'name' );
+				param.type = child.getAttribute( 'type' );
 				this.params.push( param );
 
 			}
@@ -5169,7 +5206,7 @@ AMTHREE.ColladaLoader = function () {
 
 	ColorOrTexture.prototype.isTexture = function () {
 
-		return ( this.texture != null );
+		return ( this.texture !== null );
 
 	};
 
@@ -5320,16 +5357,16 @@ AMTHREE.ColladaLoader = function () {
 					var bumpType = child.getAttribute( 'bumptype' );
 					if ( bumpType ) {
 						if ( bumpType.toLowerCase() === "heightfield" ) {
-							this[ 'bump' ] = ( new ColorOrTexture() ).parse( child );
+							this.bump = ( new ColorOrTexture() ).parse( child );
 						} else if ( bumpType.toLowerCase() === "normalmap" ) {
-							this[ 'normal' ] = ( new ColorOrTexture() ).parse( child );
+							this.normal = ( new ColorOrTexture() ).parse( child );
 						} else {
 							console.error( "Shader.prototype.parse: Invalid value for attribute 'bumptype' (" + bumpType + ") - valid bumptypes are 'HEIGHTFIELD' and 'NORMALMAP' - defaulting to 'HEIGHTFIELD'" );
-							this[ 'bump' ] = ( new ColorOrTexture() ).parse( child );
+							this.bump = ( new ColorOrTexture() ).parse( child );
 						}
 					} else {
 						console.warn( "Shader.prototype.parse: Attribute 'bumptype' missing from bump node - defaulting to 'HEIGHTFIELD'" );
-						this[ 'bump' ] = ( new ColorOrTexture() ).parse( child );
+						this.bump = ( new ColorOrTexture() ).parse( child );
 					}
 
 					break;
@@ -5364,15 +5401,15 @@ AMTHREE.ColladaLoader = function () {
 
 		var transparent = false;
 
-		if (this['transparency'] !== undefined && this['transparent'] !== undefined) {
+		if (this.transparency !== undefined && this.transparent !== undefined) {
 			// convert transparent color RBG to average value
-			var transparentColor = this['transparent'];
+			var transparentColor = this.transparent;
 			var transparencyLevel = (this.transparent.color.r + this.transparent.color.g + this.transparent.color.b) / 3 * this.transparency;
 
 			if (transparencyLevel > 0) {
 				transparent = true;
-				props[ 'transparent' ] = true;
-				props[ 'opacity' ] = 1 - transparencyLevel;
+				props.transparent = true;
+				props.opacity = 1 - transparencyLevel;
 
 			}
 
@@ -5446,7 +5483,7 @@ AMTHREE.ColladaLoader = function () {
 										props[keys[prop]] = texture;
 
 										// Texture with baked lighting?
-										if (prop === 'emission') props['emissive'] = 0xffffff;
+										if (prop === 'emission') props.emissive = 0xffffff;
 
 									}
 
@@ -5458,7 +5495,7 @@ AMTHREE.ColladaLoader = function () {
 
 							if ( prop === 'emission' ) {
 
-								props[ 'emissive' ] = cot.color.getHex();
+								props.emissive  = cot.color.getHex();
 
 							} else {
 
@@ -5480,14 +5517,14 @@ AMTHREE.ColladaLoader = function () {
 				case 'reflectivity':
 
 					props[ prop ] = this[ prop ];
-					if ( props[ prop ] > 0.0 ) props['envMap'] = options.defaultEnvMap;
-					props['combine'] = THREE.MixOperation;	//mix regular shading with reflective component
+					if ( props[ prop ] > 0.0 ) props.envMap = options.defaultEnvMap;
+					props.combine = THREE.MixOperation;	//mix regular shading with reflective component
 					break;
 
 				case 'index_of_refraction':
 
-					props[ 'refractionRatio' ] = this[ prop ]; //TODO: "index_of_refraction" becomes "refractionRatio" in shader, but I'm not sure if the two are actually comparable
-					if ( this[ prop ] !== 1.0 ) props['envMap'] = options.defaultEnvMap;
+					props.refractionRatio = this[ prop ]; //TODO: "index_of_refraction" becomes "refractionRatio" in shader, but I'm not sure if the two are actually comparable
+					if ( this[ prop ] !== 1.0 ) props.envMap = options.defaultEnvMap;
 					break;
 
 				case 'transparency':
@@ -5501,8 +5538,8 @@ AMTHREE.ColladaLoader = function () {
 
 		}
 
-		props[ 'shading' ] = preferredShading;
-		props[ 'side' ] = this.effect.doubleSided ? THREE.DoubleSide : THREE.FrontSide;
+		props.shading = preferredShading;
+		props.side = this.effect.doubleSided ? THREE.DoubleSide : THREE.FrontSide;
 
 		if ( props.diffuse !== undefined ) {
 
@@ -5515,7 +5552,7 @@ AMTHREE.ColladaLoader = function () {
 
 			case 'constant':
 
-				if (props.emissive != undefined) props.color = props.emissive;
+				if (props.emissive !== undefined) props.color = props.emissive;
 				this.material = new THREE.MeshBasicMaterial( props );
 				break;
 
@@ -5525,7 +5562,6 @@ AMTHREE.ColladaLoader = function () {
 				this.material = new THREE.MeshPhongMaterial( props );
 				break;
 
-			case 'lambert':
 			default:
 
 				this.material = new THREE.MeshLambertMaterial( props );
@@ -5873,6 +5909,8 @@ AMTHREE.ColladaLoader = function () {
 
 	Animation.prototype.parse = function ( element ) {
 
+    var src;
+
 		this.id = element.getAttribute( 'id' );
 		this.name = element.getAttribute( 'name' );
 		this.source = {};
@@ -5889,7 +5927,7 @@ AMTHREE.ColladaLoader = function () {
 
 					var anim = ( new Animation() ).parse( child );
 
-					for ( var src in anim.source ) {
+					for ( src in anim.source ) {
 
 						this.source[ src ] = anim.source[ src ];
 
@@ -5906,7 +5944,7 @@ AMTHREE.ColladaLoader = function () {
 
 				case 'source':
 
-					var src = ( new Source() ).parse( child );
+					src = ( new Source() ).parse( child );
 					this.source[ src.id ] = src;
 					break;
 
@@ -6036,7 +6074,9 @@ AMTHREE.ColladaLoader = function () {
 
 	Sampler.prototype.create = function () {
 
-		for ( var i = 0; i < this.inputs.length; i ++ ) {
+    var i;
+
+		for ( i = 0; i < this.inputs.length; i ++ ) {
 
 			var input = this.inputs[ i ];
 			var source = this.animation.source[ input.source ];
@@ -6085,7 +6125,7 @@ AMTHREE.ColladaLoader = function () {
 			this.startTime = 100000000;
 			this.endTime = -100000000;
 
-			for ( var i = 0; i < this.input.length; i ++ ) {
+			for ( i = 0; i < this.input.length; i ++ ) {
 
 				this.startTime = Math.min( this.startTime, this.input[ i ] );
 				this.endTime = Math.max( this.endTime, this.input[ i ] );
@@ -6305,13 +6345,15 @@ AMTHREE.ColladaLoader = function () {
 
 	Camera.prototype.parseOptics = function ( element ) {
 
-		for ( var i = 0; i < element.childNodes.length; i ++ ) {
+    var i, j, k, param;
+
+		for ( i = 0; i < element.childNodes.length; i ++ ) {
 
 			if ( element.childNodes[ i ].nodeName === 'technique_common' ) {
 
 				var technique = element.childNodes[ i ];
 
-				for ( var j = 0; j < technique.childNodes.length; j ++ ) {
+				for ( j = 0; j < technique.childNodes.length; j ++ ) {
 
 					this.technique = technique.childNodes[ j ].nodeName;
 
@@ -6319,9 +6361,9 @@ AMTHREE.ColladaLoader = function () {
 
 						var perspective = technique.childNodes[ j ];
 
-						for ( var k = 0; k < perspective.childNodes.length; k ++ ) {
+						for ( k = 0; k < perspective.childNodes.length; k ++ ) {
 
-							var param = perspective.childNodes[ k ];
+							param = perspective.childNodes[ k ];
 
 							switch ( param.nodeName ) {
 
@@ -6349,9 +6391,9 @@ AMTHREE.ColladaLoader = function () {
 
 						var orthographic = technique.childNodes[ j ];
 
-						for ( var k = 0; k < orthographic.childNodes.length; k ++ ) {
+						for ( k = 0; k < orthographic.childNodes.length; k ++ ) {
 
-							var param = orthographic.childNodes[ k ];
+							param = orthographic.childNodes[ k ];
 
 							switch ( param.nodeName ) {
 
@@ -6759,7 +6801,7 @@ AMTHREE.ColladaLoader = function () {
 
 		var id = element.getAttribute( 'id' );
 
-		if ( sources[ id ] != undefined ) {
+		if ( sources[ id ] !== undefined ) {
 
 			return sources[ id ];
 
@@ -6982,6 +7024,8 @@ AMTHREE.ColladaLoader = function () {
 
 	function fixCoords( data, sign ) {
 
+    var tmp;
+
 		if ( options.convertUpAxis !== true || colladaUp === options.upAxis ) {
 
 			return;
@@ -6992,14 +7036,14 @@ AMTHREE.ColladaLoader = function () {
 
 			case 'XtoY':
 
-				var tmp = data[ 0 ];
+				tmp = data[ 0 ];
 				data[ 0 ] = sign * data[ 1 ];
 				data[ 1 ] = tmp;
 				break;
 
 			case 'XtoZ':
 
-				var tmp = data[ 2 ];
+				tmp = data[ 2 ];
 				data[ 2 ] = data[ 1 ];
 				data[ 1 ] = data[ 0 ];
 				data[ 0 ] = tmp;
@@ -7007,21 +7051,21 @@ AMTHREE.ColladaLoader = function () {
 
 			case 'YtoX':
 
-				var tmp = data[ 0 ];
+				tmp = data[ 0 ];
 				data[ 0 ] = data[ 1 ];
 				data[ 1 ] = sign * tmp;
 				break;
 
 			case 'YtoZ':
 
-				var tmp = data[ 1 ];
+				tmp = data[ 1 ];
 				data[ 1 ] = sign * data[ 2 ];
 				data[ 2 ] = tmp;
 				break;
 
 			case 'ZtoX':
 
-				var tmp = data[ 0 ];
+				tmp = data[ 0 ];
 				data[ 0 ] = data[ 1 ];
 				data[ 1 ] = data[ 2 ];
 				data[ 2 ] = tmp;
@@ -7029,7 +7073,7 @@ AMTHREE.ColladaLoader = function () {
 
 			case 'ZtoY':
 
-				var tmp = data[ 1 ];
+				tmp = data[ 1 ];
 				data[ 1 ] = data[ 2 ];
 				data[ 2 ] = sign * tmp;
 				break;
@@ -7263,7 +7307,7 @@ if (typeof THREE !== 'undefined') {
     this.model_object = new THREE.Object3D();
 
     this.add(this.model_object);
-  }
+  };
 
   ColladaObject.prototype = Object.create(THREE.Object3D.prototype);
   ColladaObject.prototype.constructor = ColladaObject;
@@ -7572,7 +7616,7 @@ var AMTHREE = AMTHREE || {};
 (function() {
 
   function IsDef(val) {
-    return typeof val != 'undefined' && val != null;
+    return typeof val !== 'undefined' && val !== null;
   }
 
   function ObjectConvert(object) {
@@ -9267,11 +9311,11 @@ AM.Detection = function() {
    * Sets the params used during the detection
    * @inner
    * @param {object} params
-   * @param {number} [params.laplacian_threshold=30] - 0 - 100
-   * @param {number} [params.eigen_threshold=25] - 0 - 100
-   * @param {number} [params.detection_corners_max=500] - 100 - 1000
-   * @param {number} [params.border_size=3]
-   * @param {number} [params.fast_threshold=48] - 0 - 10
+   * @param {number} [params.laplacian_threshold] - 0 - 100 default 30
+   * @param {number} [params.eigen_threshold] - 0 - 100 default 25
+   * @param {number} [params.detection_corners_max] - 100 - 1000 default 500
+   * @param {number} [params.border_size] default 3
+   * @param {number} [params.fast_threshold] - 0 - 10 default 48
    */
   this.SetParameters = function(params) {
     for (var name in params) {
@@ -9439,8 +9483,8 @@ AM.ImageFilter = function() {
    * Sets parameters, all optionnal
    * @inner
    * @param {object} params
-   * @param {number} [params.blur_size=3]
-   * @param {bool} [params.blur=true] - compute blur ?
+   * @param {number} [params.blur_size] default 3
+   * @param {bool} [params.blur] - compute blur ? default true
    */
   this.SetParameters = function(params) {
     for (var name in params) {
@@ -9715,7 +9759,7 @@ AM.MarkerTracker = function() {
    * Sets optionnals parameters
    * @inner
    * @param {object} params
-   * @param {number} [match_min=8] minimum number of matching corners necessary for a match to be valid.
+   * @param {number} [match_min] minimum number of matching corners necessary for a match to be valid. default 8
    * @see AM.ImageFilter
    * @see AM.Detection
    * @see AM.Matching
@@ -9922,7 +9966,7 @@ AM.Matching = function() {
    * Sets parameters of the matching
    * @inner
    * @param {object} params
-   * @param {number} [params.match_threshold=48] 16 - 128
+   * @param {number} [params.match_threshold] 16 - 128, default 48
    */
   this.SetParameters = function(params) {
     for (var name in params) {
@@ -10529,12 +10573,12 @@ AM.Training = function() {
    * Sets parameters of the training
    * @inner
    * @param {object} params
-   * @params {number} [params.num_train_levels=3]
-   * @params {number} [params.blur_size=3]
-   * @params {number} [params.image_size_max=512]
-   * @params {number} [params.training_corners_max=200]
-   * @params {number} [params.laplacian_threshold=30]
-   * @params {number} [params.eigen_threshold=25]
+   * @params {number} [params.num_train_levels=3] - default 3
+   * @params {number} [params.blur_size=3] - default 3
+   * @params {number} [params.image_size_max=512] - default 512
+   * @params {number} [params.training_corners_max=200] - default 200
+   * @params {number} [params.laplacian_threshold=30] - default 30
+   * @params {number} [params.eigen_threshold=25] - default 25
    */
   this.SetParameters = function(params) {
     for (var name in params) {

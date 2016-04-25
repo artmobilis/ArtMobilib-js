@@ -210,12 +210,12 @@ AM.Training = function() {
    * Sets parameters of the training
    * @inner
    * @param {object} params
-   * @params {number} [params.num_train_levels=3]
-   * @params {number} [params.blur_size=3]
-   * @params {number} [params.image_size_max=512]
-   * @params {number} [params.training_corners_max=200]
-   * @params {number} [params.laplacian_threshold=30]
-   * @params {number} [params.eigen_threshold=25]
+   * @params {number} [params.num_train_levels=3] - default 3
+   * @params {number} [params.blur_size=3] - default 3
+   * @params {number} [params.image_size_max=512] - default 512
+   * @params {number} [params.training_corners_max=200] - default 200
+   * @params {number} [params.laplacian_threshold=30] - default 30
+   * @params {number} [params.eigen_threshold=25] - default 25
    */
   this.SetParameters = function(params) {
     for (var name in params) {

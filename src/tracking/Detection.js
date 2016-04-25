@@ -56,11 +56,11 @@ AM.Detection = function() {
    * Sets the params used during the detection
    * @inner
    * @param {object} params
-   * @param {number} [params.laplacian_threshold=30] - 0 - 100
-   * @param {number} [params.eigen_threshold=25] - 0 - 100
-   * @param {number} [params.detection_corners_max=500] - 100 - 1000
-   * @param {number} [params.border_size=3]
-   * @param {number} [params.fast_threshold=48] - 0 - 10
+   * @param {number} [params.laplacian_threshold] - 0 - 100 default 30
+   * @param {number} [params.eigen_threshold] - 0 - 100 default 25
+   * @param {number} [params.detection_corners_max] - 100 - 1000 default 500
+   * @param {number} [params.border_size] default 3
+   * @param {number} [params.fast_threshold] - 0 - 10 default 48
    */
   this.SetParameters = function(params) {
     for (var name in params) {

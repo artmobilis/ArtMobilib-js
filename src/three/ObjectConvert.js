@@ -4,7 +4,7 @@ var AMTHREE = AMTHREE || {};
 (function() {
 
   function IsDef(val) {
-    return typeof val != 'undefined' && val != null;
+    return typeof val !== 'undefined' && val !== null;
   }
 
   function ObjectConvert(object) {

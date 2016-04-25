@@ -32,8 +32,13 @@ var AM = AM || {};
   */
   AM.ImageToImageData = (function() {
 
-    var _canvas = document.createElement('canvas');
-    var _ctx = _canvas.getContext('2d');
+    var _canvas;
+    var _ctx;
+
+    if (typeof document !== 'undefined') {
+      _canvas = document.createElement('canvas');
+      _ctx = _canvas.getContext('2d');
+    }
 
     return function(img, square) {
       if (square) {
