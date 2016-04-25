@@ -6,7 +6,7 @@ var AM = AM || {};
  * @class
  */
 AM.Detection = function() {
-
+  var that=this;
   var _params = {
     laplacian_threshold: 30,
     eigen_threshold: 25,
@@ -88,12 +88,17 @@ AM.Detection = function() {
   };
 
   /**
-   * Returns the last computed corners
+   * Returns a copy of the last computed corners
    * @inner
    * @returns {jsfeat.keypoint_t[]}
    */
   this.GetCorners = function() {
-    return _screen_corners;
+    var copy = [];
+    var i=that.GetNumCorners();
+    while( i--)
+       copy[i]=_screen_corners[i];
+    
+    return copy;
   };
 
 

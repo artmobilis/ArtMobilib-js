@@ -1792,12 +1792,1412 @@ AM.GeolocationControl = function(object, geoConverter) {
 	};
 
 };
+var AM = AM || {};
+
+
+/**
+ * Detects corners in an image using FAST, and descriptors using ORB.
+ * @class
+ */
+AM.Detection = function() {
+  var that=this;
+  var _params = {
+    laplacian_threshold: 30,
+    eigen_threshold: 25,
+    detection_corners_max: 500,
+    border_size: 15,
+    fast_threshold: 20
+  };
+
+  var _debug =false;
+
+  var _screen_corners = [];
+  var _num_corners = 0;
+
+  var _screen_descriptors = new jsfeat.matrix_t(32, _params.detection_corners_max, jsfeat.U8_t | jsfeat.C1_t);
+
+  function AllocateCorners(width, height) {
+    var i = width * height;
+
+    if (i > _screen_corners.length) {
+      while (--i >= 0) {
+        _screen_corners[i] = new jsfeat.keypoint_t();
+      }
+    }
+  }
+
+  /**
+   * Computes the image corners and descriptors and saves them internally.
+   * <br>Use {@link ImageFilter} first to filter an Image.
+   * @inner
+   * @param {jsfeat.matrix_t} img
+   */
+  this.Detect = function(img) {
+    AllocateCorners(img.cols, img.rows);
+
+    _num_corners = AM.DetectKeypointsYape06(img, _screen_corners, _params.detection_corners_max,
+      _params.laplacian_threshold, _params.eigen_threshold, _params.border_size);
+    
+    // _num_corners = AM.DetectKeypointsFast(img, _screen_corners, _params.detection_corners_max,
+    //   _params.fast_threshold, _params.border_size);
+
+    jsfeat.orb.describe(img, _screen_corners, _num_corners, _screen_descriptors);
+
+    if (_debug) console.log("Learn : " + _num_corners + " corners");
+  };
+
+  /**
+   * Sets the params used during the detection
+   * @inner
+   * @param {object} params
+   * @param {number} [params.laplacian_threshold=30] - 0 - 100
+   * @param {number} [params.eigen_threshold=25] - 0 - 100
+   * @param {number} [params.detection_corners_max=500] - 100 - 1000
+   * @param {number} [params.border_size=3]
+   * @param {number} [params.fast_threshold=48] - 0 - 10
+   */
+  this.SetParameters = function(params) {
+    for (var name in params) {
+      if (typeof _params[name] !== 'undefined')
+        _params[name] = params[name];
+    }
+  };
+
+  /**
+   * Returns the last computed descriptors
+   * @inner
+   * @returns {jsfeat.matrix_t} Descriptors
+   */
+  this.GetDescriptors = function() {
+    return _screen_descriptors;
+  };
+
+  /**
+   * Returns the count of the last computed corners
+   * @inner
+   * @returns {number}
+   */
+  this.GetNumCorners = function() {
+    return _num_corners;
+  };
+
+  /**
+   * Returns a copy of the last computed corners
+   * @inner
+   * @returns {jsfeat.keypoint_t[]}
+   */
+  this.GetCorners = function() {
+    var copy = [];
+    var i=that.GetNumCorners();
+    while( i--)
+       copy[i]=_screen_corners[i];
+    
+    return copy;
+  };
+
+
+};
+
+AM.IcAngle = (function() {
+  var u_max = new Int32Array( [ 15, 15, 15, 15, 14, 14, 14, 13, 13, 12, 11, 10, 9, 8, 6, 3, 0 ] );
+  var half_pi = Math.PI / 2;
+
+  return function(img, px, py) {
+    var half_k = 15; // half patch size
+    var m_01 = 0, m_10 = 0;
+    var src = img.data, step = img.cols;
+    var u = 0, v = 0, center_off = (py * step + px) | 0;
+    var v_sum = 0, d = 0, val_plus = 0, val_minus = 0;
+
+    // Treat the center line differently, v=0
+    for (u = -half_k; u <= half_k; ++u)
+      m_10 += u * src[center_off + u];
+
+    // Go line by line in the circular patch
+    for (v = 1; v <= half_k; ++v) {
+      // Proceed over the two lines
+      v_sum = 0;
+      d = u_max[v];
+      for (u = -d; u <= d; ++u) {
+        val_plus = src[center_off + u + v * step];
+        val_minus = src[center_off + u - v * step];
+        v_sum += (val_plus - val_minus);
+        m_10 += u * (val_plus + val_minus);
+      }
+      m_01 += v * v_sum;
+    }
+
+    // return Math.atan2(m_01, m_10);
+    return AM.DiamondAngle(m_01, m_10) * half_pi;
+  };
+})();
+
+AM.DiamondAngle = function(y, x) {
+  if (y >= 0)
+    return (x >= 0 ? y / (x + y) : 1 - x / (-x + y)); 
+  else
+    return (x < 0 ? 2 - y / (-x - y) : 3 + x / (x - y));
+};
+
+AM.DetectKeypointsPostProc = function(img, corners, count, max_allowed) {
+
+  // sort by score and reduce the count if needed
+  if(count > max_allowed) {
+    jsfeat.math.qsort(corners, 0, count - 1, function(a, b) {
+      return (b.score < a.score);
+    } );
+    count = max_allowed;
+  }
+
+  // calculate dominant orientation for each keypoint
+  for(var i = 0; i < count; ++i) {
+    corners[i].angle = AM.IcAngle(img, corners[i].x, corners[i].y);
+  }
+
+  return count;
+};
+
+AM.DetectKeypointsYape06 = function(img, corners, max_allowed,
+  laplacian_threshold, eigen_threshold, border_size) {
+
+  jsfeat.yape06.laplacian_threshold = laplacian_threshold;
+  jsfeat.yape06.min_eigen_value_threshold = eigen_threshold;
+
+  // detect features
+  var count = jsfeat.yape06.detect(img, corners, border_size);
+
+  count = AM.DetectKeypointsPostProc(img, corners, count, max_allowed);
+
+  return count;
+};
+
+AM.DetectKeypointsFast = function(img, corners, max_allowed, threshold, border_size) {
+  jsfeat.fast_corners.set_threshold(threshold);
+
+  var count = jsfeat.fast_corners.detect(img, corners, border_size || 3);
+
+  count = AM.DetectKeypointsPostProc(img, corners, count, max_allowed);
+
+  return count;
+};
+var AM = AM || {};
+
+
+/**
+ * Filters images so the result can be used by {@link Detection}
+ * @class
+ */
+AM.ImageFilter = function() {
+
+  var _img_u8;
+
+  var _params = {
+    blur_size: 3,
+    blur: true
+  };
+
+  /**
+   * Filters the image and saves the result internally
+   * @inner
+   * @param {ImageData} image_data
+   */
+  this.Filter = function(image_data) {
+    var width = image_data.width;
+    var height = image_data.height;
+
+    if (_img_u8) _img_u8.resize(width, height, jsfeat.U8_t | jsfeat.C1_t);
+    else _img_u8 = new jsfeat.matrix_t(width, height, jsfeat.U8_t | jsfeat.C1_t);
+
+    jsfeat.imgproc.grayscale(image_data.data, width, height, _img_u8);
+
+    if (_params.blur)
+      jsfeat.imgproc.gaussian_blur(_img_u8, _img_u8, _params.blur_size);
+  };
+
+  /**
+   * Returns the last filtered image
+   * @inner
+   * @returns {jsfeat.matrix_t}
+   */
+  this.GetFilteredImage = function() {
+    return _img_u8;
+  };
+
+  /**
+   * Sets parameters, all optionnal
+   * @inner
+   * @param {object} params
+   * @param {number} [params.blur_size=3]
+   * @param {bool} [params.blur=true] - compute blur ?
+   */
+  this.SetParameters = function(params) {
+    for (var name in params) {
+      if (typeof _params[name] !== 'undefined')
+        _params[name] = params[name];
+    }
+  };
+
+
+};
+/*************************
+
+
+
+
+
+
+
+SetParameters(params)
+
+params.match_min
+params.laplacian_threshold
+params.eigen_threshold
+params.detection_corners_max
+params.blur
+params.blur_size
+params.match_threshold
+params.num_train_levels
+params.image_size_max
+params.training_corners_max
+
+
+
+*************************/
+
+
+var AM = AM || {};
+
+
+/**
+ * @class
+ */
+AM.MarkerTracker = function() {
+
+  var _training = new AM.Training();
+  var _trained_images = {};
+
+  var _image_filter = new AM.ImageFilter();
+  var _detection = new AM.Detection();
+  var _matching = new AM.Matching();
+  var _pose = new AM.Pose();
+
+  var _match_found = false;
+  var _matching_image;
+
+  var _params = {
+    match_min : 8
+  };
+  
+  var _debug =false; 
+  
+  var _profiler = new AM.Profiler();
+  _profiler.add('filter');
+  _profiler.add('detection');
+  _profiler.add('matching');
+  _profiler.add('pose');
+
+
+  /**
+  * Computes the corners and descriptors
+  * @inner
+  * @param {ImageData} image_data
+  */
+  this.ComputeImage = function(image_data) {
+    _profiler.new_frame();
+    _profiler.start('filter');
+    _image_filter.Filter(image_data);
+    _profiler.stop('filter');
+    _profiler.start('detection');
+    _detection.Detect(_image_filter.GetFilteredImage());
+    _profiler.stop('detection');
+  };
+
+  /**
+   * Matches the last computed ImageData and every active trained image.
+   * @inner
+   * @returns {bool} true if a match if found.
+   */
+  this.Match = function() {
+    _profiler.start('matching');
+
+    _match_found = false;
+    _matching_image = undefined;
+
+    _matching.SetScreenDescriptors(_detection.GetDescriptors());
+
+    for(var uuid in _trained_images) {
+      var trained_image = _trained_images[uuid];
+
+      if (!trained_image.IsActive())
+        continue;
+
+      _matching.Match(trained_image.GetDescriptorsLevels());
+
+      var count = _matching.GetNumMatches();
+
+      _match_found = (count >= _params.match_min);
+      if (_debug) console.log("nbMatches : " + count);
+      if (!_match_found)
+        continue;
+
+      var good_count = _pose.Pose(_matching.GetMatches(), count,
+        _detection.GetCorners(), trained_image.GetCornersLevels());
+      _match_found = (good_count >= _params.match_min);
+
+      if (_debug) console.log(" goodMatches : " + good_count);
+      if (_match_found) {
+        _matching_image = trained_image;
+        break;
+      }
+
+    }
+
+    _profiler.stop('matching');
+    if (_debug) console.log(_profiler.log2());
+
+    return _match_found;
+  };
+
+  /**
+   * Returns the id of the last match
+   * @inner
+   */
+  this.GetMatchUuid = function() {
+    return _matching_image.GetUuid();
+  };
+
+  /**
+   * Computes and returns the pose of the last match
+   * @inner
+   * @returns {Point2D[]} The corners
+   */
+  this.GetPose = function() {
+    if (_match_found) {
+      _profiler.start('pose');
+      var pose = _pose.GetPoseCorners(_matching_image.GetWidth(), _matching_image.GetHeight());
+      _profiler.stop('pose');
+      return pose;
+    }
+    return undefined;
+  };
+
+  /**
+   * Trains a marker
+   * @inner
+   * @param {ImageData} image_data - The marker, has to be a square (same width and height).
+   * @param {value} uuid - The identifier of the marker.
+   */
+  this.AddMarker = function(image_data, uuid) {
+    _training.Train(image_data);
+    var trained_image = new AM.TrainedImage(uuid);
+    _training.SetResultToTrainedImage(trained_image);
+    _training.Empty();
+    _trained_images[uuid] = trained_image;
+  };
+
+  /**
+   * Removes a marker
+   * @inner
+   * @param {value} uuid - The identifier of the marker.
+   */
+  this.RemoveMarker = function(uuid) {
+    if (_trained_images[uuid]) {
+      delete _trained_images[uuid];
+    }
+  };
+
+  /**
+   * Activates or desactivates a marker.
+   * <br>A marker inactive will be ignored during the matching.
+   * @inner
+   * @param {value} uuid - The identifier of the marker.
+   * @param {bool} bool - Sets active if true, inactive if false.
+   */
+  this.ActiveMarker = function(uuid, bool) {
+    if (_trained_images[uuid])
+      _trained_images[uuid].Active(bool);
+  };
+
+  /**
+   * Sets active or inactive all the markers
+   * @inner
+   * @param {bool} bool - Sets all active if true, inactive if false.
+   */
+  this.ActiveAllMarkers = function(bool) {
+    for (var uuid in _trained_images) {
+      _trained_images[uuid].Active(bool);
+    }
+  };
+
+  /**
+   * Removes all the markers
+   * @inner
+   */
+  this.ClearMarkers = function() {
+    _trained_images = {};
+  };
+
+  /**
+   * Returns the corners of the last computed image
+   * @inner
+   * @returns {jsfeat.keypoint_t[]}
+   */
+  this.GetScreenCorners = function() {
+    return _detection.GetCorners();
+  };
+
+  /**
+   * Returns the count of corners of the last computed image
+   * @inner
+   * @returns {number}
+   */
+  this.GetNumScreenCorners = function() {
+    return _detection.GetNumCorners();
+  };
+
+ /**
+   * Returns the buffer of matches ()
+   * @inner
+   * @returns {AM.match_t[]}
+   */
+  this.GetMatches = function () {
+    return _matching.GetMatches();
+  };
+
+ /**
+   * Returns the buffer of matches validated by homography ()
+   * @inner
+   * @returns {AM.match_t[]}
+   */
+  this.GetMatchesMask = function () {
+    return _pose.GetMatchesMask();
+  };
+
+/**
+   * Returns the timings of matching function()
+   * @inner
+   * @returns {pair[]}
+   */
+  this.GetProfiler = function () {
+    return _profiler.GetProfiler();
+  };
+
+/**
+   * Returns corners of trained image
+   * @inner
+   * @returns {jsfeat.keypoint_t[]}
+   */
+  this.GetTrainedCorners = function () {
+    var trained_image = _trained_images[_matching_image.GetUuid()];
+    return trained_image.GetCornersLevels();
+  };
+
+  /**
+   * Puts the log to the console
+   * @inner
+   */
+  this.Log = function() {
+    console.log(_profiler.log() + ((_match_found) ? '<br/>match found' : ''));
+  };
+
+  /**
+   * Sets optionnals parameters
+   * @inner
+   * @param {object} params
+   * @param {number} [match_min=8] minimum number of matching corners necessary for a match to be valid.
+   * @see AM.ImageFilter
+   * @see AM.Detection
+   * @see AM.Matching
+   * @see AM.Training
+   */
+  this.SetParameters = function(params) {
+    for (var name in params) {
+      if (typeof _params[name] !== 'undefined')
+        _params[name] = params[name];
+    }
+
+    _training.SetParameters(params);
+    _image_filter.SetParameters(params);
+    _detection.SetParameters(params);
+    _matching.SetParameters(params);
+  };
+};
+var AM = AM || {};
+
+
+/**
+ * Matches descriptors
+ * @class
+ */
+AM.Matching = function() {
+
+  var _screen_descriptors;
+
+  var _num_matches;
+  var _matches = [];
+
+  var _params = {
+    match_threshold: 48
+  };
+
+  /**
+   *
+   * @inner
+   * @param {jsfeat.matrix_t} screen_descriptors
+   */
+  this.SetScreenDescriptors = function(screen_descriptors) {
+    _screen_descriptors = screen_descriptors;
+  };
+
+  /**
+   * Computes the matching.
+   * @inner
+   * @param {jsfeat.matrix_t[]} pattern_descriptors - The descriptors of a trained image.
+   * @returns {number} The number of matches of the best match if there is a match, 0 otherwise.
+   */
+  this.Match = function(pattern_descriptors) {
+    _num_matches = MatchPattern(_screen_descriptors, pattern_descriptors);
+    return _num_matches;
+  };
+
+  function popcnt32(n) {
+    n -= ((n >> 1) & 0x55555555);
+    n = (n & 0x33333333) + ((n >> 2) & 0x33333333);
+    return (((n + (n >> 4))& 0xF0F0F0F)* 0x1010101) >> 24;
+  }
+
+  var popcnt32_2 = function() {
+    var v2b = [
+      0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
+      1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+      1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+      2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+      1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+      2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+      2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+      3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+      1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+      2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+      2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+      3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+      2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+      3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+      3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+      4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8,
+    ];
+
+    var m8 = 0x000000ff;
+
+    return function(n) {
+      var r = v2b[n & m8];
+      n = n >> 8;
+      r += v2b[n & m8];
+      n = n >> 8;
+      r += v2b[n & m8];
+      n = n >> 8;
+      r += v2b[n & m8];
+      return r;
+    };
+  }();
+
+  var popcnt32_3 = function() {
+
+    var v2b = [];
+    for (i = 0; i < 256 * 256; ++i)
+      v2b.push(popcnt32(i));
+
+    var m16 = 0x0000ffff;
+
+    return function(n) {
+      var r = v2b[n & m16];
+      n = n >> 16;
+      r += v2b[n & m16];
+      return r;
+    };
+  }();
+
+  function MatchPattern(screen_descriptors, pattern_descriptors) {
+    var q_cnt = screen_descriptors.rows;
+    var query_u32 = screen_descriptors.buffer.i32; // cast to integer buffer
+    var qd_off = 0;
+    var num_matches = 0;
+
+    _matches = [];
+
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+		var n = visualScene.getChildById( node.colladaId, true ),
+			newData = null;
+    var i, il;
+=======
+    for (var qidx = 0; qidx < q_cnt; ++qidx) {
+      var best_dist = 256;
+      var best_dist2 = 256;
+      var best_idx = -1;
+      var best_lev = -1;
+>>>>>>> copy just the necessary corners in the message
+
+      for (var lev = 0, lev_max = pattern_descriptors.length; lev < lev_max; ++lev) {
+        var lev_descr = pattern_descriptors[lev];
+        var ld_cnt = lev_descr.rows;
+        var ld_i32 = lev_descr.buffer.i32; // cast to integer buffer
+        var ld_off = 0;
+
+        for (var pidx = 0; pidx < ld_cnt; ++pidx) {
+
+          var curr_d = 0;
+          // our descriptor is 32 bytes so we have 8 Integers
+          for (var k = 0; k < 8; ++k) {
+            curr_d += popcnt32_3(query_u32[qd_off + k] ^ ld_i32[ld_off + k]);
+          }
+
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+			for ( i = 0, il = n.keys.length; i < il; i ++ ) {
+=======
+          if (curr_d < best_dist) {
+            best_dist2 = best_dist;
+            best_dist = curr_d;
+            best_lev = lev;
+            best_idx = pidx;
+          } else if (curr_d < best_dist2) {
+            best_dist2 = curr_d;
+          }
+>>>>>>> copy just the necessary corners in the message
+
+          ld_off += 8; // next descriptor
+        }
+      }
+
+      // filter out by some threshold
+      if (best_dist < _params.match_threshold) {
+
+        while (_matches.length <= num_matches) {
+          _matches.push(new AM.match_t());
+        }
+
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+			newData = {
+				hierarchy: [ {
+					keys: [],
+					sids: []
+				} ]
+			};
+=======
+        _matches[num_matches].screen_idx = qidx;
+        _matches[num_matches].pattern_lev = best_lev;
+        _matches[num_matches].pattern_idx = best_idx;
+        num_matches++;
+      }
+>>>>>>> copy just the necessary corners in the message
+
+      // filter using the ratio between 2 closest matches
+      /*if(best_dist < 0.8*best_dist2) {
+        while (_matches.length <= num_matches) {
+          _matches.push(new AM.match_t());
+        }
+        _matches[num_matches].screen_idx = qidx;
+        _matches[num_matches].pattern_lev = best_lev;
+        _matches[num_matches].pattern_idx = best_idx;
+        num_matches++;
+      }*/
+      
+
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+		for ( i = 0, il = node.children.length; i < il; i ++ ) {
+=======
+      qd_off += 8; // next query descriptor
+    }
+>>>>>>> copy just the necessary corners in the message
+
+    _matches.length = num_matches;
+    return num_matches;
+  }
+
+  /**
+   * Returns the matches
+   * @inner
+   * @returns {AM.match_t[]} The buffer of matches
+   */
+  this.GetMatches = function() {
+    return _matches;
+  };
+
+  /**
+   * Returns the number of matches
+   * @inner
+   * @returns {number}
+   */
+  this.GetNumMatches = function() {
+    return _num_matches;
+  };
+
+  /**
+   * Sets parameters of the matching
+   * @inner
+   * @param {object} params
+   * @param {number} [params.match_threshold=48] 16 - 128
+   */
+  this.SetParameters = function(params) {
+    for (var name in params) {
+      if (typeof _params[name] !== 'undefined')
+        _params[name] = params[name];
+    }
+  };
+
+
+};
+
+/**
+ *
+ * @class
+ * @param {number} screen_idx
+ * @param {number} pattern_lev
+ * @param {number} pattern_idx
+ * @param {number} distance
+ */ 
+AM.match_t = function (screen_idx, pattern_lev, pattern_idx, distance) {
+  this.screen_idx = screen_idx || 0;
+  this.pattern_lev = pattern_lev || 0;
+  this.pattern_idx = pattern_idx || 0;
+  this.distance = distance || 0;
+};
+var AM = AM || {};
+
+
+/**
+ * Computes the pose and remove bad matches using RANSAC
+ * @class
+ */
+AM.Pose = function() {
+
+  var _good_count = 0;
+  var _homo3x3 = new jsfeat.matrix_t(3, 3, jsfeat.F32C1_t);
+  var _match_mask = new jsfeat.matrix_t(500, 1, jsfeat.U8C1_t);
+
+
+  // estimate homography transform between matched points
+  function find_transform(matches, count, homo3x3, match_mask, screen_corners, pattern_corners) {
+    // motion kernel
+    var mm_kernel = new jsfeat.motion_model.homography2d();
+    // ransac params
+    var num_model_points = 4;
+    var reproj_threshold = 3;
+    var ransac_param = new jsfeat.ransac_params_t(num_model_points,
+                                                  reproj_threshold, 0.5, 0.99);
+
+    var pattern_xy = [];
+    var screen_xy = [];
+
+    var i;
+
+    // construct correspondences
+    for(i = 0; i < count; ++i) {
+      var m = matches[i];
+      var s_kp = screen_corners[m.screen_idx];
+      var p_kp = pattern_corners[m.pattern_lev][m.pattern_idx];
+      pattern_xy[i] = { x: p_kp.x, y: p_kp.y };
+      screen_xy[i] =  { x: s_kp.x, y: s_kp.y };
+    }
+
+    // estimate motion
+    var ok = false;
+    ok = jsfeat.motion_estimator.ransac(ransac_param, mm_kernel,
+                                        pattern_xy, screen_xy, count, homo3x3, match_mask, 1000);
+
+    // extract good matches and re-estimate
+    var good_cnt = 0;
+    if (ok) {
+      for(i = 0; i < count; ++i) {
+        if(match_mask.data[i]) {
+          pattern_xy[good_cnt].x = pattern_xy[i].x;
+          pattern_xy[good_cnt].y = pattern_xy[i].y;
+          screen_xy[good_cnt].x = screen_xy[i].x;
+          screen_xy[good_cnt].y = screen_xy[i].y;
+          good_cnt++;
+        }
+      }
+      // run kernel directly with inliers only
+      mm_kernel.run(pattern_xy, screen_xy, homo3x3, good_cnt);
+    } else {
+      jsfeat.matmath.identity_3x3(homo3x3, 1.0);
+    }
+
+    return good_cnt;
+  }
+
+  // project/transform rectangle corners with 3x3 Matrix
+  function tCorners(M, w, h) {
+    var pt = [ { x: 0, y: 0 }, { x: w, y: 0 }, { x: w, y: h }, { x: 0, y: h } ];
+    var z = 0.0, px = 0.0, py = 0.0;
+
+    for (var i = 0; i < 4; ++i) {
+      px = M[0] * pt[i].x + M[1] * pt[i].y + M[2];
+      py = M[3] * pt[i].x + M[4] * pt[i].y + M[5];
+      z  = M[6] * pt[i].x + M[7] * pt[i].y + M[8];
+      pt[i].x = px / z;
+      pt[i].y = py / z;
+    }
+
+    return pt;
+  }
+
+  /**
+   *
+   * @inner
+   * @param {AM.match_t[]} matches
+   * @param {number} count - The matches count.
+   * @param {jsfeat.keypoint_t[]} screen_corners
+   * @param {jsfeat.keypoint_t[][]} pattern_corners
+   */
+  this.Pose = function(matches, count, screen_corners, pattern_corners) {
+    _good_count = find_transform(matches, count, _homo3x3, _match_mask, screen_corners, pattern_corners);
+    return _good_count;
+  };
+
+  /**
+   * Returns the count of good matches, computed using RANSAC by {@link AM.Pose#Pose}
+   * @inner
+   * @returns {number}
+   */
+  this.GetGoodCount = function() {
+    return _good_count;
+  };
+
+  /**
+   * Computes the 4 corners of the pose
+   * @inner
+   * @param {number} marker_width
+   * @param {number} marker_height
+   * @returns {Point2D[]} The corners
+   */
+   this.GetPoseCorners = function(marker_width, marker_height) {
+    return tCorners(_homo3x3.data, marker_width, marker_height);
+  };
+
+
+  this.GetMatchesMask = function() {
+    return _match_mask;
+  };
+};
+
+
+/**
+ * Computes the posit pose, based on the corners
+ * @class
+ */
+AM.PosePosit = function() {
+
+  /**
+   * @typedef {object} PositPose
+   * @property {number[]} pose.bestTranslation
+   * @property {number[][]} pose.bestRotation
+   */
+
+  /**
+   * @property {PositPose} pose
+   */
+
+  this.posit = new POS.Posit(10, 1);
+  this.pose = undefined;
+};
+
+/**
+ * Computes the pose
+ * @inner
+ * @param {Point2D[]} corners
+ * @param {number} [model_size=35] The size of the real model.
+ * @param {number} image_width
+ * @param {number} image_height
+ */
+AM.PosePosit.prototype.Set = function(corners, model_size, image_width, image_height) {
+  model_size = model_size || 35;
+
+  var corners2 = [];
+  for (var i = 0; i < corners.length; ++i) {
+    var x = corners[i].x - (image_width / 2);
+    var y = (image_height / 2) - corners[i].y;
+
+    corners2.push( { x: x, y: y } );
+  }
+
+  this.pose = this.posit.pose(corners2);
+};
+
+/**
+ * Sets the focal's length
+ * @inner
+ * @param {number} value
+ */
+AM.PosePosit.prototype.SetFocalLength = function(value) {
+  this.posit.focalLength = value;
+};
+
+
+/**
+ * Computes the threejs pose, based on the posit pose
+ * @class
+ */
+AM.PoseThree = function() {
+  this.position = new THREE.Vector3();
+  this.rotation = new THREE.Euler();
+  this.quaternion = new THREE.Quaternion();
+  this.scale = new THREE.Vector3();
+};
+
+/**
+ * Computes the pose
+ * @inner
+ * @param {PositPose} posit_pose
+ * @param {number} model_size
+ */
+AM.PoseThree.prototype.Set = function(posit_pose, model_size) {
+  model_size = model_size || 35;
+
+  var rot = posit_pose.bestRotation;
+  var translation = posit_pose.bestTranslation;
+
+  this.scale.x = model_size;
+  this.scale.y = model_size;
+  this.scale.z = model_size;
+
+  this.rotation.x = -Math.asin(-rot[1][2]);
+  this.rotation.y = -Math.atan2(rot[0][2], rot[2][2]);
+  this.rotation.z = Math.atan2(rot[1][0], rot[1][1]);
+
+  this.position.x = translation[0];
+  this.position.y = translation[1];
+  this.position.z = -translation[2];
+
+  this.quaternion.setFromEuler(this.rotation);
+};
+var AM = AM || {};
+
+
+/**
+ * Holds the corners and the descriptors of an image, at different levels of zoom.
+ * @class
+ * @param {string} [uuid] - An unique identifier
+ */
+AM.TrainedImage = function(uuid) {
+
+  var _empty = true;
+
+  var _corners_levels = [];
+  var _descriptors_levels = [];
+
+  var _width = 0;
+  var _height = 0;
+
+  var _uuid = uuid;
+
+  var _active = true;
+  
+
+  /**
+   * Returns the corners of a specified level.
+   * @inner
+   * @param {number} level - The level of the corners to be returned.
+   * @returns {jsfeat.keypoint_t[]}
+   */
+  this.GetCorners = function(level) {
+    return _corners_levels[level];
+  };
+
+  /**
+   * Returns the descriptors of a specified level.
+   * @inner
+   * @param {number} level - The level of the descriptors to be returned.
+   * @returns {jsfeat.matrix_t}
+   */
+  this.GetDescriptors = function(level) {
+    return _descriptors_levels[level];
+  };
+
+  /**
+   * Returns the number of level.
+   * @inner
+   * @return {number}
+   */
+  this.GetLevelNbr = function() {
+    return Math.min(_descriptors_levels.length, _corners_levels.length);
+  };
+
+  /**
+   * Returns all the corners.
+   * @inner
+   * @return {jsfeat.keypoint_t[][]}
+   */
+  this.GetCornersLevels = function() {
+    return _corners_levels;
+  };
+
+  /**
+   * Returns all the descriptors.
+   * @inner
+   * @return {jsfeat.matrix_t[]}
+   */
+  this.GetDescriptorsLevels = function() {
+    return _descriptors_levels;
+  };
+
+  /**
+   * Returns the width of the trained image at level 0.
+   * @inner
+   * @return {number}
+   */
+  this.GetWidth = function() {
+    return _width;
+  };
+
+  /**
+   * Returns the height of the trained image at level 0.
+   * @inner
+   * @return {number}
+   */
+  this.GetHeight = function() {
+    return _height;
+  };
+
+  /**
+   * Sets the trained image.
+   * @inner
+   * @param {jsfeat.keypoint_t[][]} corners_levels
+   * @param {jsfeat.matrix_t[]} descriptors_levels
+   * @param {number} width - width of the image at level 0
+   * @param {number} height - height of the image at level 0
+   */
+  this.Set = function(corners_levels, descriptors_levels, width, height) {
+    _empty = false;
+    _corners_levels = corners_levels;
+    _descriptors_levels = descriptors_levels;
+    _width = width;
+    _height = height;
+  };
+
+  /**
+   * Returns wether the object is set or not.
+   * @inner
+   * @returns {bool}
+   */
+  this.IsEmpty = function() {
+    return _empty;
+  };
+
+  /**
+   * Empty the object.
+   * @inner
+   */
+  this.Empty = function() {
+    _empty = true;
+    _corners_levels = [];
+    _descriptors_levels = [];
+  };
+
+  /**
+   * Sets the unique identifier of this object.
+   * @inner
+   * @param {value} uuid
+   */
+  this.SetUuid = function(uuid) {
+    _uuid = uuid;
+  };
+
+  /**
+   * Returns the unique identifier of this object.
+   * @inner
+   * @returns {value}
+   */
+  this.GetUuid = function() {
+    return _uuid;
+  };
+
+  /** Sets this object active or inactive
+   * @inner
+   * param {bool} bool
+   */
+  this.Active = function(bool) {
+    _active = (bool === true);
+  };
+
+  /**
+   * Returns the state of this object
+   * @inner
+   * @returns {bool}
+   */
+  this.IsActive = function() {
+    return _active;
+  };
+
+  
+};
+var AM = AM || {};
+
+
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+	function setupSkinningMatrices ( bones, skin ) {
+    var j;
+=======
+/**
+ * Trains an image, by computing its corners and descriptors on multiple scales
+ * @class
+*/
+AM.Training = function() {
+>>>>>>> copy just the necessary corners in the message
+
+  var _descriptors_levels;
+  var _corners_levels;
+
+  var _width = 0;
+  var _height = 0;
+
+  var _params = {
+    num_train_levels: 3,
+    blur_size: 3,
+    image_size_max: 512,
+    training_corners_max: 200,
+    laplacian_threshold: 30,
+    eigen_threshold: 25
+  };
+
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+			if ( bone.type != 'JOINT' ) continue;
+
+			for ( j = 0; j < skin.joints.length; j ++ ) {
+
+				if ( bone.sid === skin.joints[ j ] ) {
+=======
+  var _scale_increment = Math.sqrt(2.0); // magic number ;)
+>>>>>>> copy just the necessary corners in the message
+
+  var _gray_image;
+  var _blured_images = [];
+
+  function TrainLevel(img, level_img, level, scale) {
+    var corners = _corners_levels[level];
+    var descriptors = _descriptors_levels[level];
+
+    if (level !== 0) {
+      RescaleDown(img, level_img, scale);
+      jsfeat.imgproc.gaussian_blur(level_img, level_img, _params.blur_size);
+    }
+    else {
+      jsfeat.imgproc.gaussian_blur(img, level_img, _params.blur_size);
+    }
+
+    var corners_num = AM.DetectKeypointsYape06(level_img, corners, _params.training_corners_max,
+      _params.laplacian_threshold, _params.eigen_threshold);
+    corners.length = corners_num;
+    jsfeat.orb.describe(level_img, corners, corners_num, descriptors);
+
+    if (level !== 0) {
+      // fix the coordinates due to scale level
+      for(i = 0; i < corners_num; ++i) {
+        corners[i].x *= 1 / scale;
+        corners[i].y *= 1 / scale;
+      }
+    }
+
+    console.log('train ' + level_img.cols + 'x' + level_img.rows + ' points: ' + corners_num);
+  }
+
+  function RescaleDown(src, dst, scale) {
+    if (scale < 1) {
+      var new_width = Math.round(src.cols * scale);
+      var new_height = Math.round(src.rows * scale);
+
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+				for ( j = 0; j < skin.weights.length; j ++ ) {
+=======
+      jsfeat.imgproc.resample(src, dst, new_width, new_height);
+    }
+    else {
+      dst.resize(src.cols, src.rows);
+      src.copy_to(dst);
+    }
+  }
+>>>>>>> copy just the necessary corners in the message
+
+  function AllocateCornersDescriptors(width, height) {
+    for (var level = 0; level < _params.num_train_levels; ++level) {
+      _corners_levels[level] = [];
+      var corners = _corners_levels[level];
+
+      // preallocate corners array
+      var i = (width * height) >> level;
+      while (--i >= 0) {
+        corners[i] = new jsfeat.keypoint_t(0, 0, 0, 0, -1);
+      }
+
+      _descriptors_levels[level] = new jsfeat.matrix_t(32, _params.training_corners_max, jsfeat.U8_t | jsfeat.C1_t);
+    }
+  }
+
+  /**
+   * Trains an image, saves the result internally
+   * @inner
+   * @param {ImageData} image_data
+   */
+  this.Train = function(image_data) {
+    var level = 0;
+    var scale = 1.0;
+
+    _descriptors_levels = [];
+    _corners_levels = [];
+
+    var gray =  new jsfeat.matrix_t(image_data.width, image_data.height, jsfeat.U8_t | jsfeat.C1_t);
+
+    jsfeat.imgproc.grayscale(image_data.data, image_data.width, image_data.height, gray, jsfeat.COLOR_RGBA2GRAY);
+
+    var scale_0 = Math.min(_params.image_size_max / image_data.width, _params.image_size_max / image_data.height);
+    var img = new jsfeat.matrix_t(image_data.width * scale_0, image_data.height * scale_0, jsfeat.U8_t | jsfeat.C1_t);
+
+    _width = img.cols;
+    _height = img.rows;
+
+    RescaleDown(gray, img, scale_0);
+
+    AllocateCornersDescriptors(img.cols, img.rows);
+
+
+    var level_img = new jsfeat.matrix_t(img.cols, img.rows, jsfeat.U8_t | jsfeat.C1_t);
+
+    TrainLevel(img, level_img, 0, scale);
+
+    // lets do multiple scale levels
+    for(level = 1; level < _params.num_train_levels; ++level) {
+      scale /= _scale_increment;
+
+      TrainLevel(img, level_img, level, scale);
+    }
+  };
+
+  cloneImage = function(img){
+    var dst = new jsfeat.matrix_t(img.cols, img.rows, jsfeat.U8_t | jsfeat.C1_t);
+    img.copy_to(dst);
+    return dst;
+  };
+
+ /**
+   * Trains an image, saves the intermediate results and images internally
+   * @inner
+   * @param {ImageData} image_data
+   */
+  this.TrainFull = function(image_data) {
+    var level = 0;
+    var scale = 1.0;
+
+    _descriptors_levels = [];
+    _corners_levels = [];
+    _blured_images = [];
+
+    var gray =  new jsfeat.matrix_t(image_data.width, image_data.height, jsfeat.U8_t | jsfeat.C1_t);
+
+    jsfeat.imgproc.grayscale(image_data.data, image_data.width, image_data.height, gray, jsfeat.COLOR_RGBA2GRAY);
+
+    var scale_0 = Math.min(_params.image_size_max / image_data.width, _params.image_size_max / image_data.height);
+    var img = new jsfeat.matrix_t(image_data.width * scale_0, image_data.height * scale_0, jsfeat.U8_t | jsfeat.C1_t);
+
+    _width = img.cols;
+    _height = img.rows;
+
+    RescaleDown(gray, img, scale_0);
+
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+		var bones = [];
+		setupSkeleton( skeleton, bones, -1 );
+		setupSkinningMatrices( bones, skinController.skin );
+		var v = new THREE.Vector3();
+		var skinned = [];
+    var i;
+
+		for (i = 0; i < geometry.vertices.length; i ++) {
+=======
+    AllocateCornersDescriptors(img.cols, img.rows);
+
+    var level_img = new jsfeat.matrix_t(img.cols, img.rows, jsfeat.U8_t | jsfeat.C1_t);
+>>>>>>> copy just the necessary corners in the message
+
+    TrainLevel(img, level_img, 0, scale);
+    _gray_image=img;
+    _blured_images[0] = cloneImage(level_img);
+
+    // lets do multiple scale levels
+    for(level = 1; level < _params.num_train_levels; ++level) {
+      scale /= _scale_increment;
+
+      TrainLevel(img, level_img, level, scale);
+      _blured_images[level] = cloneImage(level_img);
+    }
+  };
+
+  this.getGrayData = function() {
+    return _gray_image;
+  };
+
+  this.getBluredImages = function(){
+    return _blured_images;
+  };
+
+  /**
+   * Sets the result of the previous {@link AM.Training#Train} call to a {@link AM.TrainedImage}
+   * @inner
+   * @param {AM.TrainedImage} trained_image
+   */
+  this.SetResultToTrainedImage = function(trained_image) {
+    trained_image.Set(_corners_levels, _descriptors_levels, _width, _height);
+  };
+
+  /**
+   * Returns false if this object contains a result
+   * @inner
+   * @returns {bool}
+   */
+  this.IsEmpty = function() {
+    return (!_descriptors_levels || !_corners_levels);
+  };
+
+  /**
+   * Empties results stored
+   * @inner
+   */
+  this.Empty = function() {
+    _descriptors_levels = undefined;
+    _corners_levels = undefined;
+    _blured_images = undefined;
+  };
+
+  /**
+   * Sets parameters of the training
+   * @inner
+   * @param {object} params
+   * @params {number} [params.num_train_levels=3]
+   * @params {number} [params.blur_size=3]
+   * @params {number} [params.image_size_max=512]
+   * @params {number} [params.training_corners_max=200]
+   * @params {number} [params.laplacian_threshold=30]
+   * @params {number} [params.eigen_threshold=25]
+   */
+  this.SetParameters = function(params) {
+    for (var name in params) {
+      if (typeof _params[name] !== 'undefined')
+        _params[name] = params[name];
+    }
+  };
+
+  this.GetScaleIncrement = function(){
+    return _scale_increment;
+  };
+
+};
 /**
 * @author Tim Knip / http://www.floorplanner.com/ / tim at floorplanner.com
 * @author Tony Parisi / http://www.tonyparisi.com/
 */
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+		for (i = 0; i < geometry.vertices.length; i ++) {
+=======
 var AMTHREE = AMTHREE || {};
+>>>>>>> copy just the necessary corners in the message
 
 AMTHREE.ColladaLoader = function () {
 
@@ -1818,6 +3218,10 @@ AMTHREE.ColladaLoader = function () {
 	var cameras = {};
 	var lights = {};
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+		var skinController = controllers[ instanceCtrl.url ];
+    var i, j;
+=======
 	var animData;
 	var kinematics;
 	var visualScenes;
@@ -1826,6 +3230,7 @@ AMTHREE.ColladaLoader = function () {
   var texturePath;
 	var morphs;
 	var skins;
+>>>>>>> copy just the necessary corners in the message
 
 	var flip_uv = true;
 	var preferredShading = THREE.SmoothShading;
@@ -1855,9 +3260,17 @@ AMTHREE.ColladaLoader = function () {
 
 	function load ( url, texture_path, readyCallback, progressCallback, failCallback ) {
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+		//sort that list so that the order reflects the order in the joint list
+		var sortedbones = [];
+		for (i = 0; i < joints.length; i ++) {
+
+			for (j = 0; j < bonelist.length; j ++) {
+=======
 		var length = 0;
 
 		if ( document.implementation && document.implementation.createDocument ) {
+>>>>>>> copy just the necessary corners in the message
 
 			var request = new XMLHttpRequest();
 
@@ -1869,10 +3282,17 @@ AMTHREE.ColladaLoader = function () {
 
 						if ( request.response ) {
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+		//hook up the parents by index instead of name
+		for (i = 0; i < sortedbones.length; i ++) {
+
+			for (j = 0; j < sortedbones.length; j ++) {
+=======
 							readyCallbackFunc = readyCallback;
 							parse( request.response, undefined, url, texture_path );
 
 						} else {
+>>>>>>> copy just the necessary corners in the message
 
 							if ( failCallback ) {
 
@@ -1886,15 +3306,29 @@ AMTHREE.ColladaLoader = function () {
 
 						}
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+		var w, vidx, weight;
+		var v = new THREE.Vector3(), o, s;
+=======
 					}
+>>>>>>> copy just the necessary corners in the message
 
 				} else if ( request.readyState === 3 ) {
 
 					if ( progressCallback ) {
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+		// hook up the skin weights
+		// TODO - this might be a good place to choose greatest 4 weights
+		for ( i = 0; i < weights.length; i ++ ) {
+
+			var indicies = new THREE.Vector4(weights[i][0] ? weights[i][0].joint : 0,weights[i][1] ? weights[i][1].joint : 0,weights[i][2] ? weights[i][2].joint : 0,weights[i][3] ? weights[i][3].joint : 0);
+			weight = new THREE.Vector4(weights[i][0] ? weights[i][0].weight : 0,weights[i][1] ? weights[i][1].weight : 0,weights[i][2] ? weights[i][2].weight : 0,weights[i][3] ? weights[i][3].weight : 0);
+=======
 						if ( length === 0 ) {
 
 							length = request.getResponseHeader( "Content-Length" );
+>>>>>>> copy just the necessary corners in the message
 
 						}
 
@@ -1904,7 +3338,11 @@ AMTHREE.ColladaLoader = function () {
 
 				}
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+		for (j = 0; j < sortedbones.length; j ++) {
+=======
 			};
+>>>>>>> copy just the necessary corners in the message
 
 			request.open( "GET", url, true );
 			request.send( null );
@@ -1930,6 +3368,11 @@ AMTHREE.ColladaLoader = function () {
 			parts.pop();
 			baseUrl = ( parts.length < 1 ? '.' : parts.join( '/' ) ) + '/';
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+			for (i = 0; i < bones.length; i ++) {
+
+				for (j = 0; j < animationdata.hierarchy.length; j ++) {
+=======
 		}
 
 		parseAsset();
@@ -1944,6 +3387,7 @@ AMTHREE.ColladaLoader = function () {
 		animations = parseLib( "library_animations animation", Animation, "animation" );
 		visualScenes = parseLib( "library_visual_scenes visual_scene", VisualScene, "visual_scene" );
 		kinematicsModels = parseLib( "library_kinematics_models kinematics_model", KinematicsModel, "kinematics_model" );
+>>>>>>> copy just the necessary corners in the message
 
 		morphs = [];
 		skins = [];
@@ -2063,7 +3507,11 @@ AMTHREE.ColladaLoader = function () {
 			if ( !daeElement.id || daeElement.id.length === 0 ) daeElement.id = prefix + ( i ++ );
 			lib[ daeElement.id ] = daeElement;
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+						var matrix = new THREE.Matrix4(), m1 = new THREE.Matrix4();
+=======
 		}
+>>>>>>> copy just the necessary corners in the message
 
 		return lib;
 
@@ -2090,10 +3538,14 @@ AMTHREE.ColladaLoader = function () {
 
 		var kinematicsModelElement = COLLADA.querySelectorAll('instance_kinematics_model')[0];
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+								switch ( transform.type ) {
+=======
 		if ( kinematicsModelElement ) {
 
 			var url = kinematicsModelElement.getAttribute( 'url' ).replace(/^#/, '');
 			return kinematicsModels[ url.length > 0 ? url : 'kinematics_model0' ];
+>>>>>>> copy just the necessary corners in the message
 
 		} else {
 
@@ -2116,7 +3568,6 @@ AMTHREE.ColladaLoader = function () {
 
 		var n = visualScene.getChildById( node.colladaId, true ),
 			newData = null;
-    var i, il;
 
 		if ( n && n.keys ) {
 
@@ -2134,7 +3585,7 @@ AMTHREE.ColladaLoader = function () {
 
 			animData.push(newData);
 
-			for ( i = 0, il = n.keys.length; i < il; i ++ ) {
+			for ( var i = 0, il = n.keys.length; i < il; i ++ ) {
 
 				newData.length = Math.max( newData.length, n.keys[i].time );
 
@@ -2147,11 +3598,11 @@ AMTHREE.ColladaLoader = function () {
 					keys: [],
 					sids: []
 				} ]
-			};
+			}
 
 		}
 
-		for ( i = 0, il = node.children.length; i < il; i ++ ) {
+		for ( var i = 0, il = node.children.length; i < il; i ++ ) {
 
 			var d = recurseHierarchy( node.children[i] );
 
@@ -2200,7 +3651,16 @@ AMTHREE.ColladaLoader = function () {
 
 	function createMorph ( geometry, ctrl ) {
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+		var obj = new THREE.Object3D();
+		var skinned = false;
+		var skinController;
+		var morphController;
+		var i, j;
+    var inst_geom;
+=======
 		var morphCtrl = ctrl instanceof InstanceController ? controllers[ ctrl.url ] : ctrl;
+>>>>>>> copy just the necessary corners in the message
 
 		if ( !morphCtrl || !morphCtrl.morph ) {
 
@@ -2216,11 +3676,15 @@ AMTHREE.ColladaLoader = function () {
 			var target_id = morph.targets[ i ];
 			var daeGeometry = geometries[ target_id ];
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+						inst_geom = new InstanceGeometry();
+=======
 			if ( !daeGeometry.mesh ||
 				 !daeGeometry.mesh.primitives ||
 				 !daeGeometry.mesh.primitives.length ) {
 				 continue;
 			}
+>>>>>>> copy just the necessary corners in the message
 
 			var target = daeGeometry.mesh.primitives[ 0 ].geometry;
 
@@ -2234,7 +3698,11 @@ AMTHREE.ColladaLoader = function () {
 
 		geometry.morphTargets.push( { name: "target_Z", vertices: geometry.vertices } );
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+							inst_geom = new InstanceGeometry();
+=======
 	}
+>>>>>>> copy just the necessary corners in the message
 
 	function createSkin ( geometry, ctrl, applyBindShape ) {
 
@@ -2252,7 +3720,11 @@ AMTHREE.ColladaLoader = function () {
 			console.log( "could not find the skeleton for the skin!" );
 			return;
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+						inst_geom = new InstanceGeometry();
+=======
 		}
+>>>>>>> copy just the necessary corners in the message
 
 		var skin = skinCtrl.skin;
 		var skeleton = visualScene.getChildById( ctrl.skeleton[ 0 ] );
@@ -2267,6 +3739,12 @@ AMTHREE.ColladaLoader = function () {
 		//createBones( geometry.bones, skin, hierarchy, skeleton, null, -1 );
 		//createWeights( skin, geometry.bones, geometry.skinIndices, geometry.skinWeights );
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+          break;
+
+				default:
+					break;
+=======
 		/*
 		geometry.animation = {
 			name: 'take_001',
@@ -2282,6 +3760,7 @@ AMTHREE.ColladaLoader = function () {
 			for ( var i = 0; i < geometry.vertices.length; i ++ ) {
 
 				geometry.vertices[ i ].applyMatrix4( skin.bindShapeMatrix );
+>>>>>>> copy just the necessary corners in the message
 
 			}
 
@@ -2328,7 +3807,6 @@ AMTHREE.ColladaLoader = function () {
 	}
 
 	function setupSkinningMatrices ( bones, skin ) {
-    var j;
 
 		// FIXME: this is dumb...
 
@@ -2339,7 +3817,7 @@ AMTHREE.ColladaLoader = function () {
 
 			if ( bone.type != 'JOINT' ) continue;
 
-			for ( j = 0; j < skin.joints.length; j ++ ) {
+			for ( var j = 0; j < skin.joints.length; j ++ ) {
 
 				if ( bone.sid === skin.joints[ j ] ) {
 
@@ -2362,7 +3840,7 @@ AMTHREE.ColladaLoader = function () {
 				bone.animatrix.copy(bone.localworld);
 				bone.weights = [];
 
-				for ( j = 0; j < skin.weights.length; j ++ ) {
+				for ( var j = 0; j < skin.weights.length; j ++ ) {
 
 					for (var k = 0; k < skin.weights[ j ].length; k ++ ) {
 
@@ -2430,9 +3908,8 @@ AMTHREE.ColladaLoader = function () {
 		setupSkinningMatrices( bones, skinController.skin );
 		var v = new THREE.Vector3();
 		var skinned = [];
-    var i;
 
-		for (i = 0; i < geometry.vertices.length; i ++) {
+		for (var i = 0; i < geometry.vertices.length; i ++) {
 
 			skinned.push(new THREE.Vector3());
 
@@ -2464,7 +3941,7 @@ AMTHREE.ColladaLoader = function () {
 
 		}
 
-		for (i = 0; i < geometry.vertices.length; i ++) {
+		for (var i = 0; i < geometry.vertices.length; i ++) {
 
 			geometry.vertices[i] = skinned[i];
 
@@ -2475,7 +3952,6 @@ AMTHREE.ColladaLoader = function () {
 	function applySkin ( geometry, instanceCtrl, frame ) {
 
 		var skinController = controllers[ instanceCtrl.url ];
-    var i, j;
 
 		frame = frame !== undefined ? frame : 40;
 
@@ -2502,9 +3978,9 @@ AMTHREE.ColladaLoader = function () {
 
 		//sort that list so that the order reflects the order in the joint list
 		var sortedbones = [];
-		for (i = 0; i < joints.length; i ++) {
+		for (var i = 0; i < joints.length; i ++) {
 
-			for (j = 0; j < bonelist.length; j ++) {
+			for (var j = 0; j < bonelist.length; j ++) {
 
 				if (bonelist[j].name === joints[i]) {
 
@@ -2517,9 +3993,9 @@ AMTHREE.ColladaLoader = function () {
 		}
 
 		//hook up the parents by index instead of name
-		for (i = 0; i < sortedbones.length; i ++) {
+		for (var i = 0; i < sortedbones.length; i ++) {
 
-			for (j = 0; j < sortedbones.length; j ++) {
+			for (var j = 0; j < sortedbones.length; j ++) {
 
 				if (sortedbones[i].parent === sortedbones[j].name) {
 
@@ -2532,7 +4008,7 @@ AMTHREE.ColladaLoader = function () {
 		}
 
 
-		var w, vidx, weight;
+		var i, j, w, vidx, weight;
 		var v = new THREE.Vector3(), o, s;
 
 		// move vertices to bind shape
@@ -2546,26 +4022,34 @@ AMTHREE.ColladaLoader = function () {
 
 		// hook up the skin weights
 		// TODO - this might be a good place to choose greatest 4 weights
-		for ( i = 0; i < weights.length; i ++ ) {
+		for ( var i =0; i < weights.length; i ++ ) {
 
 			var indicies = new THREE.Vector4(weights[i][0] ? weights[i][0].joint : 0,weights[i][1] ? weights[i][1].joint : 0,weights[i][2] ? weights[i][2].joint : 0,weights[i][3] ? weights[i][3].joint : 0);
-			weight = new THREE.Vector4(weights[i][0] ? weights[i][0].weight : 0,weights[i][1] ? weights[i][1].weight : 0,weights[i][2] ? weights[i][2].weight : 0,weights[i][3] ? weights[i][3].weight : 0);
+			var weight = new THREE.Vector4(weights[i][0] ? weights[i][0].weight : 0,weights[i][1] ? weights[i][1].weight : 0,weights[i][2] ? weights[i][2].weight : 0,weights[i][3] ? weights[i][3].weight : 0);
 
 			skinIndices.push(indicies);
 			skinWeights.push(weight);
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+				var channel = animation.channel[i];
+				var sampler = animation.sampler[i];
+				var target_id = channel.target.split('/')[0];
+
+				if ( target_id == node.id ) {
+=======
 		}
 
 		geometry.skinIndices = skinIndices;
 		geometry.skinWeights = skinWeights;
 		geometry.bones = sortedbones;
 		// process animation, or simply pose the rig if no animation
+>>>>>>> copy just the necessary corners in the message
 
 		//create an animation for the animated bones
 		//NOTE: this has no effect when using morphtargets
 		var animationdata = { "name":animationBounds.ID,"fps":30,"length":animationBounds.frames / 30,"hierarchy":[] };
 
-		for (j = 0; j < sortedbones.length; j ++) {
+		for (var j = 0; j < sortedbones.length; j ++) {
 
 			animationdata.hierarchy.push({ parent:sortedbones[j].parent, name:sortedbones[j].name, keys:[] });
 
@@ -2588,9 +4072,9 @@ AMTHREE.ColladaLoader = function () {
 			setupSkeleton( skeleton, bones, frame );
 			setupSkinningMatrices( bones, skinController.skin );
 
-			for (i = 0; i < bones.length; i ++) {
+			for (var i = 0; i < bones.length; i ++) {
 
-				for (j = 0; j < animationdata.hierarchy.length; j ++) {
+				for (var j = 0; j < animationdata.hierarchy.length; j ++) {
 
 					if (animationdata.hierarchy[j].name === bones[i].sid) {
 
@@ -2606,18 +4090,28 @@ AMTHREE.ColladaLoader = function () {
 
 						key.pos = [ data[0].x,data[0].y,data[0].z ];
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+		var animated = {};
+    var channel;
+=======
 						key.scl = [ data[2].x,data[2].y,data[2].z ];
 						key.rot = data[1];
+>>>>>>> copy just the necessary corners in the message
 
 						animationdata.hierarchy[j].keys.push(key);
 
 					}
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+			channel = node.channels[ i ];
+			animated[ channel.sid ] = channel;
+=======
 				}
 
 			}
 
 			geometry.animation = animationdata;
+>>>>>>> copy just the necessary corners in the message
 
 		}
 
@@ -2625,10 +4119,15 @@ AMTHREE.ColladaLoader = function () {
 
 	function createKinematics() {
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+			var transform = node.transforms[ i ];
+			channel = animated[ transform.sid ];
+=======
 		if ( kinematicsModel && kinematicsModel.joints.length === 0 ) {
 			kinematics = undefined;
 			return;
 		}
+>>>>>>> copy just the necessary corners in the message
 
 		var jointMap = {};
 
@@ -2685,23 +4184,36 @@ AMTHREE.ColladaLoader = function () {
 
 					if ( value > joint.limits.max || value < joint.limits.min ) {
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+	function bakeAnimations ( node ) {
+    var i, j, key;
+=======
 						console.log( 'setJointValue: joint ' + jointIndex + ' value ' + value + ' outside of limits (min: ' + joint.limits.min + ', max: ' + joint.limits.max + ')' );
+>>>>>>> copy just the necessary corners in the message
 
 					} else if ( joint.static ) {
 
 						console.log( 'setJointValue: joint ' + jointIndex + ' is static' );
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+			for ( i = 0, il = node.channels.length; i < il; i ++ ) {
+=======
 					} else {
+>>>>>>> copy just the necessary corners in the message
 
 						var threejsNode = jointData.node;
 						var axis = joint.axis;
 						var transforms = jointData.transforms;
 
-						var matrix = new THREE.Matrix4(), m1 = new THREE.Matrix4();
+						var matrix = new THREE.Matrix4();
 
 						for (i = 0; i < transforms.length; i ++ ) {
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+					for ( j = 0, jl = channel.arrIndices.length; j < jl; j ++ ) {
+=======
 							var transform = transforms[ i ];
+>>>>>>> copy just the necessary corners in the message
 
 							// kinda ghetto joint detection
 							if ( transform.sid && transform.sid.indexOf( 'joint' + jointIndex ) !== -1 ) {
@@ -2726,7 +4238,17 @@ AMTHREE.ColladaLoader = function () {
 
 								}
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+					for ( j = 0, jl = input.length; j < jl; j ++ ) {
+
+						var time = input[j];
+						var data = sampler.getData( transform.type, j, member );
+						key = findKey( keys, time );
+=======
 							} else {
+
+								var m1 = new THREE.Matrix4();
+>>>>>>> copy just the necessary corners in the message
 
 								switch ( transform.type ) {
 
@@ -2746,12 +4268,22 @@ AMTHREE.ColladaLoader = function () {
 
 										matrix.multiply( m1.makeRotationAxis( transform.obj, transform.angle ) );
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+			// post process
+			for ( i = 0; i < sids.length; i ++ ) {
+=======
 										break;
+>>>>>>> copy just the necessary corners in the message
 
 								}
 							}
 						}
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+				for ( j = 0; j < keys.length; j ++ ) {
+
+					key = keys[ j ];
+=======
 						// apply the matrix to the threejs node
 						var elementsFloat32Arr = matrix.elements;
 						var elements = Array.prototype.slice.call( elementsFloat32Arr );
@@ -2774,6 +4306,7 @@ AMTHREE.ColladaLoader = function () {
 							elements[ 11 ],
 							elements[ 15 ]
 						];
+>>>>>>> copy just the necessary corners in the message
 
 						threejsNode.matrix.set.apply( threejsNode.matrix, elementsRowMajor );
 						threejsNode.matrix.decompose( threejsNode.position, threejsNode.quaternion, threejsNode.scale );
@@ -2833,7 +4366,6 @@ AMTHREE.ColladaLoader = function () {
 		var skinController;
 		var morphController;
 		var i, j;
-    var inst_geom;
 
 		// FIXME: controllers
 
@@ -2847,7 +4379,7 @@ AMTHREE.ColladaLoader = function () {
 
 					if ( geometries[ controller.skin.source ] ) {
 
-						inst_geom = new InstanceGeometry();
+						var inst_geom = new InstanceGeometry();
 
 						inst_geom.url = controller.skin.source;
 						inst_geom.instance_material = node.controllers[ i ].instance_material;
@@ -2867,7 +4399,7 @@ AMTHREE.ColladaLoader = function () {
 
 						if ( second.morph && geometries[ second.morph.source ] ) {
 
-							inst_geom = new InstanceGeometry();
+							var inst_geom = new InstanceGeometry();
 
 							inst_geom.url = second.morph.source;
 							inst_geom.instance_material = node.controllers[ i ].instance_material;
@@ -2884,7 +4416,7 @@ AMTHREE.ColladaLoader = function () {
 
 					if ( geometries[ controller.morph.source ] ) {
 
-						inst_geom = new InstanceGeometry();
+						var inst_geom = new InstanceGeometry();
 
 						inst_geom.url = controller.morph.source;
 						inst_geom.instance_material = node.controllers[ i ].instance_material;
@@ -2895,8 +4427,6 @@ AMTHREE.ColladaLoader = function () {
 					}
 
 					console.log( 'ColladaLoader: Morph-controller partially supported.' );
-
-          break;
 
 				default:
 					break;
@@ -3012,7 +4542,13 @@ AMTHREE.ColladaLoader = function () {
 
 					createMorph( geom, morphController );
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+		var sources = {};
+		var inputs = [];
+		var i, source;
+=======
 					material.morphTargets = true;
+>>>>>>> copy just the necessary corners in the message
 
 					mesh = new THREE.Mesh( geom, material );
 					mesh.name = 'morph_' + morphs.length;
@@ -3025,7 +4561,13 @@ AMTHREE.ColladaLoader = function () {
 
 						mesh = new THREE.Line( geom );
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+					source = ( new Source() ).parse( child );
+					sources[ source.id ] = source;
+					break;
+=======
 					} else {
+>>>>>>> copy just the necessary corners in the message
 
 						mesh = new THREE.Mesh( geom, material );
 
@@ -3041,8 +4583,13 @@ AMTHREE.ColladaLoader = function () {
 
 		for ( i = 0; i < node.cameras.length; i ++ ) {
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+			var input = inputs[ i ];
+			source = sources[ input.source ];
+=======
 			var instance_camera = node.cameras[i];
 			var cparams = cameras[instance_camera.url];
+>>>>>>> copy just the necessary corners in the message
 
 			var cam = new THREE.PerspectiveCamera(cparams.yfov, parseFloat(cparams.aspect_ratio),
 					parseFloat(cparams.znear), parseFloat(cparams.zfar));
@@ -3170,9 +4717,9 @@ AMTHREE.ColladaLoader = function () {
 
 				var channel = animation.channel[i];
 				var sampler = animation.sampler[i];
-				var target_id = channel.target.split('/')[0];
+				var id = channel.target.split('/')[0];
 
-				if ( target_id == node.id ) {
+				if ( id == node.id ) {
 
 					sampler.create();
 					channel.sampler = sampler;
@@ -3186,10 +4733,21 @@ AMTHREE.ColladaLoader = function () {
 
 		}
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+	};
+
+	Skin.prototype.parseWeights = function ( element, sources ) {
+
+		var v, vcount, inputs = [];
+    var i, j, k;
+
+		for ( i = 0; i < element.childNodes.length; i ++ ) {
+=======
 		if ( channels.length ) {
 
 			node.startTime = startTime;
 			node.endTime = endTime;
+>>>>>>> copy just the necessary corners in the message
 
 		}
 
@@ -3216,18 +4774,29 @@ AMTHREE.ColladaLoader = function () {
 
 		return minT;
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+		for ( i = 0; i < vcount.length; i ++ ) {
+=======
 	}
+>>>>>>> copy just the necessary corners in the message
 
 	function calcMatrixAt( node, t ) {
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+			for ( j = 0; j < numBones; j ++ ) {
+=======
 		var animated = {};
-    var channel;
+>>>>>>> copy just the necessary corners in the message
 
 		var i, j;
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+				for ( k = 0; k < inputs.length; k ++ ) {
+=======
 		for ( i = 0; i < node.channels.length; i ++ ) {
+>>>>>>> copy just the necessary corners in the message
 
-			channel = node.channels[ i ];
+			var channel = node.channels[ i ];
 			animated[ channel.sid ] = channel;
 
 		}
@@ -3237,7 +4806,7 @@ AMTHREE.ColladaLoader = function () {
 		for ( i = 0; i < node.transforms.length; i ++ ) {
 
 			var transform = node.transforms[ i ];
-			channel = animated[ transform.sid ];
+			var channel = animated[ transform.sid ];
 
 			if ( channel !== undefined ) {
 
@@ -3252,7 +4821,11 @@ AMTHREE.ColladaLoader = function () {
 						//console.log(value.flatten)
 						break;
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+			for ( j = 0; j < vertex_weights.length; j ++ ) {
+=======
 					}
+>>>>>>> copy just the necessary corners in the message
 
 				}
 
@@ -3289,14 +4862,13 @@ AMTHREE.ColladaLoader = function () {
 	}
 
 	function bakeAnimations ( node ) {
-    var i, j, key;
 
 		if ( node.channels && node.channels.length ) {
 
 			var keys = [],
 				sids = [];
 
-			for ( i = 0, il = node.channels.length; i < il; i ++ ) {
+			for ( var i = 0, il = node.channels.length; i < il; i ++ ) {
 
 				var channel = node.channels[i],
 					fullSid = channel.fullSid,
@@ -3309,7 +4881,7 @@ AMTHREE.ColladaLoader = function () {
 
 					member = [];
 
-					for ( j = 0, jl = channel.arrIndices.length; j < jl; j ++ ) {
+					for ( var j = 0, jl = channel.arrIndices.length; j < jl; j ++ ) {
 
 						member[ j ] = getConvertedIndex( channel.arrIndices[ j ] );
 
@@ -3329,11 +4901,11 @@ AMTHREE.ColladaLoader = function () {
 
 					}
 
-					for ( j = 0, jl = input.length; j < jl; j ++ ) {
+					for ( var j = 0, jl = input.length; j < jl; j ++ ) {
 
-						var time = input[j];
-						var data = sampler.getData( transform.type, j, member );
-						key = findKey( keys, time );
+						var time = input[j],
+							data = sampler.getData( transform.type, j, member ),
+							key = findKey( keys, time );
 
 						if ( !key ) {
 
@@ -3356,13 +4928,13 @@ AMTHREE.ColladaLoader = function () {
 			}
 
 			// post process
-			for ( i = 0; i < sids.length; i ++ ) {
+			for ( var i = 0; i < sids.length; i ++ ) {
 
 				var sid = sids[ i ];
 
-				for ( j = 0; j < keys.length; j ++ ) {
+				for ( var j = 0; j < keys.length; j ++ ) {
 
-					key = keys[ j ];
+					var key = keys[ j ];
 
 					if ( !key.hasTarget( sid ) ) {
 
@@ -3567,8 +5139,13 @@ AMTHREE.ColladaLoader = function () {
 					this.type = child.nodeName;
 					break;
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+				this.angle = THREE.Math.degToRad( this.data[3] );
+        break;
+=======
 				default:
 					break;
+>>>>>>> copy just the necessary corners in the message
 
 			}
 		}
@@ -3590,7 +5167,7 @@ AMTHREE.ColladaLoader = function () {
 
 		var sources = {};
 		var inputs = [];
-		var i, source;
+		var i;
 
 		this.method = element.getAttribute( 'method' );
 		this.source = element.getAttribute( 'source' ).replace( /^#/, '' );
@@ -3604,7 +5181,7 @@ AMTHREE.ColladaLoader = function () {
 
 				case 'source':
 
-					source = ( new Source() ).parse( child );
+					var source = ( new Source() ).parse( child );
 					sources[ source.id ] = source;
 					break;
 
@@ -3625,7 +5202,7 @@ AMTHREE.ColladaLoader = function () {
 		for ( i = 0; i < inputs.length; i ++ ) {
 
 			var input = inputs[ i ];
-			source = sources[ input.source ];
+			var source = sources[ input.source ];
 
 			switch ( input.semantic ) {
 
@@ -3775,9 +5352,8 @@ AMTHREE.ColladaLoader = function () {
 	Skin.prototype.parseWeights = function ( element, sources ) {
 
 		var v, vcount, inputs = [];
-    var i, j, k;
 
-		for ( i = 0; i < element.childNodes.length; i ++ ) {
+		for ( var i = 0; i < element.childNodes.length; i ++ ) {
 
 			var child = element.childNodes[ i ];
 			if ( child.nodeType != 1 ) continue;
@@ -3808,16 +5384,16 @@ AMTHREE.ColladaLoader = function () {
 
 		var index = 0;
 
-		for ( i = 0; i < vcount.length; i ++ ) {
+		for ( var i = 0; i < vcount.length; i ++ ) {
 
 			var numBones = vcount[i];
 			var vertex_weights = [];
 
-			for ( j = 0; j < numBones; j ++ ) {
+			for ( var j = 0; j < numBones; j ++ ) {
 
 				var influence = {};
 
-				for ( k = 0; k < inputs.length; k ++ ) {
+				for ( var k = 0; k < inputs.length; k ++ ) {
 
 					var input = inputs[ k ];
 					var value = v[ index + input.offset ];
@@ -3845,7 +5421,7 @@ AMTHREE.ColladaLoader = function () {
 				index += inputs.length;
 			}
 
-			for ( j = 0; j < vertex_weights.length; j ++ ) {
+			for ( var j = 0; j < vertex_weights.length; j ++ ) {
 
 				vertex_weights[ j ].index = i;
 
@@ -3900,6 +5476,11 @@ AMTHREE.ColladaLoader = function () {
 
 		return null;
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+    var i;
+
+		this.primitives = [];
+=======
 	};
 
 	VisualScene.prototype.parse = function( element ) {
@@ -3907,8 +5488,9 @@ AMTHREE.ColladaLoader = function () {
 		this.id = element.getAttribute( 'id' );
 		this.name = element.getAttribute( 'name' );
 		this.nodes = [];
+>>>>>>> copy just the necessary corners in the message
 
-		for ( var i = 0; i < element.childNodes.length; i ++ ) {
+		for ( i = 0; i < element.childNodes.length; i ++ ) {
 
 			var child = element.childNodes[ i ];
 			if ( child.nodeType != 1 ) continue;
@@ -3964,16 +5546,26 @@ AMTHREE.ColladaLoader = function () {
 				sid = parts.shift();
 				member = parts.shift();
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+		var vertexData = sources[ this.vertices.input.POSITION.source ].data;
+
+		for ( i = 0; i < vertexData.length; i += 3 ) {
+=======
 			} else if ( arrSyntax ) {
 
 				arrIndices = sid.split("(");
 				sid = arrIndices.shift();
+>>>>>>> copy just the necessary corners in the message
 
 				for ( var j = 0; j < arrIndices.length; j ++ ) {
 
 					arrIndices[ j ] = parseInt( arrIndices[ j ].replace( /\)/, '' ) );
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+		for ( i = 0; i < this.primitives.length; i ++ ) {
+=======
 				}
+>>>>>>> copy just the necessary corners in the message
 
 			}
 
@@ -3998,7 +5590,16 @@ AMTHREE.ColladaLoader = function () {
 
 		}
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+		var j, k, pList = primitive.p, inputs = primitive.inputs;
+		var input, index, idx32;
+		var source, numParams;
+		var vcIndex = 0, vcount = 3, maxOffset = 0;
+		var texture_sets = [];
+    var ndx, len;
+=======
 		if ( recursive ) {
+>>>>>>> copy just the necessary corners in the message
 
 			for ( var i = 0; i < this.nodes.length; i ++ ) {
 
@@ -4096,8 +5697,12 @@ AMTHREE.ColladaLoader = function () {
 
 				case 'instance_controller':
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+						for ( ndx = 0, len = vs.length; ndx < len; ndx ++ ) {
+=======
 					this.controllers.push( ( new InstanceController() ).parse( child ) );
 					break;
+>>>>>>> copy just the necessary corners in the message
 
 				case 'instance_geometry':
 
@@ -4122,12 +5727,16 @@ AMTHREE.ColladaLoader = function () {
 
 					break;
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+						for ( ndx = 0, len = vs.length; ndx < len; ndx ++ ) {
+=======
 				case 'rotate':
 				case 'translate':
 				case 'scale':
 				case 'matrix':
 				case 'lookat':
 				case 'skew':
+>>>>>>> copy just the necessary corners in the message
 
 					this.transforms.push( ( new Transform() ).parse( child ) );
 					break;
@@ -4149,7 +5758,11 @@ AMTHREE.ColladaLoader = function () {
 
 		this.updateMatrix();
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+						for ( ndx = 0, len = vs.length; ndx < len; ndx ++ ) {
+=======
 		return this;
+>>>>>>> copy just the necessary corners in the message
 
 	};
 
@@ -4194,10 +5807,13 @@ AMTHREE.ColladaLoader = function () {
 				this.obj = getConvertedMat4( this.data );
 				break;
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+					for ( ndx = 0, len = faces.length; ndx < len; ndx ++ ) {
+=======
 			case 'rotate':
+>>>>>>> copy just the necessary corners in the message
 
 				this.angle = THREE.Math.degToRad( this.data[3] );
-        break;
 
 			case 'translate':
 
@@ -4269,7 +5885,11 @@ AMTHREE.ColladaLoader = function () {
 
 					this.obj.copy( data );
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+				this.inputs[ i ].source = vertices.input.POSITION.source;
+=======
 				} else if ( member.length === 1 ) {
+>>>>>>> copy just the necessary corners in the message
 
 					switch ( member[ 0 ] ) {
 
@@ -4381,7 +6001,14 @@ AMTHREE.ColladaLoader = function () {
 						this.obj.y = data;
 						break;
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+				var param = {};
+				param.name = child.getAttribute( 'name' );
+				param.type = child.getAttribute( 'type' );
+				this.params.push( param );
+=======
 					case 'Z':
+>>>>>>> copy just the necessary corners in the message
 
 						this.obj.z = data;
 						break;
@@ -4561,11 +6188,9 @@ AMTHREE.ColladaLoader = function () {
 
 	Mesh.prototype.parse = function ( element ) {
 
-    var i;
-
 		this.primitives = [];
 
-		for ( i = 0; i < element.childNodes.length; i ++ ) {
+		for ( var i = 0; i < element.childNodes.length; i ++ ) {
 
 			var child = element.childNodes[ i ];
 
@@ -4601,8 +6226,12 @@ AMTHREE.ColladaLoader = function () {
 					this.primitives.push( ( new Polylist().parse( child ) ) );
 					break;
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+		return ( this.texture !== null );
+=======
 				default:
 					break;
+>>>>>>> copy just the necessary corners in the message
 
 			}
 
@@ -4618,15 +6247,15 @@ AMTHREE.ColladaLoader = function () {
 
 		}
 
-		var vertexData = sources[ this.vertices.input.POSITION.source ].data;
+		var vertexData = sources[ this.vertices.input['POSITION'].source ].data;
 
-		for ( i = 0; i < vertexData.length; i += 3 ) {
+		for ( var i = 0; i < vertexData.length; i += 3 ) {
 
 			this.geometry3js.vertices.push( getConvertedVec3( vertexData, i ).clone() );
 
 		}
 
-		for ( i = 0; i < this.primitives.length; i ++ ) {
+		for ( var i = 0; i < this.primitives.length; i ++ ) {
 
 			var primitive = this.primitives[ i ];
 			primitive.setVertices( this.vertices );
@@ -4661,7 +6290,6 @@ AMTHREE.ColladaLoader = function () {
 		var source, numParams;
 		var vcIndex = 0, vcount = 3, maxOffset = 0;
 		var texture_sets = [];
-    var ndx, len;
 
 		for ( j = 0; j < inputs.length; j ++ ) {
 
@@ -4746,7 +6374,36 @@ AMTHREE.ColladaLoader = function () {
 
 								break;
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+				case 'bump':
+
+					// If 'bumptype' is 'heightfield', create a 'bump' property
+					// Else if 'bumptype' is 'normalmap', create a 'normal' property
+					// (Default to 'bump')
+					var bumpType = child.getAttribute( 'bumptype' );
+					if ( bumpType ) {
+						if ( bumpType.toLowerCase() === "heightfield" ) {
+							this.bump = ( new ColorOrTexture() ).parse( child );
+						} else if ( bumpType.toLowerCase() === "normalmap" ) {
+							this.normal = ( new ColorOrTexture() ).parse( child );
+						} else {
+							console.error( "Shader.prototype.parse: Invalid value for attribute 'bumptype' (" + bumpType + ") - valid bumptypes are 'HEIGHTFIELD' and 'NORMALMAP' - defaulting to 'HEIGHTFIELD'" );
+							this.bump = ( new ColorOrTexture() ).parse( child );
 						}
+					} else {
+						console.warn( "Shader.prototype.parse: Attribute 'bumptype' missing from bump node - defaulting to 'HEIGHTFIELD'" );
+						this.bump = ( new ColorOrTexture() ).parse( child );
+					}
+
+					break;
+
+				case 'shininess':
+				case 'reflectivity':
+				case 'index_of_refraction':
+				case 'transparency':
+=======
+						}
+>>>>>>> copy just the necessary corners in the message
 
 					}
 
@@ -4762,7 +6419,7 @@ AMTHREE.ColladaLoader = function () {
 						source = sources[ input.source ];
 						numParams = source.accessor.params.length;
 
-						for ( ndx = 0, len = vs.length; ndx < len; ndx ++ ) {
+						for ( var ndx = 0, len = vs.length; ndx < len; ndx ++ ) {
 
 							ns.push( getConvertedVec3( source.data, vs[ ndx ] * numParams ) );
 
@@ -4770,9 +6427,21 @@ AMTHREE.ColladaLoader = function () {
 
 					} else {
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+		if (this.transparency !== undefined && this.transparent !== undefined) {
+			// convert transparent color RBG to average value
+			var transparentColor = this.transparent;
+			var transparencyLevel = (this.transparent.color.r + this.transparent.color.g + this.transparent.color.b) / 3 * this.transparency;
+
+			if (transparencyLevel > 0) {
+				transparent = true;
+				props.transparent = true;
+				props.opacity = 1 - transparencyLevel;
+=======
 						geom.calcNormals = true;
 
 					}
+>>>>>>> copy just the necessary corners in the message
 
 				}
 
@@ -4788,7 +6457,7 @@ AMTHREE.ColladaLoader = function () {
 						source = sources[ input.source ];
 						numParams = source.accessor.params.length;
 
-						for ( ndx = 0, len = vs.length; ndx < len; ndx ++ ) {
+						for ( var ndx = 0, len = vs.length; ndx < len; ndx ++ ) {
 
 							idx32 = vs[ ndx ] * numParams;
 							if ( ts[ input.set ] === undefined ) ts[ input.set ] = [ ];
@@ -4811,7 +6480,7 @@ AMTHREE.ColladaLoader = function () {
 						source = sources[ input.source ];
 						numParams = source.accessor.params.length;
 
-						for ( ndx = 0, len = vs.length; ndx < len; ndx ++ ) {
+						for ( var ndx = 0, len = vs.length; ndx < len; ndx ++ ) {
 
 							idx32 = vs[ ndx ] * numParams;
 							cs.push( new THREE.Color().setRGB( source.data[ idx32 ], source.data[ idx32 + 1 ], source.data[ idx32 + 2 ] ) );
@@ -4834,7 +6503,12 @@ AMTHREE.ColladaLoader = function () {
 
 					faces.push( new THREE.Face3( vs[1], vs[2], vs[3], ns.length ? [ ns[1].clone(), ns[2].clone(), ns[3].clone() ] : [], cs.length ? [ cs[1], cs[2], cs[3] ] : new THREE.Color() ) );
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+										// Texture with baked lighting?
+										if (prop === 'emission') props.emissive = 0xffffff;
+=======
 				} else if ( vcount > 4 && options.subdivideFaces ) {
+>>>>>>> copy just the necessary corners in the message
 
 					var clr = cs.length ? cs : new THREE.Color(),
 						vec1, vec2, vec3, v1, v2, norm;
@@ -4847,11 +6521,15 @@ AMTHREE.ColladaLoader = function () {
 
 					}
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+								props.emissive  = cot.color.getHex();
+=======
 				}
+>>>>>>> copy just the necessary corners in the message
 
 				if ( faces.length ) {
 
-					for ( ndx = 0, len = faces.length; ndx < len; ndx ++ ) {
+					for ( var ndx = 0, len = faces.length; ndx < len; ndx ++ ) {
 
 						face = faces[ndx];
 						face.daeMaterial = primitive.material;
@@ -4870,11 +6548,24 @@ AMTHREE.ColladaLoader = function () {
 
 								if ( ndx === 0 ) {
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+					props[ prop ] = this[ prop ];
+					if ( props[ prop ] > 0.0 ) props.envMap = options.defaultEnvMap;
+					props.combine = THREE.MixOperation;	//mix regular shading with reflective component
+					break;
+=======
 									uvArr = [ uv[0], uv[1], uv[3] ];
+>>>>>>> copy just the necessary corners in the message
 
 								} else {
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+					props.refractionRatio = this[ prop ]; //TODO: "index_of_refraction" becomes "refractionRatio" in shader, but I'm not sure if the two are actually comparable
+					if ( this[ prop ] !== 1.0 ) props.envMap = options.defaultEnvMap;
+					break;
+=======
 									uvArr = [ uv[1].clone(), uv[2], uv[3].clone() ];
+>>>>>>> copy just the necessary corners in the message
 
 								}
 
@@ -4884,7 +6575,12 @@ AMTHREE.ColladaLoader = function () {
 
 							}
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+		props.shading = preferredShading;
+		props.side = this.effect.doubleSided ? THREE.DoubleSide : THREE.FrontSide;
+=======
 							if ( geom.faceVertexUvs[k] === undefined ) {
+>>>>>>> copy just the necessary corners in the message
 
 								geom.faceVertexUvs[k] = [];
 
@@ -4896,13 +6592,23 @@ AMTHREE.ColladaLoader = function () {
 
 					}
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+				if (props.emissive !== undefined) props.color = props.emissive;
+				this.material = new THREE.MeshBasicMaterial( props );
+				break;
+=======
 				} else {
+>>>>>>> copy just the necessary corners in the message
 
 					console.log( 'dropped face with vcount ' + vcount + ' for geometry with id: ' + geom.id );
 
 				}
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+			default:
+=======
 				i += maxOffset * vcount;
+>>>>>>> copy just the necessary corners in the message
 
 			}
 
@@ -4927,7 +6633,7 @@ AMTHREE.ColladaLoader = function () {
 
 			if ( this.inputs[ i ].source === vertices.id ) {
 
-				this.inputs[ i ].source = vertices.input.POSITION.source;
+				this.inputs[ i ].source = vertices.input[ 'POSITION' ].source;
 
 			}
 
@@ -5033,8 +6739,8 @@ AMTHREE.ColladaLoader = function () {
 			if ( child.nodeName === 'param' ) {
 
 				var param = {};
-				param.name = child.getAttribute( 'name' );
-				param.type = child.getAttribute( 'type' );
+				param[ 'name' ] = child.getAttribute( 'name' );
+				param[ 'type' ] = child.getAttribute( 'type' );
 				this.params.push( param );
 
 			}
@@ -5235,9 +6941,17 @@ AMTHREE.ColladaLoader = function () {
 
 	function ColorOrTexture () {
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+    var src;
+
+		this.id = element.getAttribute( 'id' );
+		this.name = element.getAttribute( 'name' );
+		this.source = {};
+=======
 		this.color = new THREE.Color();
 		this.color.setRGB( Math.random(), Math.random(), Math.random() );
 		this.color.a = 1.0;
+>>>>>>> copy just the necessary corners in the message
 
 		this.texture = null;
 		this.texcoord = null;
@@ -5253,7 +6967,11 @@ AMTHREE.ColladaLoader = function () {
 
 	ColorOrTexture.prototype.isTexture = function () {
 
-		return ( this.texture !== null );
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+					for ( src in anim.source ) {
+=======
+		return ( this.texture != null );
+>>>>>>> copy just the necessary corners in the message
 
 	};
 
@@ -5270,7 +6988,13 @@ AMTHREE.ColladaLoader = function () {
 			var child = element.childNodes[ i ];
 			if ( child.nodeType != 1 ) continue;
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+					src = ( new Source() ).parse( child );
+					this.source[ src.id ] = src;
+					break;
+=======
 			switch ( child.nodeName ) {
+>>>>>>> copy just the necessary corners in the message
 
 				case 'color':
 
@@ -5371,7 +7095,15 @@ AMTHREE.ColladaLoader = function () {
 
 	};
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+	Sampler.prototype.create = function () {
+
+    var i;
+
+		for ( i = 0; i < this.inputs.length; i ++ ) {
+=======
 	function Shader ( type, effect ) {
+>>>>>>> copy just the necessary corners in the message
 
 		this.type = type;
 		this.effect = effect;
@@ -5404,16 +7136,16 @@ AMTHREE.ColladaLoader = function () {
 					var bumpType = child.getAttribute( 'bumptype' );
 					if ( bumpType ) {
 						if ( bumpType.toLowerCase() === "heightfield" ) {
-							this.bump = ( new ColorOrTexture() ).parse( child );
+							this[ 'bump' ] = ( new ColorOrTexture() ).parse( child );
 						} else if ( bumpType.toLowerCase() === "normalmap" ) {
-							this.normal = ( new ColorOrTexture() ).parse( child );
+							this[ 'normal' ] = ( new ColorOrTexture() ).parse( child );
 						} else {
 							console.error( "Shader.prototype.parse: Invalid value for attribute 'bumptype' (" + bumpType + ") - valid bumptypes are 'HEIGHTFIELD' and 'NORMALMAP' - defaulting to 'HEIGHTFIELD'" );
-							this.bump = ( new ColorOrTexture() ).parse( child );
+							this[ 'bump' ] = ( new ColorOrTexture() ).parse( child );
 						}
 					} else {
 						console.warn( "Shader.prototype.parse: Attribute 'bumptype' missing from bump node - defaulting to 'HEIGHTFIELD'" );
-						this.bump = ( new ColorOrTexture() ).parse( child );
+						this[ 'bump' ] = ( new ColorOrTexture() ).parse( child );
 					}
 
 					break;
@@ -5444,19 +7176,23 @@ AMTHREE.ColladaLoader = function () {
 
 	Shader.prototype.create = function() {
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+			for ( i = 0; i < this.input.length; i ++ ) {
+=======
 		var props = {};
+>>>>>>> copy just the necessary corners in the message
 
 		var transparent = false;
 
-		if (this.transparency !== undefined && this.transparent !== undefined) {
+		if (this['transparency'] !== undefined && this['transparent'] !== undefined) {
 			// convert transparent color RBG to average value
-			var transparentColor = this.transparent;
+			var transparentColor = this['transparent'];
 			var transparencyLevel = (this.transparent.color.r + this.transparent.color.g + this.transparent.color.b) / 3 * this.transparency;
 
 			if (transparencyLevel > 0) {
 				transparent = true;
-				props.transparent = true;
-				props.opacity = 1 - transparencyLevel;
+				props[ 'transparent' ] = true;
+				props[ 'opacity' ] = 1 - transparencyLevel;
 
 			}
 
@@ -5530,7 +7266,7 @@ AMTHREE.ColladaLoader = function () {
 										props[keys[prop]] = texture;
 
 										// Texture with baked lighting?
-										if (prop === 'emission') props.emissive = 0xffffff;
+										if (prop === 'emission') props['emissive'] = 0xffffff;
 
 									}
 
@@ -5542,7 +7278,7 @@ AMTHREE.ColladaLoader = function () {
 
 							if ( prop === 'emission' ) {
 
-								props.emissive  = cot.color.getHex();
+								props[ 'emissive' ] = cot.color.getHex();
 
 							} else {
 
@@ -5564,14 +7300,14 @@ AMTHREE.ColladaLoader = function () {
 				case 'reflectivity':
 
 					props[ prop ] = this[ prop ];
-					if ( props[ prop ] > 0.0 ) props.envMap = options.defaultEnvMap;
-					props.combine = THREE.MixOperation;	//mix regular shading with reflective component
+					if ( props[ prop ] > 0.0 ) props['envMap'] = options.defaultEnvMap;
+					props['combine'] = THREE.MixOperation;	//mix regular shading with reflective component
 					break;
 
 				case 'index_of_refraction':
 
-					props.refractionRatio = this[ prop ]; //TODO: "index_of_refraction" becomes "refractionRatio" in shader, but I'm not sure if the two are actually comparable
-					if ( this[ prop ] !== 1.0 ) props.envMap = options.defaultEnvMap;
+					props[ 'refractionRatio' ] = this[ prop ]; //TODO: "index_of_refraction" becomes "refractionRatio" in shader, but I'm not sure if the two are actually comparable
+					if ( this[ prop ] !== 1.0 ) props['envMap'] = options.defaultEnvMap;
 					break;
 
 				case 'transparency':
@@ -5585,8 +7321,8 @@ AMTHREE.ColladaLoader = function () {
 
 		}
 
-		props.shading = preferredShading;
-		props.side = this.effect.doubleSided ? THREE.DoubleSide : THREE.FrontSide;
+		props[ 'shading' ] = preferredShading;
+		props[ 'side' ] = this.effect.doubleSided ? THREE.DoubleSide : THREE.FrontSide;
 
 		if ( props.diffuse !== undefined ) {
 
@@ -5599,7 +7335,7 @@ AMTHREE.ColladaLoader = function () {
 
 			case 'constant':
 
-				if (props.emissive !== undefined) props.color = props.emissive;
+				if (props.emissive != undefined) props.color = props.emissive;
 				this.material = new THREE.MeshBasicMaterial( props );
 				break;
 
@@ -5609,6 +7345,7 @@ AMTHREE.ColladaLoader = function () {
 				this.material = new THREE.MeshPhongMaterial( props );
 				break;
 
+			case 'lambert':
 			default:
 
 				this.material = new THREE.MeshLambertMaterial( props );
@@ -5696,15 +7433,25 @@ AMTHREE.ColladaLoader = function () {
 					this.magfilter = child.textContent;
 					break;
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+    var i, j, k, param;
+
+		for ( i = 0; i < element.childNodes.length; i ++ ) {
+=======
 				case 'mipfilter':
+>>>>>>> copy just the necessary corners in the message
 
 					this.mipfilter = child.textContent;
 					break;
 
 				case 'wrap_s':
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+				for ( j = 0; j < technique.childNodes.length; j ++ ) {
+=======
 					this.wrap_s = child.textContent;
 					break;
+>>>>>>> copy just the necessary corners in the message
 
 				case 'wrap_t':
 
@@ -5713,10 +7460,16 @@ AMTHREE.ColladaLoader = function () {
 
 				default:
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+						for ( k = 0; k < perspective.childNodes.length; k ++ ) {
+
+							param = perspective.childNodes[ k ];
+=======
 					console.log( "unhandled Sampler2D prop: " + child.nodeName );
 					break;
 
 			}
+>>>>>>> copy just the necessary corners in the message
 
 		}
 
@@ -5734,9 +7487,15 @@ AMTHREE.ColladaLoader = function () {
 
 	}
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+						for ( k = 0; k < orthographic.childNodes.length; k ++ ) {
+
+							param = orthographic.childNodes[ k ];
+=======
 	Effect.prototype.create = function () {
 
 		if ( this.shader === null ) {
+>>>>>>> copy just the necessary corners in the message
 
 			return null;
 
@@ -5956,8 +7715,6 @@ AMTHREE.ColladaLoader = function () {
 
 	Animation.prototype.parse = function ( element ) {
 
-    var src;
-
 		this.id = element.getAttribute( 'id' );
 		this.name = element.getAttribute( 'name' );
 		this.source = {};
@@ -5974,7 +7731,7 @@ AMTHREE.ColladaLoader = function () {
 
 					var anim = ( new Animation() ).parse( child );
 
-					for ( src in anim.source ) {
+					for ( var src in anim.source ) {
 
 						this.source[ src ] = anim.source[ src ];
 
@@ -5991,7 +7748,7 @@ AMTHREE.ColladaLoader = function () {
 
 				case 'source':
 
-					src = ( new Source() ).parse( child );
+					var src = ( new Source() ).parse( child );
 					this.source[ src.id ] = src;
 					break;
 
@@ -6121,9 +7878,7 @@ AMTHREE.ColladaLoader = function () {
 
 	Sampler.prototype.create = function () {
 
-    var i;
-
-		for ( i = 0; i < this.inputs.length; i ++ ) {
+		for ( var i = 0; i < this.inputs.length; i ++ ) {
 
 			var input = this.inputs[ i ];
 			var source = this.animation.source[ input.source ];
@@ -6169,10 +7924,14 @@ AMTHREE.ColladaLoader = function () {
 
 		if ( this.input.length ) {
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+		if ( sources[ id ] !== undefined ) {
+=======
 			this.startTime = 100000000;
 			this.endTime = -100000000;
+>>>>>>> copy just the necessary corners in the message
 
-			for ( i = 0; i < this.input.length; i ++ ) {
+			for ( var i = 0; i < this.input.length; i ++ ) {
 
 				this.startTime = Math.min( this.startTime, this.input[ i ] );
 				this.endTime = Math.max( this.endTime, this.input[ i ] );
@@ -6390,30 +8149,62 @@ AMTHREE.ColladaLoader = function () {
 
 	};
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+    var tmp;
+
+		if ( options.convertUpAxis !== true || colladaUp === options.upAxis ) {
+=======
 	Camera.prototype.parseOptics = function ( element ) {
+>>>>>>> copy just the necessary corners in the message
 
-    var i, j, k, param;
-
-		for ( i = 0; i < element.childNodes.length; i ++ ) {
+		for ( var i = 0; i < element.childNodes.length; i ++ ) {
 
 			if ( element.childNodes[ i ].nodeName === 'technique_common' ) {
 
 				var technique = element.childNodes[ i ];
 
-				for ( j = 0; j < technique.childNodes.length; j ++ ) {
+				for ( var j = 0; j < technique.childNodes.length; j ++ ) {
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+				tmp = data[ 0 ];
+				data[ 0 ] = sign * data[ 1 ];
+				data[ 1 ] = tmp;
+				break;
+=======
 					this.technique = technique.childNodes[ j ].nodeName;
+>>>>>>> copy just the necessary corners in the message
 
 					if ( this.technique === 'perspective' ) {
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+				tmp = data[ 2 ];
+				data[ 2 ] = data[ 1 ];
+				data[ 1 ] = data[ 0 ];
+				data[ 0 ] = tmp;
+				break;
+=======
 						var perspective = technique.childNodes[ j ];
+>>>>>>> copy just the necessary corners in the message
 
-						for ( k = 0; k < perspective.childNodes.length; k ++ ) {
+						for ( var k = 0; k < perspective.childNodes.length; k ++ ) {
 
-							param = perspective.childNodes[ k ];
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+				tmp = data[ 0 ];
+				data[ 0 ] = data[ 1 ];
+				data[ 1 ] = sign * tmp;
+				break;
+=======
+							var param = perspective.childNodes[ k ];
+>>>>>>> copy just the necessary corners in the message
 
 							switch ( param.nodeName ) {
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+				tmp = data[ 1 ];
+				data[ 1 ] = sign * data[ 2 ];
+				data[ 2 ] = tmp;
+				break;
+=======
 								case 'yfov':
 									this.yfov = param.textContent;
 									break;
@@ -6429,18 +8220,34 @@ AMTHREE.ColladaLoader = function () {
 								case 'aspect_ratio':
 									this.aspect_ratio = param.textContent;
 									break;
+>>>>>>> copy just the necessary corners in the message
 
 							}
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+				tmp = data[ 0 ];
+				data[ 0 ] = data[ 1 ];
+				data[ 1 ] = data[ 2 ];
+				data[ 2 ] = tmp;
+				break;
+=======
 						}
+>>>>>>> copy just the necessary corners in the message
 
 					} else if ( this.technique === 'orthographic' ) {
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+				tmp = data[ 1 ];
+				data[ 1 ] = data[ 2 ];
+				data[ 2 ] = sign * tmp;
+				break;
+=======
 						var orthographic = technique.childNodes[ j ];
+>>>>>>> copy just the necessary corners in the message
 
-						for ( k = 0; k < orthographic.childNodes.length; k ++ ) {
+						for ( var k = 0; k < orthographic.childNodes.length; k ++ ) {
 
-							param = orthographic.childNodes[ k ];
+							var param = orthographic.childNodes[ k ];
 
 							switch ( param.nodeName ) {
 
@@ -6650,7 +8457,12 @@ AMTHREE.ColladaLoader = function () {
 				default:
 					break;
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+    this.add(this.model_object);
+  };
+=======
 			}
+>>>>>>> copy just the necessary corners in the message
 
 		}
 
@@ -6665,7 +8477,13 @@ AMTHREE.ColladaLoader = function () {
 			var child = element.childNodes[ i ];
 			if ( child.nodeType != 1 ) continue;
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+        scope.model_url = url;
+        scope.model_object.remove.apply(scope.model_object, scope.model_object.children);
+        scope.model_object.add(mesh);
+=======
 			switch ( element.childNodes[ i ].nodeName ) {
+>>>>>>> copy just the necessary corners in the message
 
 				case 'joint':
 					this.joints.push( (new Joint()).parse(child) );
@@ -6848,7 +8666,7 @@ AMTHREE.ColladaLoader = function () {
 
 		var id = element.getAttribute( 'id' );
 
-		if ( sources[ id ] !== undefined ) {
+		if ( sources[ id ] != undefined ) {
 
 			return sources[ id ];
 
@@ -6863,7 +8681,13 @@ AMTHREE.ColladaLoader = function () {
 
 		if ( nsPrefix === "dae" ) {
 
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+  function IsDef(val) {
+    return typeof val !== 'undefined' && val !== null;
+  }
+=======
 			return "http://www.collada.org/2005/11/COLLADASchema";
+>>>>>>> copy just the necessary corners in the message
 
 		}
 
@@ -7071,8 +8895,6 @@ AMTHREE.ColladaLoader = function () {
 
 	function fixCoords( data, sign ) {
 
-    var tmp;
-
 		if ( options.convertUpAxis !== true || colladaUp === options.upAxis ) {
 
 			return;
@@ -7083,14 +8905,14 @@ AMTHREE.ColladaLoader = function () {
 
 			case 'XtoY':
 
-				tmp = data[ 0 ];
+				var tmp = data[ 0 ];
 				data[ 0 ] = sign * data[ 1 ];
 				data[ 1 ] = tmp;
 				break;
 
 			case 'XtoZ':
 
-				tmp = data[ 2 ];
+				var tmp = data[ 2 ];
 				data[ 2 ] = data[ 1 ];
 				data[ 1 ] = data[ 0 ];
 				data[ 0 ] = tmp;
@@ -7098,21 +8920,21 @@ AMTHREE.ColladaLoader = function () {
 
 			case 'YtoX':
 
-				tmp = data[ 0 ];
+				var tmp = data[ 0 ];
 				data[ 0 ] = data[ 1 ];
 				data[ 1 ] = sign * tmp;
 				break;
 
 			case 'YtoZ':
 
-				tmp = data[ 1 ];
+				var tmp = data[ 1 ];
 				data[ 1 ] = sign * data[ 2 ];
 				data[ 2 ] = tmp;
 				break;
 
 			case 'ZtoX':
 
-				tmp = data[ 0 ];
+				var tmp = data[ 0 ];
 				data[ 0 ] = data[ 1 ];
 				data[ 1 ] = data[ 2 ];
 				data[ 2 ] = tmp;
@@ -7120,7 +8942,7 @@ AMTHREE.ColladaLoader = function () {
 
 			case 'ZtoY':
 
-				tmp = data[ 1 ];
+				var tmp = data[ 1 ];
 				data[ 1 ] = data[ 2 ];
 				data[ 2 ] = sign * tmp;
 				break;
@@ -7354,7 +9176,7 @@ if (typeof THREE !== 'undefined') {
     this.model_object = new THREE.Object3D();
 
     this.add(this.model_object);
-  };
+  }
 
   ColladaObject.prototype = Object.create(THREE.Object3D.prototype);
   ColladaObject.prototype.constructor = ColladaObject;
@@ -7377,7 +9199,8 @@ if (typeof THREE !== 'undefined') {
         mesh.add(object);
 
         scope.model_url = url;
-        scope.model_object.remove.apply(scope.model_object, scope.model_object.children);
+        while(scope.model_object.children.length !== 0)
+          scope.model_object.remove(scope.model_object.children[0]);
         scope.model_object.add(mesh);
 
 
@@ -7663,7 +9486,7 @@ var AMTHREE = AMTHREE || {};
 (function() {
 
   function IsDef(val) {
-    return typeof val !== 'undefined' && val !== null;
+    return typeof val != 'undefined' && val != null;
   }
 
   function ObjectConvert(object) {
@@ -7912,1142 +9735,7 @@ var AMTHREE = AMTHREE || {};
 
         }
 
-        textures[data.uuid] = texture;
-
-      }
-
-    }
-
-    return textures;
-  }
-
-  function CreateGeometries(json) {
-    var geometries = {};
-
-    if (typeof json !== 'undefined') {
-
-      var geometry_loader = new THREE.JSONLoader();
-      var buffer_geometry_loader = new THREE.BufferGeometryLoader();
-
-      for (var i = 0, l = json.length; i < l; i++) {
-
-        var data = json[i];
-
-        var geometry;
-
-        switch (data.type) {
-
-          case 'PlaneGeometry':
-          case 'PlaneBufferGeometry':
-
-          geometry = new THREE[data.type](
-            data.width,
-            data.height,
-            data.widthSegments,
-            data.heightSegments
-            );
-
-          break;
-
-          case 'BoxGeometry':
-          case 'CubeGeometry':
-          geometry = new THREE.BoxGeometry(
-            data.width,
-            data.height,
-            data.depth,
-            data.widthSegments,
-            data.heightSegments,
-            data.depthSegments
-            );
-
-          break;
-
-          case 'CircleBufferGeometry':
-
-          geometry = new THREE.CircleBufferGeometry(
-            data.radius,
-            data.segments,
-            data.thetaStart,
-            data.thetaLength
-            );
-
-          break;
-
-          case 'CircleGeometry':
-
-          geometry = new THREE.CircleGeometry(
-            data.radius,
-            data.segments,
-            data.thetaStart,
-            data.thetaLength
-            );
-
-          break;
-
-          case 'CylinderGeometry':
-
-          geometry = new THREE.CylinderGeometry(
-            data.radiusTop,
-            data.radiusBottom,
-            data.height,
-            data.radialSegments,
-            data.heightSegments,
-            data.openEnded,
-            data.thetaStart,
-            data.thetaLength
-            );
-
-          break;
-
-          case 'SphereGeometry':
-
-          geometry = new THREE.SphereGeometry(
-            data.radius,
-            data.widthSegments,
-            data.heightSegments,
-            data.phiStart,
-            data.phiLength,
-            data.thetaStart,
-            data.thetaLength
-            );
-
-          break;
-
-          case 'SphereBufferGeometry':
-
-          geometry = new THREE.SphereBufferGeometry(
-            data.radius,
-            data.widthSegments,
-            data.heightSegments,
-            data.phiStart,
-            data.phiLength,
-            data.thetaStart,
-            data.thetaLength
-            );
-
-          break;
-
-          case 'DodecahedronGeometry':
-
-          geometry = new THREE.DodecahedronGeometry(
-            data.radius,
-            data.detail
-            );
-
-          break;
-
-          case 'IcosahedronGeometry':
-
-          geometry = new THREE.IcosahedronGeometry(
-            data.radius,
-            data.detail
-            );
-
-          break;
-
-          case 'OctahedronGeometry':
-
-          geometry = new THREE.OctahedronGeometry(
-            data.radius,
-            data.detail
-            );
-
-          break;
-
-          case 'TetrahedronGeometry':
-
-          geometry = new THREE.TetrahedronGeometry(
-            data.radius,
-            data.detail
-            );
-
-          break;
-
-          case 'RingGeometry':
-
-          geometry = new THREE.RingGeometry(
-            data.innerRadius,
-            data.outerRadius,
-            data.thetaSegments,
-            data.phiSegments,
-            data.thetaStart,
-            data.thetaLength
-            );
-
-          break;
-
-          case 'TorusGeometry':
-
-          geometry = new THREE.TorusGeometry(
-            data.radius,
-            data.tube,
-            data.radialSegments,
-            data.tubularSegments,
-            data.arc
-            );
-
-          break;
-
-          case 'TorusKnotGeometry':
-
-          geometry = new THREE.TorusKnotGeometry(
-            data.radius,
-            data.tube,
-            data.radialSegments,
-            data.tubularSegments,
-            data.p,
-            data.q,
-            data.heightScale
-            );
-
-          break;
-
-          case 'BufferGeometry':
-
-          geometry = buffer_geometry_loader.parse(data);
-
-          break;
-
-          case 'Geometry':
-
-          geometry = geometry_loader.parse(data.data, this.texturePath).geometry;
-
-          break;
-
-          default:
-
-          console.warn('AMTHREE.ObjectLoading: Unsupported geometry type "' + data.type + '"');
-
-          continue;
-
-        }
-
-        geometry.uuid = data.uuid;
-
-        if (data.name !== undefined) geometry.name = data.name;
-
-        geometries[data.uuid] = geometry;
-
-      }
-
-    }
-
-    return geometries;
-  }
-
-  function LoadFile(url, parser, path) {
-    return new Promise(function(resolve, reject) {
-
-      var loader = new AM.JsonLoader();
-
-      loader.Load(url, function() {
-        parser(loader.json, path).then(resolve, reject);
-      }, function() {
-        reject('failed to load object: ' + url);
-      });
-
-    });
-  }
-
-  function Load(url, path) {
-    return LoadFile(url, Parse, path);
-  }
-
-  function LoadArray(url, path) {
-    return LoadFile(url, ParseArray, path);
-  }
-
-  function ParseResources(json, path) {
-    var constants = CreateConstants(json.constants, path);
-
-    return ParseImages(json.images || [], constants.image_path).then(function(images) {
-
-      var sounds = CreateSounds(json.sounds || [], constants.sound_path);
-      var videos = CreateVideos(json.videos || [], constants.video_path);
-      var textures = CreateTextures(json.textures || [], images, videos);
-      var animations = CreateAnimations(json.animations || []);
-      var materials = CreateMaterials(json.materials || [], textures);
-      var geometries = CreateGeometries(json.geometries || []);
-
-      var resources = {
-        constants:  constants,
-        videos:     videos,
-        images:     images,
-        sounds:     sounds,
-        textures:   textures,
-        animations: animations,
-        materials:  materials,
-        geometries: geometries
-      };
-
-      return resources;
-    });
-  }
-
-  function Parse(json, path) {
-    return ParseResources(json, path).then(function(res) {
-      return ParseObject(json.object, res.materials, res.geometries, res.sounds, res.constants)
-      .then(function(object) {
-
-        object.animations = res.animations;
-        return object;
-
-      });
-    });
-  }
-
-  function ParseArray(json, path) {
-    return ParseResources(json, path).then(function(res) {
-
-      return ParseObjectArray(json.objects, res.materials,
-        res.geometries, res.sounds, res.constants);
-
-    });
-  }
-
-  function ParseObjectPostLoading(object, json, materials, geometries, sounds, constants) {
-    var matrix = new THREE.Matrix4();
-
-    object.uuid = json.uuid;
-
-    if (json.name !== undefined) object.name = json.name;
-    if (json.matrix !== undefined) {
-
-      matrix.fromArray(json.matrix);
-      matrix.decompose(object.position, object.quaternion, object.scale);
-
-    } else {
-
-      if (json.position !== undefined) object.position.fromArray(json.position);
-      if (json.rotation !== undefined) object.rotation.fromArray(json.rotation);
-      if (json.scale !== undefined) object.scale.fromArray(json.scale);
-      if (json.scaleXYZ !== undefined) {
-        object.scale.x *= json.scaleXYZ;
-        object.scale.y *= json.scaleXYZ;
-        object.scale.z *= json.scaleXYZ;
-      }
-    }
-
-    if (json.castShadow !== undefined) object.castShadow = json.castShadow;
-    if (json.receiveShadow !== undefined) object.receiveShadow = json.receiveShadow;
-
-    if (json.visible !== undefined) object.visible = json.visible;
-    if (json.userData !== undefined) object.userData = json.userData;
-
-    if (json.type === 'LOD') {
-
-      var levels = json.levels;
-
-      for (var l = 0; l < levels.length; l++) {
-
-        var level = levels[l];
-        var child = object.getObjectByProperty('uuid', level.object);
-
-        if (child !== undefined) {
-          object.addLevel(child, level.distance);
-        }
-
-      }
-    }
-
-    if (json.children !== undefined) {
-      return ParseObjectArray(json.children, materials, geometries, sounds, constants).then(function(array) {
-        for (var i = 0, c = array.length; i < c; ++i) {
-          object.add(array[i]);
-        }
-        return object;
-      });
-    }
-    else
-      return Promise.resolve(object);
-  }
-
-  function GetGeometry(name, geometries) {
-    if (geometries[name] !== undefined)
-      return geometries[name];
-    else {
-      if (name === undefined)
-        console.warn('failed to get geometry: no id provided');
-      else
-        console.warn('failed to get geometry: no such geometry: ' + name);
-    }
-    return undefined;
-  }
-
-  function GetMaterial(name, materials) {
-    if (materials[name] !== undefined)
-      return materials[name];
-    else {
-      if (name === undefined)
-        console.warn('failed to get material: no id provided');
-      else
-        console.warn('failed to get material: no such material: ' + name);
-    }
-    return undefined;
-  }
-
-  function GetSound(name, sounds) {
-    if (sounds[name] !== undefined)
-      return sounds[name];
-    else {
-      if (name === undefined)
-        console.warn('failed to get sound: no id provided');
-      else
-        console.warn('failed to get sound: no such sound: ' + name);
-    }
-    return undefined;
-  }
-
-  function ParseObject(json, materials, geometries, sounds, constants) {
-    var object, url;
-
-    switch (json.type) {
-
-      case 'OBJ':
-      return new Promise(function(resolve, reject) {
-        if (THREE.OBJLoader) {
-          var obj_loader = new THREE.OBJLoader();
-
-          url = constants.model_path + '/' + json.url;
-          obj_loader.load(url, function(object) {
-
-            object.traverse(function(child) {
-              if (child.geometry) child.geometry.computeBoundingSphere();
-            });
-
-            ParseObjectPostLoading(object, json, materials, geometries, sounds, constants).then(function() {
-              resolve(object);
-            }, reject);
-
-          });
-        }
-        else {
-          reject('failed to load ' + json.uuid + ': THREE.OBJLoader is undefined');
-        }
-      });
-
-      case 'Collada':
-      object = new AMTHREE.ColladaObject();
-      return object.load(constants.model_path + json.url, constants.image_path).then(function(object) {
-        return ParseObjectPostLoading(object, json, materials, geometries, sounds, constants).then(function() {
-          return object;
-        });
-      });
-
-      case 'SoundObject':
-      object = new AMTHREE.SoundObject(GetSound(json.sound, sounds));
-      break;
-
-      case 'Scene':
-      object = new THREE.Scene();
-      break;
-
-      case 'PerspectiveCamera':
-      object = new THREE.PerspectiveCamera( json.fov, json.aspect, json.near, json.far );
-      break;
-
-      case 'OrthographicCamera':
-      object = new THREE.OrthographicCamera( json.left, json.right, json.top, json.bottom, json.near, json.far );
-      break;
-
-      case 'AmbientLight':
-      object = new THREE.AmbientLight( json.color );
-      break;
-
-      case 'DirectionalLight':
-      object = new THREE.DirectionalLight( json.color, json.intensity );
-      break;
-
-      case 'PointLight':
-      object = new THREE.PointLight( json.color, json.intensity, json.distance, json.decay );
-      break;
-
-      case 'SpotLight':
-      object = new THREE.SpotLight( json.color, json.intensity, json.distance, json.angle, json.exponent, json.decay );
-      break;
-
-      case 'HemisphereLight':
-      object = new THREE.HemisphereLight( json.color, json.groundColor, json.intensity );
-      break;
-
-      case 'Mesh':
-      object = new THREE.Mesh( GetGeometry( json.geometry, geometries ), GetMaterial( json.material, materials ) );
-      break;
-
-      case 'LOD':
-      object = new THREE.LOD();
-      break;
-
-      case 'Line':
-      object = new THREE.Line( GetGeometry( json.geometry, geometries ), GetMaterial( json.material, materials ), json.mode );
-      break;
-
-      case 'PointCloud': case 'Points':
-      object = new THREE.Points( GetGeometry( json.geometry, geometries ), GetMaterial( json.material, materials ) );
-      break;
-
-      case 'Sprite':
-      object = new THREE.Sprite( GetMaterial( json.material, materials ) );
-      break;
-
-      case 'Group':
-      object = new THREE.Group();
-      break;
-
-      default:
-      object = new THREE.Object3D();
-    }
-
-    return ParseObjectPostLoading(object, json, materials, geometries, sounds, constants);
-  }
-
-  function ParseObjectArray(json, materials, geometries, sounds, constants) {
-    if (json instanceof Array) {
-      return Promise.all(json.map(function(elem) {
-
-        return ParseObject(elem, materials, geometries, sounds, constants);
-
-      }));
-    }
-    else
-      return Promise.reject('failed to parse object array: json not an array');
-  }
-
-  function NormalizeObject(object) {
-    var box = new THREE.Box3();
-    var sphere = new THREE.Sphere();
-    var mesh = new THREE.Object3D();
-
-    mesh.add(object);
-
-    box.setFromObject(object);
-    box.getBoundingSphere(sphere);
-
-    mesh.scale.multiplyScalar(1 / sphere.radius);
-
-    sphere.center.divideScalar(sphere.radius);
-    mesh.position.sub(sphere.center);
-    mesh.updateMatrix();
-
-    var parent = new THREE.Object3D();
-    parent.add(mesh);
-
-    return parent;
-  }
-
-  function ComputeBoundingBox(object) {
-    object.traverse(function(child) {
-      if (child instanceof THREE.Mesh && child.geometry) {
-        child.geometry.computeBoundingBox();
-      }
-    });
-  }
-
-  function ComputeBoundingSphere(object) {
-    object.traverse(function(child) {
-      if (child instanceof THREE.Mesh && child.geometry) {
-        child.geometry.computeBoundingSphere();
-      }
-    });
-  }
-
-
-  if (typeof THREE !== 'undefined') {
-
-    /**
-    * @function
-    * @description Parses a json into an object.
-    * @param {object} json - the json structure
-    * @param {string} [path] - the path of the directory containing the assets.
-    * @returns {Promise.<THREE.Object3D, string>} a promise
-    */
-    AMTHREE.ParseObject = Parse;
-
-    /**
-    * @function
-    * @description Parses a json into an array of objects.
-    * @param {object} json - the json structure
-    * @param {string} [path] - the path of the directory containing the assets.
-    * @returns {Promise.<Array.<THREE.Object3D>, string>} a promise
-    */
-    AMTHREE.ParseObjectArray = ParseArray;
-
-    /**
-    * @function
-    * @description Loads a json file describing an object.
-    * @param {string} url
-    * @param {string} [path] - the path of the directory containing the assets.
-    * @returns {Promise.<THREE.Object3D, string>} a promise
-    */
-    AMTHREE.LoadObject = Load;
-
-    /**
-    * @function
-    * @description Loads a json file describing an array of objects.
-    * @param {string} url
-    * @param {string} [path] - the path of the directory containing the assets.
-    * @returns {Promise.<Array.<THREE.Object3D>, string>} a promise
-    */
-    AMTHREE.LoadObjectArray = LoadArray;
-
-    /**
-    * @function
-    * @description Moves and rescales an object so that it is contained in a sphere of radius 1, centered on the origin.
-    * @param {THREE.Object3D} the source object
-    * @returns {THREE.Object3D} an object containing the source
-    */
-    AMTHREE.NormalizeObject = NormalizeObject;
-
-    /**
-    * @function
-    * @description Compute the bounding box of an object's geometry and every descending.
-    * @param {THREE.Object3D}
-    */
-    AMTHREE.ComputeBoundingBox = ComputeBoundingBox;
-
-    /**
-    * @function
-    * @description Compute the bounding sphere of an object's geometry and every descending.
-    * @param {THREE.Object3D}
-    */
-    AMTHREE.ComputeBoundingSphere = ComputeBoundingSphere;
-
-  }
-  else {
-  }
-
-})();
-var AMTHREE = AMTHREE || {};
-
-
-if (typeof THREE !== 'undefined') {
-
-
-  AMTHREE.Sound = function(uuid, url) {
-    this.uuid = uuid || THREE.Math.generateUUID();
-    this.url = url;
-  };
-
-  AMTHREE.Sound.prototype.toJSON = function(meta) {
-    var output = {
-      uuid: this.uuid,
-      url: AMTHREE.GetFilename(this.url)
-    };
-
-    if (!meta.sounds)
-      meta.sounds = {};
-    if (!meta.sounds[this.uuid])
-      meta.sounds[this.uuid] = output;
-
-    return output;
-  };
-
-
-}
-else {
-  AMTHREE.Sound = function() {
-    console.warn('Sound.js: THREE undefined');
-  };
-}
-var AMTHREE = AMTHREE || {};
-
-
-if (typeof THREE !== 'undefined') {
-
-  /**
-   * 
-   * @class
-   * @augments {THREE.Object3D}
-   * @param {string} url - url of the sound
-   */
-  AMTHREE.SoundObject = function(sound) {
-    THREE.Object3D.call(this);
-
-    this.sound = sound;
-    this.audio = new Audio();
-    this.audio.loop = true;
-    this.playing = false;
-  };
-
-  AMTHREE.SoundObject.prototype = Object.create(THREE.Object3D.prototype);
-  AMTHREE.SoundObject.prototype.constructor = AMTHREE.SoundObject;
-
-  /**
-   * Plays the sound.
-   * @inner
-   */
-  AMTHREE.SoundObject.prototype.play = function() {
-    this.playing = true;
-    this.audio.src = this.sound.url;
-    this.audio.play();
-  };
-
-  /**
-   * Stops the sound.
-   * @inner
-   */
-  AMTHREE.SoundObject.prototype.stop = function() {
-    this.audio.src = '';
-    this.playing = false;
-  };
-
-  /**
-   * Pauses the sound.
-   * @inner
-   */
-  AMTHREE.SoundObject.prototype.pause = function() {
-    this.audio.pause();
-    this.playing = false;
-  };
-
-  /**
-   * Sets the sound's url.
-   * @inner
-   * @param {string} url
-   */
-  AMTHREE.SoundObject.prototype.setSound = function(sound) {
-    this.sound = sound;
-    if (this.isPlaying())
-      this.play();
-  };
-
-  /**
-   * Returns whether the sound is played.
-   * @inner
-   * @returns {bool}
-   */
-  AMTHREE.SoundObject.prototype.isPlaying = function() {
-    return this.playing;
-  };
-
-  /**
-   * Returns a clone of this.
-   * @inner
-   * @returns {AMTHREE.SoundObject}
-   */
-  AMTHREE.SoundObject.prototype.clone = function() {
-    return (new AMTHREE.SoundObject()).copy(this);
-  };
-
-  /**
-   * Copies the parameter.
-   * @inner
-   * @param {AMTHREE.SoundObject}
-   */
-  AMTHREE.SoundObject.prototype.copy = function(src) {
-    this.setSound(src.sound);
-    return this;
-  };
-
-
-  AMTHREE.SoundsCall = function(object, fun) {
-    object.traverse(function(s) {
-      if (s instanceof AMTHREE.SoundObject && s[fun])
-        s[fun]();
-    });
-  };
-
-  /**
-  * Recursively plays the sounds of this object and all his children
-  * @function
-  * @param {THREE.Object3D} object
-  */
-  AMTHREE.PlaySounds = function(object) {
-    AMTHREE.SoundsCall(object, 'play');
-  };
-
-  /**
-  * Recursively pauses the sounds of this object and all his children
-  * @function
-  * @param {THREE.Object3D} object
-  */
-  AMTHREE.PauseSounds = function(object) {
-    AMTHREE.SoundsCall(object, 'pause');
-  };
-
-  /**
-  * Recursively stops the sounds of this object and all his children
-  * @function
-  * @param {THREE.Object3D} object
-  */
-  AMTHREE.StopSounds = function(object) {
-    AMTHREE.SoundsCall(object, 'stop');
-  };
-
-  AMTHREE.SoundObject.prototype.toJSON = function(meta) {
-    var output = THREE.Object3D.prototype.toJSON.call(this, meta);
-
-    this.sound.toJSON(meta);
-
-    output.object.type = 'SoundObject';
-    output.object.sound = this.sound.uuid;
-
-    return output;
-  };
-
-
-}
-else {
-  AMTHREE.SoundObject = function() {
-    console.warn('SoundObject.js: THREE undefined');
-  };
-}
-/******************
-
-TrackedObjManager
-A class that moves objects on the scene relatively to the camera,
-smoothly using linear interpolation
-
-
-Constructor
-
-TrackedObjManager(parameters)
-
-parameters: an object holding the parameters 'camera', 'lerp_factor', and 'timeout'
-to set their respectives properties
-
-
-Properties
-
-camera: the origin, a 'THREE.Object3D'. Tracked objects are set has children of this object.
-
-lerp_factor: a number in [0, 1], 0.2 by default.
-The higher, the faster tracked objects will converge toward the camera.
-
-timeout: time in seconds, 3 by default.
-If an object isn't tracked for 'timeout' seconds, on_disable() is called,
-and the object is disabled.
-
-
-Methods
-
-Add(object, uuid, on_enable, on_disable)
-Add an object to track, and set the optionnal callbacks.
-The object is disabled until Track() or TrackCompose() are called.
-
-Remove(uuid)
-Remove an object. If the object is enabled, on_disable is called before removal.
-
-Update()
-
-Track(uuid, matrix)
-Sets a new position for a previously added object.
-If the object is disabled, on_enable() is called and the object is enabled
-
-TrackCompose(uuid, position, quaternion, scale)
-For convenience. Calls Track().
-
-TrackComposePosit(uuid, translation_pose, rotation_pose, model_size)
-For convenience. Calls TrackCompose().
-
-GetObject(uuid)
-
-
-Dependency
-
-three.js
-
-
-******************/
-
-
-var AMTHREE = AMTHREE || {};
-
-if (typeof THREE !== 'undefined') {
-
-  /**
-  * 
-  * @class
-  * @param {object} parameters - An object holding parameters
-  * @param {THREE.Camera} parameters.camera
-  * @param {number} [parameters.lerp_factor=0.2] - 0 - 1
-  * @param {number} [parameters.timeout=6] Time before an object enabled gets disabled, in seconds.
-  */
-  AMTHREE.TrackedObjManager = function(parameters) {
-    parameters = parameters || {};
-
-    var that = this;
-
-    var _clock = new THREE.Clock(true);
-
-    var _holder = new AMTHREE.TrackedObjManager.prototype.Holder();
-
-    function LerpObjectsTransforms(src, dst, factor) {
-      src.position.lerp(dst.position, factor);
-      src.quaternion.slerp(dst.quaternion, factor);
-      src.scale.lerp(dst.scale, factor);
-    }
-
-    function UpdateLerpMethod() {
-      _holder.ForEach(function(elem) {
-
-        if (elem.enabled)
-          LerpObjectsTransforms(elem.object, elem.target, that.lerp_factor);
-
-      });
-    }
-
-    var _update_method = UpdateLerpMethod;
-
-    /**
-     * @property {THREE.Camera} camera
-     * @property {number} lerp_factor
-     * @property {number} timeout
-     */
-    this.camera = parameters.camera;
-
-    this.lerp_factor = parameters.lerp_factor || 0.8;
-
-    this.timeout = parameters.timeout || 6;
-
-    /**
-     * Adds an object
-     * @inner
-     * @param {THREE.Object3D} object - Starts disabled.
-     * @param {value} uuid
-     * @param {function} [on_enable] - Function called when the object is tracked and was disabled before.
-     * @param {function} [on_disable] - Function called when the object isnt tracked for "timeout" seconds.
-     */
-    this.Add = function(object, uuid, on_enable, on_disable) {
-      _holder.Add(object, uuid, on_enable, on_disable);
-    };
-
-    /**
-     * Remove an object
-     * @inner
-     * @param {value}
-     */
-    this.Remove = function(uuid) {
-      _holder.Remove(uuid);
-    };
-
-    /**
-     * Clear all the objects
-     * @inner
-     */
-    this.Clear = function() {
-      _holder.Clear();
-    };
-
-    /**
-     * Updates the objects tranforms
-     * @inner
-     */
-    this.Update = function() {
-
-      _holder.UpdateElapsed(_clock.getDelta());
-      _holder.CheckTimeout(that.timeout);
-
-      _update_method();
-    };
-
-    /**
-     * Sets a tracked object transform
-     * @inner
-     * @function
-     * @param {value} uuid
-     * @param {THREE.Matrix4} matrix
-     */
-    this.Track = function() {
-
-      var new_matrix = new THREE.Matrix4();
-      var obj_tmp = new THREE.Object3D();
-
-      return function(uuid, matrix) {
-
-        if (that.camera) {
-
-          var elem = _holder.Get(uuid);
-          if (elem) {
-            var target = elem.target;
-
-            new_matrix.copy(that.camera.matrixWorld);
-            new_matrix.multiply(matrix);
-
-            if (elem.enabled) {
-              new_matrix.decompose(obj_tmp.position, obj_tmp.quaternion, obj_tmp.scale);
-              LerpObjectsTransforms(target, obj_tmp, that.lerp_factor);
-            }
-            else {
-              new_matrix.decompose(target.position, target.quaternion, target.scale);
-              new_matrix.decompose(elem.object.position, elem.object.quaternion, elem.object.scale);
-            }
-
-            _holder.Track(uuid);
-
-            return true;
-
-          }
-          else
-            console.warn('TrackedObjManager: object ' + uuid + ' not found');
-        }
-        else
-          console.warn('TrackedObjManager: camera is undefined');
-
-        return false;
-      };
-    }();
-
-    /**
-     * Sets a tracked object transform
-     * @inner
-     * @function
-     * @param {value} uuid
-     * @param {THREE.Vector3} position
-     * @param {THREE.Quaternion} quaternion
-     * @param {THREE.Vector3} scale
-     */
-    this.TrackCompose = function() {
-
-      var matrix = new THREE.Matrix4();
-
-      return function(uuid, position, quaternion, scale) {
-
-        matrix.compose(position, quaternion, scale);
-
-        return that.Track(uuid, matrix);
-      };
-    }();
-
-    /**
-     * Sets a tracked object transform
-     * @inner
-     * @function
-     * @param {value} uuid
-     * @param {number[]} translation_pose
-     * @param {number[][]} rotation_pose
-     * @param {number} model_size
-     */
-    this.TrackComposePosit = function() {
-
-      var position = new THREE.Vector3();
-      var euler = new THREE.Euler();
-      var quaternion = new THREE.Quaternion();
-      var scale = new THREE.Vector3();
-
-      return function(uuid, translation_pose, rotation_pose, model_size) {
-
-        position.x = translation_pose[0];
-        position.y = translation_pose[1];
-        position.z = -translation_pose[2];
-
-        euler.x = -Math.asin(-rotation_pose[1][2]);
-        euler.y = -Math.atan2(rotation_pose[0][2], rotation_pose[2][2]);
-        euler.z = Math.atan2(rotation_pose[1][0], rotation_pose[1][1]);
-
-        scale.x = model_size;
-        scale.y = model_size;
-        scale.z = model_size;
-
-        quaternion.setFromEuler(euler);
-
-        return that.TrackCompose(uuid, position, quaternion, scale);
-      };
-    }();
-
-    /**
-     * Returns an object held by this
-     * @inner
-     * @param {value} uuid
-     */
-    this.GetObject = function(uuid) {
-      var elem = _holder.get(uuid);
-      if (elem) {
-        return elem.object;
-      }
-      return undefined;
-    };
-
-
-  };
-
-
-  AMTHREE.TrackedObjManager.prototype.Holder = function() {
-    var that = this;
-
-    var _objects = {};
-
-    this.Add = function(object, uuid, on_enable, on_disable) {
-
-      _objects[uuid] =
-      {
-        object: object,
-        target:
-        {
-          position: object.position.clone(),
-          quaternion: object.quaternion.clone(),
-          scale: object.scale.clone(),
-        },
-        elapsed: 0,
-        on_enable: on_enable,
-        on_disable: on_disable,
-        enabled: false
-      };
-    };
-
-    this.Remove = function(uuid) {
-      var elem = _objects[uuid];
-
-      if (elem.enabled) {
-        if (elem.on_disable)
-          elem.on_disable(elem.object);
-      }
-      delete _objects[uuid];
-    };
-
-    this.Clear = function() {
-      for (var uuid in _objects)
-        that.Remove(uuid);
-    };
-
-    this.Track = function(uuid) {
-
-      var elem = _objects[uuid];
-
-      elem.elapsed = 0;
-
-      if (!elem.enabled) {
-        elem.enabled = true;
-        if (elem.on_enable)
-          elem.on_enable(elem.object);
-      }
-    };
-
-    this.UpdateElapsed = function(elapsed) {
-      for (var uuid in _objects) {
-
-        _objects[uuid].elapsed += elapsed;
-      }
-    };
-
-    this.CheckTimeout = function(timeout) {
-
-      for (var uuid in _objects) {
-
-        var elem = _objects[uuid];
-
-        if (elem.enabled && elem.elapsed > timeout) {
-          if (elem.on_disable)
-            elem.on_disable(elem.object);
-          elem.enabled = false;
-        }
-      }
-    };
-
-    this.ForEach = function(fun) {
-      for (var uuid in _objects) {
-        fun(_objects[uuid]);
-      }
-    };
-
-    this.Get = function(uuid) {
-      return _objects[uuid];
-    };
-
-
-  };
-
-
+<<<<<<< 8a82c35b9e5b14fa8e3692bd714049f19956b51c
 }
 else {
   AMTHREE.TrackedObjManager = function() {
@@ -10209,6 +10897,1272 @@ else {
 }() );
 
 var AMTHREE = AMTHREE || {};
+=======
+        textures[data.uuid] = texture;
+>>>>>>> copy just the necessary corners in the message
+
+      }
+
+    }
+
+    return textures;
+  }
+
+  function CreateGeometries(json) {
+    var geometries = {};
+
+    if (typeof json !== 'undefined') {
+
+      var geometry_loader = new THREE.JSONLoader();
+      var buffer_geometry_loader = new THREE.BufferGeometryLoader();
+
+      for (var i = 0, l = json.length; i < l; i++) {
+
+        var data = json[i];
+
+        var geometry;
+
+        switch (data.type) {
+
+          case 'PlaneGeometry':
+          case 'PlaneBufferGeometry':
+
+          geometry = new THREE[data.type](
+            data.width,
+            data.height,
+            data.widthSegments,
+            data.heightSegments
+            );
+
+          break;
+
+          case 'BoxGeometry':
+          case 'CubeGeometry':
+          geometry = new THREE.BoxGeometry(
+            data.width,
+            data.height,
+            data.depth,
+            data.widthSegments,
+            data.heightSegments,
+            data.depthSegments
+            );
+
+          break;
+
+          case 'CircleBufferGeometry':
+
+          geometry = new THREE.CircleBufferGeometry(
+            data.radius,
+            data.segments,
+            data.thetaStart,
+            data.thetaLength
+            );
+
+          break;
+
+          case 'CircleGeometry':
+
+          geometry = new THREE.CircleGeometry(
+            data.radius,
+            data.segments,
+            data.thetaStart,
+            data.thetaLength
+            );
+
+          break;
+
+          case 'CylinderGeometry':
+
+          geometry = new THREE.CylinderGeometry(
+            data.radiusTop,
+            data.radiusBottom,
+            data.height,
+            data.radialSegments,
+            data.heightSegments,
+            data.openEnded,
+            data.thetaStart,
+            data.thetaLength
+            );
+
+          break;
+
+          case 'SphereGeometry':
+
+          geometry = new THREE.SphereGeometry(
+            data.radius,
+            data.widthSegments,
+            data.heightSegments,
+            data.phiStart,
+            data.phiLength,
+            data.thetaStart,
+            data.thetaLength
+            );
+
+          break;
+
+          case 'SphereBufferGeometry':
+
+          geometry = new THREE.SphereBufferGeometry(
+            data.radius,
+            data.widthSegments,
+            data.heightSegments,
+            data.phiStart,
+            data.phiLength,
+            data.thetaStart,
+            data.thetaLength
+            );
+
+          break;
+
+          case 'DodecahedronGeometry':
+
+          geometry = new THREE.DodecahedronGeometry(
+            data.radius,
+            data.detail
+            );
+
+          break;
+
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+AMTHREE.GetFilename = function(path) {
+  return path.split('/').pop().split('\\').pop();
+};
+=======
+          case 'IcosahedronGeometry':
+
+          geometry = new THREE.IcosahedronGeometry(
+            data.radius,
+            data.detail
+            );
+>>>>>>> copy just the necessary corners in the message
+
+          break;
+
+          case 'OctahedronGeometry':
+
+          geometry = new THREE.OctahedronGeometry(
+            data.radius,
+            data.detail
+            );
+
+          break;
+
+          case 'TetrahedronGeometry':
+
+          geometry = new THREE.TetrahedronGeometry(
+            data.radius,
+            data.detail
+            );
+
+          break;
+
+          case 'RingGeometry':
+
+          geometry = new THREE.RingGeometry(
+            data.innerRadius,
+            data.outerRadius,
+            data.thetaSegments,
+            data.phiSegments,
+            data.thetaStart,
+            data.thetaLength
+            );
+
+          break;
+
+          case 'TorusGeometry':
+
+          geometry = new THREE.TorusGeometry(
+            data.radius,
+            data.tube,
+            data.radialSegments,
+            data.tubularSegments,
+            data.arc
+            );
+
+          break;
+
+          case 'TorusKnotGeometry':
+
+          geometry = new THREE.TorusKnotGeometry(
+            data.radius,
+            data.tube,
+            data.radialSegments,
+            data.tubularSegments,
+            data.p,
+            data.q,
+            data.heightScale
+            );
+
+          break;
+
+          case 'BufferGeometry':
+
+          geometry = buffer_geometry_loader.parse(data);
+
+          break;
+
+          case 'Geometry':
+
+          geometry = geometry_loader.parse(data.data, this.texturePath).geometry;
+
+          break;
+
+          default:
+
+          console.warn('AMTHREE.ObjectLoading: Unsupported geometry type "' + data.type + '"');
+
+          continue;
+
+        }
+
+        geometry.uuid = data.uuid;
+
+        if (data.name !== undefined) geometry.name = data.name;
+
+        geometries[data.uuid] = geometry;
+
+      }
+
+    }
+
+    return geometries;
+  }
+
+  function LoadFile(url, parser, path) {
+    return new Promise(function(resolve, reject) {
+
+      var loader = new AM.JsonLoader();
+
+      loader.Load(url, function() {
+        parser(loader.json, path).then(resolve, reject);
+      }, function() {
+        reject('failed to load object: ' + url);
+      });
+
+    });
+  }
+
+  function Load(url, path) {
+    return LoadFile(url, Parse, path);
+  }
+
+  function LoadArray(url, path) {
+    return LoadFile(url, ParseArray, path);
+  }
+
+  function ParseResources(json, path) {
+    var constants = CreateConstants(json.constants, path);
+
+    return ParseImages(json.images || [], constants.image_path).then(function(images) {
+
+      var sounds = CreateSounds(json.sounds || [], constants.sound_path);
+      var videos = CreateVideos(json.videos || [], constants.video_path);
+      var textures = CreateTextures(json.textures || [], images, videos);
+      var animations = CreateAnimations(json.animations || []);
+      var materials = CreateMaterials(json.materials || [], textures);
+      var geometries = CreateGeometries(json.geometries || []);
+
+      var resources = {
+        constants:  constants,
+        videos:     videos,
+        images:     images,
+        sounds:     sounds,
+        textures:   textures,
+        animations: animations,
+        materials:  materials,
+        geometries: geometries
+      };
+
+      return resources;
+    });
+  }
+
+  function Parse(json, path) {
+    return ParseResources(json, path).then(function(res) {
+      return ParseObject(json.object, res.materials, res.geometries, res.sounds, res.constants)
+      .then(function(object) {
+
+        object.animations = res.animations;
+        return object;
+
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+  /**
+   * Sets the params used during the detection
+   * @inner
+   * @param {object} params
+   * @param {number} [params.laplacian_threshold] - 0 - 100 default 30
+   * @param {number} [params.eigen_threshold] - 0 - 100 default 25
+   * @param {number} [params.detection_corners_max] - 100 - 1000 default 500
+   * @param {number} [params.border_size] default 3
+   * @param {number} [params.fast_threshold] - 0 - 10 default 48
+   */
+  this.SetParameters = function(params) {
+    for (var name in params) {
+      if (typeof _params[name] !== 'undefined')
+        _params[name] = params[name];
+    }
+  };
+=======
+      });
+    });
+  }
+>>>>>>> copy just the necessary corners in the message
+
+  function ParseArray(json, path) {
+    return ParseResources(json, path).then(function(res) {
+
+      return ParseObjectArray(json.objects, res.materials,
+        res.geometries, res.sounds, res.constants);
+
+    });
+  }
+
+  function ParseObjectPostLoading(object, json, materials, geometries, sounds, constants) {
+    var matrix = new THREE.Matrix4();
+
+    object.uuid = json.uuid;
+
+<<<<<<< 8a82c35b9e5b14fa8e3692bd714049f19956b51c
+AM.IcAngle = (function() {
+  var u_max = new Int32Array( [ 15, 15, 15, 15, 14, 14, 14, 13, 13, 12, 11, 10, 9, 8, 6, 3, 0 ] );
+  var half_pi = Math.PI / 2;
+  
+  function DiamondAngle(y, x) {
+    if (y >= 0)
+      return (x >= 0 ? y / (x + y) : 1 - x / (-x + y)); 
+    else
+      return (x < 0 ? 2 - y / (-x - y) : 3 + x / (x - y));
+  }
+=======
+    if (json.name !== undefined) object.name = json.name;
+    if (json.matrix !== undefined) {
+>>>>>>> copy just the necessary corners in the message
+
+      matrix.fromArray(json.matrix);
+      matrix.decompose(object.position, object.quaternion, object.scale);
+
+    } else {
+
+      if (json.position !== undefined) object.position.fromArray(json.position);
+      if (json.rotation !== undefined) object.rotation.fromArray(json.rotation);
+      if (json.scale !== undefined) object.scale.fromArray(json.scale);
+      if (json.scaleXYZ !== undefined) {
+        object.scale.x *= json.scaleXYZ;
+        object.scale.y *= json.scaleXYZ;
+        object.scale.z *= json.scaleXYZ;
+      }
+    }
+
+<<<<<<< 8a82c35b9e5b14fa8e3692bd714049f19956b51c
+    // return Math.atan2(m_01, m_10);
+    DiamondAngle(m_01, m_10) * half_pi;
+  };
+})();
+
+AM.DetectKeypointsPostProc = (function() {
+
+  function Comp(a, b) {
+    return b.score < a.score;
+  }
+
+  return function(img, corners, count, max_allowed) {
+
+    // sort by score and reduce the count if needed
+    if(count > max_allowed) {
+      jsfeat.math.qsort(corners, 0, count - 1, Comp);
+      count = max_allowed;
+    }
+
+    // calculate dominant orientation for each keypoint
+    for(var i = 0; i < count; ++i) {
+      corners[i].angle = AM.IcAngle(img, corners[i].x, corners[i].y);
+    }
+
+    return count;
+  };
+})();
+=======
+    if (json.castShadow !== undefined) object.castShadow = json.castShadow;
+    if (json.receiveShadow !== undefined) object.receiveShadow = json.receiveShadow;
+
+    if (json.visible !== undefined) object.visible = json.visible;
+    if (json.userData !== undefined) object.userData = json.userData;
+
+    if (json.type === 'LOD') {
+
+      var levels = json.levels;
+>>>>>>> copy just the necessary corners in the message
+
+      for (var l = 0; l < levels.length; l++) {
+
+        var level = levels[l];
+        var child = object.getObjectByProperty('uuid', level.object);
+
+        if (child !== undefined) {
+          object.addLevel(child, level.distance);
+        }
+
+      }
+    }
+
+    if (json.children !== undefined) {
+      return ParseObjectArray(json.children, materials, geometries, sounds, constants).then(function(array) {
+        for (var i = 0, c = array.length; i < c; ++i) {
+          object.add(array[i]);
+        }
+        return object;
+      });
+    }
+    else
+      return Promise.resolve(object);
+  }
+
+  function GetGeometry(name, geometries) {
+    if (geometries[name] !== undefined)
+      return geometries[name];
+    else {
+      if (name === undefined)
+        console.warn('failed to get geometry: no id provided');
+      else
+        console.warn('failed to get geometry: no such geometry: ' + name);
+    }
+    return undefined;
+  }
+
+  function GetMaterial(name, materials) {
+    if (materials[name] !== undefined)
+      return materials[name];
+    else {
+      if (name === undefined)
+        console.warn('failed to get material: no id provided');
+      else
+        console.warn('failed to get material: no such material: ' + name);
+    }
+    return undefined;
+  }
+
+  function GetSound(name, sounds) {
+    if (sounds[name] !== undefined)
+      return sounds[name];
+    else {
+      if (name === undefined)
+        console.warn('failed to get sound: no id provided');
+      else
+        console.warn('failed to get sound: no such sound: ' + name);
+    }
+    return undefined;
+  }
+
+  function ParseObject(json, materials, geometries, sounds, constants) {
+    var object, url;
+
+    switch (json.type) {
+
+      case 'OBJ':
+      return new Promise(function(resolve, reject) {
+        if (THREE.OBJLoader) {
+          var obj_loader = new THREE.OBJLoader();
+
+          url = constants.model_path + '/' + json.url;
+          obj_loader.load(url, function(object) {
+
+            object.traverse(function(child) {
+              if (child.geometry) child.geometry.computeBoundingSphere();
+            });
+
+            ParseObjectPostLoading(object, json, materials, geometries, sounds, constants).then(function() {
+              resolve(object);
+            }, reject);
+
+          });
+        }
+        else {
+          reject('failed to load ' + json.uuid + ': THREE.OBJLoader is undefined');
+        }
+      });
+
+      case 'Collada':
+      object = new AMTHREE.ColladaObject();
+      return object.load(constants.model_path + json.url, constants.image_path).then(function(object) {
+        return ParseObjectPostLoading(object, json, materials, geometries, sounds, constants).then(function() {
+          return object;
+        });
+      });
+
+      case 'SoundObject':
+      object = new AMTHREE.SoundObject(GetSound(json.sound, sounds));
+      break;
+
+      case 'Scene':
+      object = new THREE.Scene();
+      break;
+
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+  /**
+   * Sets parameters, all optionnal
+   * @inner
+   * @param {object} params
+   * @param {number} [params.blur_size] default 3
+   * @param {bool} [params.blur] - compute blur ? default true
+   */
+  this.SetParameters = function(params) {
+    for (var name in params) {
+      if (typeof _params[name] !== 'undefined')
+        _params[name] = params[name];
+    }
+  };
+=======
+      case 'PerspectiveCamera':
+      object = new THREE.PerspectiveCamera( json.fov, json.aspect, json.near, json.far );
+      break;
+>>>>>>> copy just the necessary corners in the message
+
+      case 'OrthographicCamera':
+      object = new THREE.OrthographicCamera( json.left, json.right, json.top, json.bottom, json.near, json.far );
+      break;
+
+      case 'AmbientLight':
+      object = new THREE.AmbientLight( json.color );
+      break;
+
+      case 'DirectionalLight':
+      object = new THREE.DirectionalLight( json.color, json.intensity );
+      break;
+
+      case 'PointLight':
+      object = new THREE.PointLight( json.color, json.intensity, json.distance, json.decay );
+      break;
+
+      case 'SpotLight':
+      object = new THREE.SpotLight( json.color, json.intensity, json.distance, json.angle, json.exponent, json.decay );
+      break;
+
+      case 'HemisphereLight':
+      object = new THREE.HemisphereLight( json.color, json.groundColor, json.intensity );
+      break;
+
+      case 'Mesh':
+      object = new THREE.Mesh( GetGeometry( json.geometry, geometries ), GetMaterial( json.material, materials ) );
+      break;
+
+      case 'LOD':
+      object = new THREE.LOD();
+      break;
+
+      case 'Line':
+      object = new THREE.Line( GetGeometry( json.geometry, geometries ), GetMaterial( json.material, materials ), json.mode );
+      break;
+
+      case 'PointCloud': case 'Points':
+      object = new THREE.Points( GetGeometry( json.geometry, geometries ), GetMaterial( json.material, materials ) );
+      break;
+
+      case 'Sprite':
+      object = new THREE.Sprite( GetMaterial( json.material, materials ) );
+      break;
+
+      case 'Group':
+      object = new THREE.Group();
+      break;
+
+      default:
+      object = new THREE.Object3D();
+    }
+
+    return ParseObjectPostLoading(object, json, materials, geometries, sounds, constants);
+  }
+
+  function ParseObjectArray(json, materials, geometries, sounds, constants) {
+    if (json instanceof Array) {
+      return Promise.all(json.map(function(elem) {
+
+        return ParseObject(elem, materials, geometries, sounds, constants);
+
+      }));
+    }
+    else
+      return Promise.reject('failed to parse object array: json not an array');
+  }
+
+  function NormalizeObject(object) {
+    var box = new THREE.Box3();
+    var sphere = new THREE.Sphere();
+    var mesh = new THREE.Object3D();
+
+    mesh.add(object);
+
+    box.setFromObject(object);
+    box.getBoundingSphere(sphere);
+
+    mesh.scale.multiplyScalar(1 / sphere.radius);
+
+    sphere.center.divideScalar(sphere.radius);
+    mesh.position.sub(sphere.center);
+    mesh.updateMatrix();
+
+    var parent = new THREE.Object3D();
+    parent.add(mesh);
+
+    return parent;
+  }
+
+  function ComputeBoundingBox(object) {
+    object.traverse(function(child) {
+      if (child instanceof THREE.Mesh && child.geometry) {
+        child.geometry.computeBoundingBox();
+      }
+    });
+  }
+
+  function ComputeBoundingSphere(object) {
+    object.traverse(function(child) {
+      if (child instanceof THREE.Mesh && child.geometry) {
+        child.geometry.computeBoundingSphere();
+      }
+    });
+  }
+
+
+  if (typeof THREE !== 'undefined') {
+
+    /**
+    * @function
+    * @description Parses a json into an object.
+    * @param {object} json - the json structure
+    * @param {string} [path] - the path of the directory containing the assets.
+    * @returns {Promise.<THREE.Object3D, string>} a promise
+    */
+    AMTHREE.ParseObject = Parse;
+
+    /**
+    * @function
+    * @description Parses a json into an array of objects.
+    * @param {object} json - the json structure
+    * @param {string} [path] - the path of the directory containing the assets.
+    * @returns {Promise.<Array.<THREE.Object3D>, string>} a promise
+    */
+    AMTHREE.ParseObjectArray = ParseArray;
+
+    /**
+    * @function
+    * @description Loads a json file describing an object.
+    * @param {string} url
+    * @param {string} [path] - the path of the directory containing the assets.
+    * @returns {Promise.<THREE.Object3D, string>} a promise
+    */
+    AMTHREE.LoadObject = Load;
+
+    /**
+    * @function
+    * @description Loads a json file describing an array of objects.
+    * @param {string} url
+    * @param {string} [path] - the path of the directory containing the assets.
+    * @returns {Promise.<Array.<THREE.Object3D>, string>} a promise
+    */
+    AMTHREE.LoadObjectArray = LoadArray;
+
+    /**
+    * @function
+    * @description Moves and rescales an object so that it is contained in a sphere of radius 1, centered on the origin.
+    * @param {THREE.Object3D} the source object
+    * @returns {THREE.Object3D} an object containing the source
+    */
+    AMTHREE.NormalizeObject = NormalizeObject;
+
+    /**
+    * @function
+    * @description Compute the bounding box of an object's geometry and every descending.
+    * @param {THREE.Object3D}
+    */
+    AMTHREE.ComputeBoundingBox = ComputeBoundingBox;
+
+    /**
+    * @function
+    * @description Compute the bounding sphere of an object's geometry and every descending.
+    * @param {THREE.Object3D}
+    */
+    AMTHREE.ComputeBoundingSphere = ComputeBoundingSphere;
+
+  }
+  else {
+  }
+
+})();
+var AMTHREE = AMTHREE || {};
+
+
+if (typeof THREE !== 'undefined') {
+
+
+  AMTHREE.Sound = function(uuid, url) {
+    this.uuid = uuid || THREE.Math.generateUUID();
+    this.url = url;
+  };
+
+  AMTHREE.Sound.prototype.toJSON = function(meta) {
+    var output = {
+      uuid: this.uuid,
+      url: AMTHREE.GetFilename(this.url)
+    };
+
+    if (!meta.sounds)
+      meta.sounds = {};
+    if (!meta.sounds[this.uuid])
+      meta.sounds[this.uuid] = output;
+
+    return output;
+  };
+
+
+}
+else {
+  AMTHREE.Sound = function() {
+    console.warn('Sound.js: THREE undefined');
+  };
+}
+var AMTHREE = AMTHREE || {};
+
+
+if (typeof THREE !== 'undefined') {
+
+  /**
+   * 
+   * @class
+   * @augments {THREE.Object3D}
+   * @param {string} url - url of the sound
+   */
+  AMTHREE.SoundObject = function(sound) {
+    THREE.Object3D.call(this);
+
+    this.sound = sound;
+    this.audio = new Audio();
+    this.audio.loop = true;
+    this.playing = false;
+  };
+
+  AMTHREE.SoundObject.prototype = Object.create(THREE.Object3D.prototype);
+  AMTHREE.SoundObject.prototype.constructor = AMTHREE.SoundObject;
+
+  /**
+   * Plays the sound.
+   * @inner
+   */
+  AMTHREE.SoundObject.prototype.play = function() {
+    this.playing = true;
+    this.audio.src = this.sound.url;
+    this.audio.play();
+  };
+
+  /**
+   * Stops the sound.
+   * @inner
+   */
+  AMTHREE.SoundObject.prototype.stop = function() {
+    this.audio.src = '';
+    this.playing = false;
+  };
+
+  /**
+   * Pauses the sound.
+   * @inner
+   */
+  AMTHREE.SoundObject.prototype.pause = function() {
+    this.audio.pause();
+    this.playing = false;
+  };
+
+  /**
+   * Sets the sound's url.
+   * @inner
+   * @param {string} url
+   */
+  AMTHREE.SoundObject.prototype.setSound = function(sound) {
+    this.sound = sound;
+    if (this.isPlaying())
+      this.play();
+  };
+
+  /**
+   * Returns whether the sound is played.
+   * @inner
+   * @returns {bool}
+   */
+  AMTHREE.SoundObject.prototype.isPlaying = function() {
+    return this.playing;
+  };
+
+  /**
+   * Returns a clone of this.
+   * @inner
+   * @returns {AMTHREE.SoundObject}
+   */
+  AMTHREE.SoundObject.prototype.clone = function() {
+    return (new AMTHREE.SoundObject()).copy(this);
+  };
+
+  /**
+   * Copies the parameter.
+   * @inner
+   * @param {AMTHREE.SoundObject}
+   */
+  AMTHREE.SoundObject.prototype.copy = function(src) {
+    this.setSound(src.sound);
+    return this;
+  };
+
+
+  AMTHREE.SoundsCall = function(object, fun) {
+    object.traverse(function(s) {
+      if (s instanceof AMTHREE.SoundObject && s[fun])
+        s[fun]();
+    });
+  };
+
+  /**
+  * Recursively plays the sounds of this object and all his children
+  * @function
+  * @param {THREE.Object3D} object
+  */
+  AMTHREE.PlaySounds = function(object) {
+    AMTHREE.SoundsCall(object, 'play');
+  };
+
+  /**
+  * Recursively pauses the sounds of this object and all his children
+  * @function
+  * @param {THREE.Object3D} object
+  */
+  AMTHREE.PauseSounds = function(object) {
+    AMTHREE.SoundsCall(object, 'pause');
+  };
+
+  /**
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+   * Sets optionnals parameters
+   * @inner
+   * @param {object} params
+   * @param {number} [match_min] minimum number of matching corners necessary for a match to be valid. default 8
+   * @see AM.ImageFilter
+   * @see AM.Detection
+   * @see AM.Matching
+   * @see AM.Training
+   */
+  this.SetParameters = function(params) {
+    for (var name in params) {
+      if (typeof _params[name] !== 'undefined')
+        _params[name] = params[name];
+    }
+
+    _training.SetParameters(params);
+    _image_filter.SetParameters(params);
+    _detection.SetParameters(params);
+    _matching.SetParameters(params);
+=======
+  * Recursively stops the sounds of this object and all his children
+  * @function
+  * @param {THREE.Object3D} object
+  */
+  AMTHREE.StopSounds = function(object) {
+    AMTHREE.SoundsCall(object, 'stop');
+>>>>>>> copy just the necessary corners in the message
+  };
+
+  AMTHREE.SoundObject.prototype.toJSON = function(meta) {
+    var output = THREE.Object3D.prototype.toJSON.call(this, meta);
+
+    this.sound.toJSON(meta);
+
+    output.object.type = 'SoundObject';
+    output.object.sound = this.sound.uuid;
+
+    return output;
+  };
+
+
+}
+else {
+  AMTHREE.SoundObject = function() {
+    console.warn('SoundObject.js: THREE undefined');
+  };
+}
+/******************
+
+TrackedObjManager
+A class that moves objects on the scene relatively to the camera,
+smoothly using linear interpolation
+
+
+Constructor
+
+TrackedObjManager(parameters)
+
+parameters: an object holding the parameters 'camera', 'lerp_factor', and 'timeout'
+to set their respectives properties
+
+
+Properties
+
+camera: the origin, a 'THREE.Object3D'. Tracked objects are set has children of this object.
+
+lerp_factor: a number in [0, 1], 0.2 by default.
+The higher, the faster tracked objects will converge toward the camera.
+
+timeout: time in seconds, 3 by default.
+If an object isn't tracked for 'timeout' seconds, on_disable() is called,
+and the object is disabled.
+
+
+Methods
+
+Add(object, uuid, on_enable, on_disable)
+Add an object to track, and set the optionnal callbacks.
+The object is disabled until Track() or TrackCompose() are called.
+
+Remove(uuid)
+Remove an object. If the object is enabled, on_disable is called before removal.
+
+Update()
+
+Track(uuid, matrix)
+Sets a new position for a previously added object.
+If the object is disabled, on_enable() is called and the object is enabled
+
+TrackCompose(uuid, position, quaternion, scale)
+For convenience. Calls Track().
+
+TrackComposePosit(uuid, translation_pose, rotation_pose, model_size)
+For convenience. Calls TrackCompose().
+
+GetObject(uuid)
+
+
+Dependency
+
+three.js
+
+
+******************/
+
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+  /**
+   * Sets parameters of the matching
+   * @inner
+   * @param {object} params
+   * @param {number} [params.match_threshold] 16 - 128, default 48
+   */
+  this.SetParameters = function(params) {
+    for (var name in params) {
+      if (typeof _params[name] !== 'undefined')
+        _params[name] = params[name];
+    }
+  };
+=======
+>>>>>>> copy just the necessary corners in the message
+
+var AMTHREE = AMTHREE || {};
+
+if (typeof THREE !== 'undefined') {
+
+  /**
+  * 
+  * @class
+  * @param {object} parameters - An object holding parameters
+  * @param {THREE.Camera} parameters.camera
+  * @param {number} [parameters.lerp_factor=0.2] - 0 - 1
+  * @param {number} [parameters.timeout=6] Time before an object enabled gets disabled, in seconds.
+  */
+  AMTHREE.TrackedObjManager = function(parameters) {
+    parameters = parameters || {};
+
+    var that = this;
+
+    var _clock = new THREE.Clock(true);
+
+    var _holder = new AMTHREE.TrackedObjManager.prototype.Holder();
+
+    function LerpObjectsTransforms(src, dst, factor) {
+      src.position.lerp(dst.position, factor);
+      src.quaternion.slerp(dst.quaternion, factor);
+      src.scale.lerp(dst.scale, factor);
+    }
+
+    function UpdateLerpMethod() {
+      _holder.ForEach(function(elem) {
+
+        if (elem.enabled)
+          LerpObjectsTransforms(elem.object, elem.target, that.lerp_factor);
+
+      });
+    }
+
+    var _update_method = UpdateLerpMethod;
+
+    /**
+     * @property {THREE.Camera} camera
+     * @property {number} lerp_factor
+     * @property {number} timeout
+     */
+    this.camera = parameters.camera;
+
+    this.lerp_factor = parameters.lerp_factor || 0.8;
+
+    this.timeout = parameters.timeout || 6;
+
+    /**
+     * Adds an object
+     * @inner
+     * @param {THREE.Object3D} object - Starts disabled.
+     * @param {value} uuid
+     * @param {function} [on_enable] - Function called when the object is tracked and was disabled before.
+     * @param {function} [on_disable] - Function called when the object isnt tracked for "timeout" seconds.
+     */
+    this.Add = function(object, uuid, on_enable, on_disable) {
+      _holder.Add(object, uuid, on_enable, on_disable);
+    };
+
+    /**
+     * Remove an object
+     * @inner
+     * @param {value}
+     */
+    this.Remove = function(uuid) {
+      _holder.Remove(uuid);
+    };
+
+    /**
+     * Clear all the objects
+     * @inner
+     */
+    this.Clear = function() {
+      _holder.Clear();
+    };
+
+    /**
+     * Updates the objects tranforms
+     * @inner
+     */
+    this.Update = function() {
+
+      _holder.UpdateElapsed(_clock.getDelta());
+      _holder.CheckTimeout(that.timeout);
+
+      _update_method();
+    };
+
+    /**
+     * Sets a tracked object transform
+     * @inner
+     * @function
+     * @param {value} uuid
+     * @param {THREE.Matrix4} matrix
+     */
+    this.Track = function() {
+
+      var new_matrix = new THREE.Matrix4();
+      var obj_tmp = new THREE.Object3D();
+
+      return function(uuid, matrix) {
+
+        if (that.camera) {
+
+          var elem = _holder.Get(uuid);
+          if (elem) {
+            var target = elem.target;
+
+            new_matrix.copy(that.camera.matrixWorld);
+            new_matrix.multiply(matrix);
+
+            if (elem.enabled) {
+              new_matrix.decompose(obj_tmp.position, obj_tmp.quaternion, obj_tmp.scale);
+              LerpObjectsTransforms(target, obj_tmp, that.lerp_factor);
+            }
+            else {
+              new_matrix.decompose(target.position, target.quaternion, target.scale);
+              new_matrix.decompose(elem.object.position, elem.object.quaternion, elem.object.scale);
+            }
+
+            _holder.Track(uuid);
+
+            return true;
+
+          }
+          else
+            console.warn('TrackedObjManager: object ' + uuid + ' not found');
+        }
+        else
+          console.warn('TrackedObjManager: camera is undefined');
+
+        return false;
+      };
+    }();
+
+    /**
+     * Sets a tracked object transform
+     * @inner
+     * @function
+     * @param {value} uuid
+     * @param {THREE.Vector3} position
+     * @param {THREE.Quaternion} quaternion
+     * @param {THREE.Vector3} scale
+     */
+    this.TrackCompose = function() {
+
+      var matrix = new THREE.Matrix4();
+
+      return function(uuid, position, quaternion, scale) {
+
+        matrix.compose(position, quaternion, scale);
+
+        return that.Track(uuid, matrix);
+      };
+    }();
+
+    /**
+     * Sets a tracked object transform
+     * @inner
+     * @function
+     * @param {value} uuid
+     * @param {number[]} translation_pose
+     * @param {number[][]} rotation_pose
+     * @param {number} model_size
+     */
+    this.TrackComposePosit = function() {
+
+      var position = new THREE.Vector3();
+      var euler = new THREE.Euler();
+      var quaternion = new THREE.Quaternion();
+      var scale = new THREE.Vector3();
+
+      return function(uuid, translation_pose, rotation_pose, model_size) {
+
+        position.x = translation_pose[0];
+        position.y = translation_pose[1];
+        position.z = -translation_pose[2];
+
+        euler.x = -Math.asin(-rotation_pose[1][2]);
+        euler.y = -Math.atan2(rotation_pose[0][2], rotation_pose[2][2]);
+        euler.z = Math.atan2(rotation_pose[1][0], rotation_pose[1][1]);
+
+        scale.x = model_size;
+        scale.y = model_size;
+        scale.z = model_size;
+
+        quaternion.setFromEuler(euler);
+
+        return that.TrackCompose(uuid, position, quaternion, scale);
+      };
+    }();
+
+    /**
+     * Returns an object held by this
+     * @inner
+     * @param {value} uuid
+     */
+    this.GetObject = function(uuid) {
+      var elem = _holder.get(uuid);
+      if (elem) {
+        return elem.object;
+      }
+      return undefined;
+    };
+
+
+  };
+
+
+  AMTHREE.TrackedObjManager.prototype.Holder = function() {
+    var that = this;
+
+    var _objects = {};
+
+    this.Add = function(object, uuid, on_enable, on_disable) {
+
+      _objects[uuid] =
+      {
+        object: object,
+        target:
+        {
+          position: object.position.clone(),
+          quaternion: object.quaternion.clone(),
+          scale: object.scale.clone(),
+        },
+        elapsed: 0,
+        on_enable: on_enable,
+        on_disable: on_disable,
+        enabled: false
+      };
+    };
+
+    this.Remove = function(uuid) {
+      var elem = _objects[uuid];
+
+      if (elem.enabled) {
+        if (elem.on_disable)
+          elem.on_disable(elem.object);
+      }
+      delete _objects[uuid];
+    };
+
+    this.Clear = function() {
+      for (var uuid in _objects)
+        that.Remove(uuid);
+    };
+
+    this.Track = function(uuid) {
+
+      var elem = _objects[uuid];
+
+      elem.elapsed = 0;
+
+      if (!elem.enabled) {
+        elem.enabled = true;
+        if (elem.on_enable)
+          elem.on_enable(elem.object);
+      }
+    };
+
+    this.UpdateElapsed = function(elapsed) {
+      for (var uuid in _objects) {
+
+        _objects[uuid].elapsed += elapsed;
+      }
+    };
+
+    this.CheckTimeout = function(timeout) {
+
+      for (var uuid in _objects) {
+
+        var elem = _objects[uuid];
+
+        if (elem.enabled && elem.elapsed > timeout) {
+          if (elem.on_disable)
+            elem.on_disable(elem.object);
+          elem.enabled = false;
+        }
+      }
+    };
+
+    this.ForEach = function(fun) {
+      for (var uuid in _objects) {
+        fun(_objects[uuid]);
+      }
+    };
+
+    this.Get = function(uuid) {
+      return _objects[uuid];
+    };
+
+
+  };
+
+
+}
+else {
+  AMTHREE.TrackedObjManager = function() {
+    console.warn('TrackedObjManager.js: THREE undefined');
+  };
+}
+var AMTHREE = AMTHREE || {};
 
 
 AMTHREE.AnimatedTextureCall = function(object, fun) {
@@ -10267,6 +12221,19 @@ AMTHREE.WorldToCanvasPosition = function(position, camera, canvas) {
   var y = Math.round( (-vec.y + 1) * canvas.height / 2 );
 
   return { x: x, y: y, z: vec.z };
+};
+
+/**
+ * Recursively update animations on this object and all his children.
+ * @param {THREE.Object3D} object
+ */
+AMTHREE.PlayAnimations = function(object) {
+  object.traverse( function ( child ) {
+    if ( child instanceof THREE.SkinnedMesh ) {
+      var animation = new THREE.Animation( child, child.geometry.animation );
+      animation.play();
+    }
+  } );
 };
 
 AMTHREE.GetFilename = function(path) {
@@ -10400,12 +12367,24 @@ if (typeof THREE !== 'undefined') {
   };
 
   /**
+<<<<<<< 8d828e3c23b28ed5f72f30c0962d275317742a97
+   * Sets parameters of the training
+   * @inner
+   * @param {object} params
+   * @params {number} [params.num_train_levels=3] - default 3
+   * @params {number} [params.blur_size=3] - default 3
+   * @params {number} [params.image_size_max=512] - default 512
+   * @params {number} [params.training_corners_max=200] - default 200
+   * @params {number} [params.laplacian_threshold=30] - default 30
+   * @params {number} [params.eigen_threshold=25] - default 25
+=======
    * Sets the texture.
    * @param {AMTHREE.Video} [video]
    * @param {number} [width]
    * @param {number} [height]
    * @param {bool} [loop=true]
    * @param {bool} [autoplay=false]
+>>>>>>> copy just the necessary corners in the message
    */
   AMTHREE.VideoTexture.prototype.set = function(video, width, height, loop, autoplay) {
     this.stop();
@@ -10454,1348 +12433,3 @@ else {
     console.warn('VideoTexture.js: THREE undefined');
   };
 }
-var AM = AM || {};
-
-
-/**
- * Detects corners in an image using FAST, and descriptors using ORB.
- * @class
- */
-AM.Detection = function() {
-
-  var _params = {
-    laplacian_threshold: 30,
-    eigen_threshold: 25,
-    detection_corners_max: 500,
-    border_size: 15,
-    fast_threshold: 20
-  };
-
-  var _debug =false;
-
-  var _screen_corners = [];
-  var _num_corners = 0;
-
-  var _screen_descriptors = new jsfeat.matrix_t(32, _params.detection_corners_max, jsfeat.U8_t | jsfeat.C1_t);
-
-  function AllocateCorners(width, height) {
-    var i = width * height;
-
-    if (i > _screen_corners.length) {
-      while (--i >= 0) {
-        _screen_corners[i] = new jsfeat.keypoint_t();
-      }
-    }
-  }
-
-  /**
-   * Computes the image corners and descriptors and saves them internally.
-   * <br>Use {@link ImageFilter} first to filter an Image.
-   * @inner
-   * @param {jsfeat.matrix_t} img
-   */
-  this.Detect = function(img) {
-    AllocateCorners(img.cols, img.rows);
-
-    _num_corners = AM.DetectKeypointsYape06(img, _screen_corners, _params.detection_corners_max,
-      _params.laplacian_threshold, _params.eigen_threshold, _params.border_size);
-    
-    // _num_corners = AM.DetectKeypointsFast(img, _screen_corners, _params.detection_corners_max,
-    //   _params.fast_threshold, _params.border_size);
-
-    jsfeat.orb.describe(img, _screen_corners, _num_corners, _screen_descriptors);
-
-    if (_debug) console.log("Learn : " + _num_corners + " corners");
-  };
-
-  /**
-   * Sets the params used during the detection
-   * @inner
-   * @param {object} params
-   * @param {number} [params.laplacian_threshold] - 0 - 100 default 30
-   * @param {number} [params.eigen_threshold] - 0 - 100 default 25
-   * @param {number} [params.detection_corners_max] - 100 - 1000 default 500
-   * @param {number} [params.border_size] default 3
-   * @param {number} [params.fast_threshold] - 0 - 10 default 48
-   */
-  this.SetParameters = function(params) {
-    for (var name in params) {
-      if (typeof _params[name] !== 'undefined')
-        _params[name] = params[name];
-    }
-  };
-
-  /**
-   * Returns the last computed descriptors
-   * @inner
-   * @returns {jsfeat.matrix_t} Descriptors
-   */
-  this.GetDescriptors = function() {
-    return _screen_descriptors;
-  };
-
-  /**
-   * Returns the count of the last computed corners
-   * @inner
-   * @returns {number}
-   */
-  this.GetNumCorners = function() {
-    return _num_corners;
-  };
-
-  /**
-   * Returns the last computed corners
-   * @inner
-   * @returns {jsfeat.keypoint_t[]}
-   */
-  this.GetCorners = function() {
-    return _screen_corners;
-  };
-
-
-};
-
-AM.IcAngle = (function() {
-  var u_max = new Int32Array( [ 15, 15, 15, 15, 14, 14, 14, 13, 13, 12, 11, 10, 9, 8, 6, 3, 0 ] );
-  var half_pi = Math.PI / 2;
-  
-  function DiamondAngle(y, x) {
-    if (y >= 0)
-      return (x >= 0 ? y / (x + y) : 1 - x / (-x + y)); 
-    else
-      return (x < 0 ? 2 - y / (-x - y) : 3 + x / (x - y));
-  }
-
-  return function(img, px, py) {
-    var half_k = 15; // half patch size
-    var m_01 = 0, m_10 = 0;
-    var src = img.data, step = img.cols;
-    var u = 0, v = 0, center_off = (py * step + px) | 0;
-    var v_sum = 0, d = 0, val_plus = 0, val_minus = 0;
-
-    // Treat the center line differently, v=0
-    for (u = -half_k; u <= half_k; ++u)
-      m_10 += u * src[center_off + u];
-
-    // Go line by line in the circular patch
-    for (v = 1; v <= half_k; ++v) {
-      // Proceed over the two lines
-      v_sum = 0;
-      d = u_max[v];
-      for (u = -d; u <= d; ++u) {
-        val_plus = src[center_off + u + v * step];
-        val_minus = src[center_off + u - v * step];
-        v_sum += (val_plus - val_minus);
-        m_10 += u * (val_plus + val_minus);
-      }
-      m_01 += v * v_sum;
-    }
-
-    // return Math.atan2(m_01, m_10);
-    DiamondAngle(m_01, m_10) * half_pi;
-  };
-})();
-
-AM.DetectKeypointsPostProc = (function() {
-
-  function Comp(a, b) {
-    return b.score < a.score;
-  }
-
-  return function(img, corners, count, max_allowed) {
-
-    // sort by score and reduce the count if needed
-    if(count > max_allowed) {
-      jsfeat.math.qsort(corners, 0, count - 1, Comp);
-      count = max_allowed;
-    }
-
-    // calculate dominant orientation for each keypoint
-    for(var i = 0; i < count; ++i) {
-      corners[i].angle = AM.IcAngle(img, corners[i].x, corners[i].y);
-    }
-
-    return count;
-  };
-})();
-
-AM.DetectKeypointsYape06 = function(img, corners, max_allowed,
-  laplacian_threshold, eigen_threshold, border_size) {
-
-  jsfeat.yape06.laplacian_threshold = laplacian_threshold;
-  jsfeat.yape06.min_eigen_value_threshold = eigen_threshold;
-
-  // detect features
-  var count = jsfeat.yape06.detect(img, corners, border_size);
-
-  count = AM.DetectKeypointsPostProc(img, corners, count, max_allowed);
-
-  return count;
-};
-
-AM.DetectKeypointsFast = function(img, corners, max_allowed, threshold, border_size) {
-  jsfeat.fast_corners.set_threshold(threshold);
-
-  var count = jsfeat.fast_corners.detect(img, corners, border_size || 3);
-
-  count = AM.DetectKeypointsPostProc(img, corners, count, max_allowed);
-
-  return count;
-};
-var AM = AM || {};
-
-
-/**
- * Filters images so the result can be used by {@link Detection}
- * @class
- */
-AM.ImageFilter = function() {
-
-  var _img_u8;
-
-  var _params = {
-    blur_size: 3,
-    blur: true
-  };
-
-  /**
-   * Filters the image and saves the result internally
-   * @inner
-   * @param {ImageData} image_data
-   */
-  this.Filter = function(image_data) {
-    var width = image_data.width;
-    var height = image_data.height;
-
-    if (_img_u8) _img_u8.resize(width, height, jsfeat.U8_t | jsfeat.C1_t);
-    else _img_u8 = new jsfeat.matrix_t(width, height, jsfeat.U8_t | jsfeat.C1_t);
-
-    jsfeat.imgproc.grayscale(image_data.data, width, height, _img_u8);
-
-    if (_params.blur)
-      jsfeat.imgproc.gaussian_blur(_img_u8, _img_u8, _params.blur_size);
-  };
-
-  /**
-   * Returns the last filtered image
-   * @inner
-   * @returns {jsfeat.matrix_t}
-   */
-  this.GetFilteredImage = function() {
-    return _img_u8;
-  };
-
-  /**
-   * Sets parameters, all optionnal
-   * @inner
-   * @param {object} params
-   * @param {number} [params.blur_size] default 3
-   * @param {bool} [params.blur] - compute blur ? default true
-   */
-  this.SetParameters = function(params) {
-    for (var name in params) {
-      if (typeof _params[name] !== 'undefined')
-        _params[name] = params[name];
-    }
-  };
-
-
-};
-/*************************
-
-
-
-
-
-
-
-SetParameters(params)
-
-params.match_min
-params.laplacian_threshold
-params.eigen_threshold
-params.detection_corners_max
-params.blur
-params.blur_size
-params.match_threshold
-params.num_train_levels
-params.image_size_max
-params.training_corners_max
-
-
-
-*************************/
-
-
-var AM = AM || {};
-
-
-/**
- * @class
- */
-AM.MarkerTracker = function() {
-
-  var _training = new AM.Training();
-  var _trained_images = {};
-
-  var _image_filter = new AM.ImageFilter();
-  var _detection = new AM.Detection();
-  var _matching = new AM.Matching();
-  var _pose = new AM.Pose();
-
-  var _match_found = false;
-  var _matching_image;
-
-  var _params = {
-    match_min : 8
-  };
-  
-  var _debug =false; 
-  
-  var _profiler = new AM.Profiler();
-  _profiler.add('filter');
-  _profiler.add('detection');
-  _profiler.add('matching');
-  _profiler.add('pose');
-
-
-  /**
-  * Computes the corners and descriptors
-  * @inner
-  * @param {ImageData} image_data
-  */
-  this.ComputeImage = function(image_data) {
-    _profiler.new_frame();
-    _profiler.start('filter');
-    _image_filter.Filter(image_data);
-    _profiler.stop('filter');
-    _profiler.start('detection');
-    _detection.Detect(_image_filter.GetFilteredImage());
-    _profiler.stop('detection');
-  };
-
-  /**
-   * Matches the last computed ImageData and every active trained image.
-   * @inner
-   * @returns {bool} true if a match if found.
-   */
-  this.Match = function() {
-    _profiler.start('matching');
-
-    _match_found = false;
-    _matching_image = undefined;
-
-    _matching.SetScreenDescriptors(_detection.GetDescriptors());
-
-    for(var uuid in _trained_images) {
-      var trained_image = _trained_images[uuid];
-
-      if (!trained_image.IsActive())
-        continue;
-
-      _matching.Match(trained_image.GetDescriptorsLevels());
-
-      var count = _matching.GetNumMatches();
-
-      _match_found = (count >= _params.match_min);
-      if (_debug) console.log("nbMatches : " + count);
-      if (!_match_found)
-        continue;
-
-      var good_count = _pose.Pose(_matching.GetMatches(), count,
-        _detection.GetCorners(), trained_image.GetCornersLevels());
-      _match_found = (good_count >= _params.match_min);
-
-      if (_debug) console.log(" goodMatches : " + good_count);
-      if (_match_found) {
-        _matching_image = trained_image;
-        break;
-      }
-
-    }
-
-    _profiler.stop('matching');
-    if (_debug) console.log(_profiler.log2());
-
-    return _match_found;
-  };
-
-  /**
-   * Returns the id of the last match
-   * @inner
-   */
-  this.GetMatchUuid = function() {
-    return _matching_image.GetUuid();
-  };
-
-  /**
-   * Computes and returns the pose of the last match
-   * @inner
-   * @returns {Point2D[]} The corners
-   */
-  this.GetPose = function() {
-    if (_match_found) {
-      _profiler.start('pose');
-      var pose = _pose.GetPoseCorners(_matching_image.GetWidth(), _matching_image.GetHeight());
-      _profiler.stop('pose');
-      return pose;
-    }
-    return undefined;
-  };
-
-  /**
-   * Trains a marker
-   * @inner
-   * @param {ImageData} image_data - The marker, has to be a square (same width and height).
-   * @param {value} uuid - The identifier of the marker.
-   */
-  this.AddMarker = function(image_data, uuid) {
-    _training.Train(image_data);
-    var trained_image = new AM.TrainedImage(uuid);
-    _training.SetResultToTrainedImage(trained_image);
-    _training.Empty();
-    _trained_images[uuid] = trained_image;
-  };
-
-  /**
-   * Removes a marker
-   * @inner
-   * @param {value} uuid - The identifier of the marker.
-   */
-  this.RemoveMarker = function(uuid) {
-    if (_trained_images[uuid]) {
-      delete _trained_images[uuid];
-    }
-  };
-
-  /**
-   * Activates or desactivates a marker.
-   * <br>A marker inactive will be ignored during the matching.
-   * @inner
-   * @param {value} uuid - The identifier of the marker.
-   * @param {bool} bool - Sets active if true, inactive if false.
-   */
-  this.ActiveMarker = function(uuid, bool) {
-    if (_trained_images[uuid])
-      _trained_images[uuid].Active(bool);
-  };
-
-  /**
-   * Sets active or inactive all the markers
-   * @inner
-   * @param {bool} bool - Sets all active if true, inactive if false.
-   */
-  this.ActiveAllMarkers = function(bool) {
-    for (var uuid in _trained_images) {
-      _trained_images[uuid].Active(bool);
-    }
-  };
-
-  /**
-   * Removes all the markers
-   * @inner
-   */
-  this.ClearMarkers = function() {
-    _trained_images = {};
-  };
-
-  /**
-   * Returns the corners of the last computed image
-   * @inner
-   * @returns {jsfeat.keypoint_t[]}
-   */
-  this.GetScreenCorners = function() {
-    return _detection.GetCorners();
-  };
-
-  /**
-   * Returns the count of corners of the last computed image
-   * @inner
-   * @returns {number}
-   */
-  this.GetNumScreenCorners = function() {
-    return _detection.GetNumCorners();
-  };
-
- /**
-   * Returns the buffer of matches ()
-   * @inner
-   * @returns {AM.match_t[]}
-   */
-  this.GetMatches = function () {
-    return _matching.GetMatches();
-  };
-
- /**
-   * Returns the buffer of matches validated by homography ()
-   * @inner
-   * @returns {AM.match_t[]}
-   */
-  this.GetMatchesMask = function () {
-    return _pose.GetMatchesMask();
-  };
-
-/**
-   * Returns the timings of matching function()
-   * @inner
-   * @returns {pair[]}
-   */
-  this.GetProfiler = function () {
-    return _profiler.GetProfiler();
-  };
-
-/**
-   * Returns corners of trained image
-   * @inner
-   * @returns {jsfeat.keypoint_t[]}
-   */
-  this.GetTrainedCorners = function () {
-    var trained_image = _trained_images[_matching_image.GetUuid()];
-    return trained_image.GetCornersLevels();
-  };
-
-  /**
-   * Puts the log to the console
-   * @inner
-   */
-  this.Log = function() {
-    console.log(_profiler.log() + ((_match_found) ? '<br/>match found' : ''));
-  };
-
-  /**
-   * Sets optionnals parameters
-   * @inner
-   * @param {object} params
-   * @param {number} [match_min] minimum number of matching corners necessary for a match to be valid. default 8
-   * @see AM.ImageFilter
-   * @see AM.Detection
-   * @see AM.Matching
-   * @see AM.Training
-   */
-  this.SetParameters = function(params) {
-    for (var name in params) {
-      if (typeof _params[name] !== 'undefined')
-        _params[name] = params[name];
-    }
-
-    _training.SetParameters(params);
-    _image_filter.SetParameters(params);
-    _detection.SetParameters(params);
-    _matching.SetParameters(params);
-  };
-};
-var AM = AM || {};
-
-
-/**
- * Matches descriptors
- * @class
- */
-AM.Matching = function() {
-
-  var _screen_descriptors;
-
-  var _num_matches;
-  var _matches = [];
-
-  var _params = {
-    match_threshold: 48
-  };
-
-  /**
-   *
-   * @inner
-   * @param {jsfeat.matrix_t} screen_descriptors
-   */
-  this.SetScreenDescriptors = function(screen_descriptors) {
-    _screen_descriptors = screen_descriptors;
-  };
-
-  /**
-   * Computes the matching.
-   * @inner
-   * @param {jsfeat.matrix_t[]} pattern_descriptors - The descriptors of a trained image.
-   * @returns {number} The number of matches of the best match if there is a match, 0 otherwise.
-   */
-  this.Match = function(pattern_descriptors) {
-    _num_matches = MatchPattern(_screen_descriptors, pattern_descriptors);
-    return _num_matches;
-  };
-
-  function popcnt32(n) {
-    n -= ((n >> 1) & 0x55555555);
-    n = (n & 0x33333333) + ((n >> 2) & 0x33333333);
-    return (((n + (n >> 4))& 0xF0F0F0F)* 0x1010101) >> 24;
-  }
-
-  var popcnt32_2 = function() {
-    var v2b = [
-      0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
-      1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
-      1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
-      2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
-      1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
-      2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
-      2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
-      3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
-      1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
-      2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
-      2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
-      3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
-      2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
-      3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
-      3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
-      4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8,
-    ];
-
-    var m8 = 0x000000ff;
-
-    return function(n) {
-      var r = v2b[n & m8];
-      n = n >> 8;
-      r += v2b[n & m8];
-      n = n >> 8;
-      r += v2b[n & m8];
-      n = n >> 8;
-      r += v2b[n & m8];
-      return r;
-    };
-  }();
-
-  var popcnt32_3 = function() {
-
-    var v2b = [];
-    for (i = 0; i < 256 * 256; ++i)
-      v2b.push(popcnt32(i));
-
-    var m16 = 0x0000ffff;
-
-    return function(n) {
-      var r = v2b[n & m16];
-      n = n >> 16;
-      r += v2b[n & m16];
-      return r;
-    };
-  }();
-
-  function MatchPattern(screen_descriptors, pattern_descriptors) {
-    var q_cnt = screen_descriptors.rows;
-    var query_u32 = screen_descriptors.buffer.i32; // cast to integer buffer
-    var qd_off = 0;
-    var num_matches = 0;
-
-    _matches = [];
-
-    for (var qidx = 0; qidx < q_cnt; ++qidx) {
-      var best_dist = 256;
-      var best_dist2 = 256;
-      var best_idx = -1;
-      var best_lev = -1;
-
-      for (var lev = 0, lev_max = pattern_descriptors.length; lev < lev_max; ++lev) {
-        var lev_descr = pattern_descriptors[lev];
-        var ld_cnt = lev_descr.rows;
-        var ld_i32 = lev_descr.buffer.i32; // cast to integer buffer
-        var ld_off = 0;
-
-        for (var pidx = 0; pidx < ld_cnt; ++pidx) {
-
-          var curr_d = 0;
-          // our descriptor is 32 bytes so we have 8 Integers
-          for (var k = 0; k < 8; ++k) {
-            curr_d += popcnt32_3(query_u32[qd_off + k] ^ ld_i32[ld_off + k]);
-          }
-
-          if (curr_d < best_dist) {
-            best_dist2 = best_dist;
-            best_dist = curr_d;
-            best_lev = lev;
-            best_idx = pidx;
-          } else if (curr_d < best_dist2) {
-            best_dist2 = curr_d;
-          }
-
-          ld_off += 8; // next descriptor
-        }
-      }
-
-      // filter out by some threshold
-      if (best_dist < _params.match_threshold) {
-
-        while (_matches.length <= num_matches) {
-          _matches.push(new AM.match_t());
-        }
-
-        _matches[num_matches].screen_idx = qidx;
-        _matches[num_matches].pattern_lev = best_lev;
-        _matches[num_matches].pattern_idx = best_idx;
-        num_matches++;
-      }
-
-      // filter using the ratio between 2 closest matches
-      /*if(best_dist < 0.8*best_dist2) {
-        while (_matches.length <= num_matches) {
-          _matches.push(new AM.match_t());
-        }
-        _matches[num_matches].screen_idx = qidx;
-        _matches[num_matches].pattern_lev = best_lev;
-        _matches[num_matches].pattern_idx = best_idx;
-        num_matches++;
-      }*/
-      
-
-      qd_off += 8; // next query descriptor
-    }
-
-    _matches.length = num_matches;
-    return num_matches;
-  }
-
-  /**
-   * Returns the matches
-   * @inner
-   * @returns {AM.match_t[]} The buffer of matches
-   */
-  this.GetMatches = function() {
-    return _matches;
-  };
-
-  /**
-   * Returns the number of matches
-   * @inner
-   * @returns {number}
-   */
-  this.GetNumMatches = function() {
-    return _num_matches;
-  };
-
-  /**
-   * Sets parameters of the matching
-   * @inner
-   * @param {object} params
-   * @param {number} [params.match_threshold] 16 - 128, default 48
-   */
-  this.SetParameters = function(params) {
-    for (var name in params) {
-      if (typeof _params[name] !== 'undefined')
-        _params[name] = params[name];
-    }
-  };
-
-
-};
-
-/**
- *
- * @class
- * @param {number} screen_idx
- * @param {number} pattern_lev
- * @param {number} pattern_idx
- * @param {number} distance
- */ 
-AM.match_t = function (screen_idx, pattern_lev, pattern_idx, distance) {
-  this.screen_idx = screen_idx || 0;
-  this.pattern_lev = pattern_lev || 0;
-  this.pattern_idx = pattern_idx || 0;
-  this.distance = distance || 0;
-};
-var AM = AM || {};
-
-
-/**
- * Computes the pose and remove bad matches using RANSAC
- * @class
- */
-AM.Pose = function() {
-
-  var _good_count = 0;
-  var _homo3x3 = new jsfeat.matrix_t(3, 3, jsfeat.F32C1_t);
-  var _match_mask = new jsfeat.matrix_t(500, 1, jsfeat.U8C1_t);
-
-
-  // estimate homography transform between matched points
-  function find_transform(matches, count, homo3x3, match_mask, screen_corners, pattern_corners) {
-    // motion kernel
-    var mm_kernel = new jsfeat.motion_model.homography2d();
-    // ransac params
-    var num_model_points = 4;
-    var reproj_threshold = 3;
-    var ransac_param = new jsfeat.ransac_params_t(num_model_points,
-                                                  reproj_threshold, 0.5, 0.99);
-
-    var pattern_xy = [];
-    var screen_xy = [];
-
-    var i;
-
-    // construct correspondences
-    for(i = 0; i < count; ++i) {
-      var m = matches[i];
-      var s_kp = screen_corners[m.screen_idx];
-      var p_kp = pattern_corners[m.pattern_lev][m.pattern_idx];
-      pattern_xy[i] = { x: p_kp.x, y: p_kp.y };
-      screen_xy[i] =  { x: s_kp.x, y: s_kp.y };
-    }
-
-    // estimate motion
-    var ok = false;
-    ok = jsfeat.motion_estimator.ransac(ransac_param, mm_kernel,
-                                        pattern_xy, screen_xy, count, homo3x3, match_mask, 1000);
-
-    // extract good matches and re-estimate
-    var good_cnt = 0;
-    if (ok) {
-      for(i = 0; i < count; ++i) {
-        if(match_mask.data[i]) {
-          pattern_xy[good_cnt].x = pattern_xy[i].x;
-          pattern_xy[good_cnt].y = pattern_xy[i].y;
-          screen_xy[good_cnt].x = screen_xy[i].x;
-          screen_xy[good_cnt].y = screen_xy[i].y;
-          good_cnt++;
-        }
-      }
-      // run kernel directly with inliers only
-      mm_kernel.run(pattern_xy, screen_xy, homo3x3, good_cnt);
-    } else {
-      jsfeat.matmath.identity_3x3(homo3x3, 1.0);
-    }
-
-    return good_cnt;
-  }
-
-  // project/transform rectangle corners with 3x3 Matrix
-  function tCorners(M, w, h) {
-    var pt = [ { x: 0, y: 0 }, { x: w, y: 0 }, { x: w, y: h }, { x: 0, y: h } ];
-    var z = 0.0, px = 0.0, py = 0.0;
-
-    for (var i = 0; i < 4; ++i) {
-      px = M[0] * pt[i].x + M[1] * pt[i].y + M[2];
-      py = M[3] * pt[i].x + M[4] * pt[i].y + M[5];
-      z  = M[6] * pt[i].x + M[7] * pt[i].y + M[8];
-      pt[i].x = px / z;
-      pt[i].y = py / z;
-    }
-
-    return pt;
-  }
-
-  /**
-   *
-   * @inner
-   * @param {AM.match_t[]} matches
-   * @param {number} count - The matches count.
-   * @param {jsfeat.keypoint_t[]} screen_corners
-   * @param {jsfeat.keypoint_t[][]} pattern_corners
-   */
-  this.Pose = function(matches, count, screen_corners, pattern_corners) {
-    _good_count = find_transform(matches, count, _homo3x3, _match_mask, screen_corners, pattern_corners);
-    return _good_count;
-  };
-
-  /**
-   * Returns the count of good matches, computed using RANSAC by {@link AM.Pose#Pose}
-   * @inner
-   * @returns {number}
-   */
-  this.GetGoodCount = function() {
-    return _good_count;
-  };
-
-  /**
-   * Computes the 4 corners of the pose
-   * @inner
-   * @param {number} marker_width
-   * @param {number} marker_height
-   * @returns {Point2D[]} The corners
-   */
-   this.GetPoseCorners = function(marker_width, marker_height) {
-    return tCorners(_homo3x3.data, marker_width, marker_height);
-  };
-
-
-  this.GetMatchesMask = function() {
-    return _match_mask;
-  };
-};
-
-
-/**
- * Computes the posit pose, based on the corners
- * @class
- */
-AM.PosePosit = function() {
-
-  /**
-   * @typedef {object} PositPose
-   * @property {number[]} pose.bestTranslation
-   * @property {number[][]} pose.bestRotation
-   */
-
-  /**
-   * @property {PositPose} pose
-   */
-
-  this.posit = new POS.Posit(10, 1);
-  this.pose = undefined;
-};
-
-/**
- * Computes the pose
- * @inner
- * @param {Point2D[]} corners
- * @param {number} [model_size=35] The size of the real model.
- * @param {number} image_width
- * @param {number} image_height
- */
-AM.PosePosit.prototype.Set = function(corners, model_size, image_width, image_height) {
-  model_size = model_size || 35;
-
-  var corners2 = [];
-  for (var i = 0; i < corners.length; ++i) {
-    var x = corners[i].x - (image_width / 2);
-    var y = (image_height / 2) - corners[i].y;
-
-    corners2.push( { x: x, y: y } );
-  }
-
-  this.pose = this.posit.pose(corners2);
-};
-
-/**
- * Sets the focal's length
- * @inner
- * @param {number} value
- */
-AM.PosePosit.prototype.SetFocalLength = function(value) {
-  this.posit.focalLength = value;
-};
-
-
-/**
- * Computes the threejs pose, based on the posit pose
- * @class
- */
-AM.PoseThree = function() {
-  this.position = new THREE.Vector3();
-  this.rotation = new THREE.Euler();
-  this.quaternion = new THREE.Quaternion();
-  this.scale = new THREE.Vector3();
-};
-
-/**
- * Computes the pose
- * @inner
- * @param {PositPose} posit_pose
- * @param {number} model_size
- */
-AM.PoseThree.prototype.Set = function(posit_pose, model_size) {
-  model_size = model_size || 35;
-
-  var rot = posit_pose.bestRotation;
-  var translation = posit_pose.bestTranslation;
-
-  this.scale.x = model_size;
-  this.scale.y = model_size;
-  this.scale.z = model_size;
-
-  this.rotation.x = -Math.asin(-rot[1][2]);
-  this.rotation.y = -Math.atan2(rot[0][2], rot[2][2]);
-  this.rotation.z = Math.atan2(rot[1][0], rot[1][1]);
-
-  this.position.x = translation[0];
-  this.position.y = translation[1];
-  this.position.z = -translation[2];
-
-  this.quaternion.setFromEuler(this.rotation);
-};
-var AM = AM || {};
-
-
-/**
- * Holds the corners and the descriptors of an image, at different levels of zoom.
- * @class
- * @param {string} [uuid] - An unique identifier
- */
-AM.TrainedImage = function(uuid) {
-
-  var _empty = true;
-
-  var _corners_levels = [];
-  var _descriptors_levels = [];
-
-  var _width = 0;
-  var _height = 0;
-
-  var _uuid = uuid;
-
-  var _active = true;
-  
-
-  /**
-   * Returns the corners of a specified level.
-   * @inner
-   * @param {number} level - The level of the corners to be returned.
-   * @returns {jsfeat.keypoint_t[]}
-   */
-  this.GetCorners = function(level) {
-    return _corners_levels[level];
-  };
-
-  /**
-   * Returns the descriptors of a specified level.
-   * @inner
-   * @param {number} level - The level of the descriptors to be returned.
-   * @returns {jsfeat.matrix_t}
-   */
-  this.GetDescriptors = function(level) {
-    return _descriptors_levels[level];
-  };
-
-  /**
-   * Returns the number of level.
-   * @inner
-   * @return {number}
-   */
-  this.GetLevelNbr = function() {
-    return Math.min(_descriptors_levels.length, _corners_levels.length);
-  };
-
-  /**
-   * Returns all the corners.
-   * @inner
-   * @return {jsfeat.keypoint_t[][]}
-   */
-  this.GetCornersLevels = function() {
-    return _corners_levels;
-  };
-
-  /**
-   * Returns all the descriptors.
-   * @inner
-   * @return {jsfeat.matrix_t[]}
-   */
-  this.GetDescriptorsLevels = function() {
-    return _descriptors_levels;
-  };
-
-  /**
-   * Returns the width of the trained image at level 0.
-   * @inner
-   * @return {number}
-   */
-  this.GetWidth = function() {
-    return _width;
-  };
-
-  /**
-   * Returns the height of the trained image at level 0.
-   * @inner
-   * @return {number}
-   */
-  this.GetHeight = function() {
-    return _height;
-  };
-
-  /**
-   * Sets the trained image.
-   * @inner
-   * @param {jsfeat.keypoint_t[][]} corners_levels
-   * @param {jsfeat.matrix_t[]} descriptors_levels
-   * @param {number} width - width of the image at level 0
-   * @param {number} height - height of the image at level 0
-   */
-  this.Set = function(corners_levels, descriptors_levels, width, height) {
-    _empty = false;
-    _corners_levels = corners_levels;
-    _descriptors_levels = descriptors_levels;
-    _width = width;
-    _height = height;
-  };
-
-  /**
-   * Returns wether the object is set or not.
-   * @inner
-   * @returns {bool}
-   */
-  this.IsEmpty = function() {
-    return _empty;
-  };
-
-  /**
-   * Empty the object.
-   * @inner
-   */
-  this.Empty = function() {
-    _empty = true;
-    _corners_levels = [];
-    _descriptors_levels = [];
-  };
-
-  /**
-   * Sets the unique identifier of this object.
-   * @inner
-   * @param {value} uuid
-   */
-  this.SetUuid = function(uuid) {
-    _uuid = uuid;
-  };
-
-  /**
-   * Returns the unique identifier of this object.
-   * @inner
-   * @returns {value}
-   */
-  this.GetUuid = function() {
-    return _uuid;
-  };
-
-  /** Sets this object active or inactive
-   * @inner
-   * param {bool} bool
-   */
-  this.Active = function(bool) {
-    _active = (bool === true);
-  };
-
-  /**
-   * Returns the state of this object
-   * @inner
-   * @returns {bool}
-   */
-  this.IsActive = function() {
-    return _active;
-  };
-
-  
-};
-var AM = AM || {};
-
-
-/**
- * Trains an image, by computing its corners and descriptors on multiple scales
- * @class
-*/
-AM.Training = function() {
-
-  var _descriptors_levels;
-  var _corners_levels;
-
-  var _width = 0;
-  var _height = 0;
-
-  var _params = {
-    num_train_levels: 3,
-    blur_size: 3,
-    image_size_max: 512,
-    training_corners_max: 200,
-    laplacian_threshold: 30,
-    eigen_threshold: 25
-  };
-
-  var _scale_increment = Math.sqrt(2.0); // magic number ;)
-
-  var _gray_image;
-  var _blured_images = [];
-
-  function TrainLevel(img, level_img, level, scale) {
-    var corners = _corners_levels[level];
-    var descriptors = _descriptors_levels[level];
-
-    if (level !== 0) {
-      RescaleDown(img, level_img, scale);
-      jsfeat.imgproc.gaussian_blur(level_img, level_img, _params.blur_size);
-    }
-    else {
-      jsfeat.imgproc.gaussian_blur(img, level_img, _params.blur_size);
-    }
-
-    var corners_num = AM.DetectKeypointsYape06(level_img, corners, _params.training_corners_max,
-      _params.laplacian_threshold, _params.eigen_threshold);
-    corners.length = corners_num;
-    jsfeat.orb.describe(level_img, corners, corners_num, descriptors);
-
-    if (level !== 0) {
-      // fix the coordinates due to scale level
-      for(i = 0; i < corners_num; ++i) {
-        corners[i].x *= 1 / scale;
-        corners[i].y *= 1 / scale;
-      }
-    }
-
-    console.log('train ' + level_img.cols + 'x' + level_img.rows + ' points: ' + corners_num);
-  }
-
-  function RescaleDown(src, dst, scale) {
-    if (scale < 1) {
-      var new_width = Math.round(src.cols * scale);
-      var new_height = Math.round(src.rows * scale);
-
-      jsfeat.imgproc.resample(src, dst, new_width, new_height);
-    }
-    else {
-      dst.resize(src.cols, src.rows);
-      src.copy_to(dst);
-    }
-  }
-
-  function AllocateCornersDescriptors(width, height) {
-    for (var level = 0; level < _params.num_train_levels; ++level) {
-      _corners_levels[level] = [];
-      var corners = _corners_levels[level];
-
-      // preallocate corners array
-      var i = (width * height) >> level;
-      while (--i >= 0) {
-        corners[i] = new jsfeat.keypoint_t(0, 0, 0, 0, -1);
-      }
-
-      _descriptors_levels[level] = new jsfeat.matrix_t(32, _params.training_corners_max, jsfeat.U8_t | jsfeat.C1_t);
-    }
-  }
-
-  /**
-   * Trains an image, saves the result internally
-   * @inner
-   * @param {ImageData} image_data
-   */
-  this.Train = function(image_data) {
-    var level = 0;
-    var scale = 1.0;
-
-    _descriptors_levels = [];
-    _corners_levels = [];
-
-    var gray =  new jsfeat.matrix_t(image_data.width, image_data.height, jsfeat.U8_t | jsfeat.C1_t);
-
-    jsfeat.imgproc.grayscale(image_data.data, image_data.width, image_data.height, gray, jsfeat.COLOR_RGBA2GRAY);
-
-    var scale_0 = Math.min(_params.image_size_max / image_data.width, _params.image_size_max / image_data.height);
-    var img = new jsfeat.matrix_t(image_data.width * scale_0, image_data.height * scale_0, jsfeat.U8_t | jsfeat.C1_t);
-
-    _width = img.cols;
-    _height = img.rows;
-
-    RescaleDown(gray, img, scale_0);
-
-    AllocateCornersDescriptors(img.cols, img.rows);
-
-
-    var level_img = new jsfeat.matrix_t(img.cols, img.rows, jsfeat.U8_t | jsfeat.C1_t);
-
-    TrainLevel(img, level_img, 0, scale);
-
-    // lets do multiple scale levels
-    for(level = 1; level < _params.num_train_levels; ++level) {
-      scale /= _scale_increment;
-
-      TrainLevel(img, level_img, level, scale);
-    }
-  };
-
-  cloneImage = function(img){
-    var dst = new jsfeat.matrix_t(img.cols, img.rows, jsfeat.U8_t | jsfeat.C1_t);
-    img.copy_to(dst);
-    return dst;
-  };
-
- /**
-   * Trains an image, saves the intermediate results and images internally
-   * @inner
-   * @param {ImageData} image_data
-   */
-  this.TrainFull = function(image_data) {
-    var level = 0;
-    var scale = 1.0;
-
-    _descriptors_levels = [];
-    _corners_levels = [];
-    _blured_images = [];
-
-    var gray =  new jsfeat.matrix_t(image_data.width, image_data.height, jsfeat.U8_t | jsfeat.C1_t);
-
-    jsfeat.imgproc.grayscale(image_data.data, image_data.width, image_data.height, gray, jsfeat.COLOR_RGBA2GRAY);
-
-    var scale_0 = Math.min(_params.image_size_max / image_data.width, _params.image_size_max / image_data.height);
-    var img = new jsfeat.matrix_t(image_data.width * scale_0, image_data.height * scale_0, jsfeat.U8_t | jsfeat.C1_t);
-
-    _width = img.cols;
-    _height = img.rows;
-
-    RescaleDown(gray, img, scale_0);
-
-    AllocateCornersDescriptors(img.cols, img.rows);
-
-    var level_img = new jsfeat.matrix_t(img.cols, img.rows, jsfeat.U8_t | jsfeat.C1_t);
-
-    TrainLevel(img, level_img, 0, scale);
-    _gray_image=img;
-    _blured_images[0] = cloneImage(level_img);
-
-    // lets do multiple scale levels
-    for(level = 1; level < _params.num_train_levels; ++level) {
-      scale /= _scale_increment;
-
-      TrainLevel(img, level_img, level, scale);
-      _blured_images[level] = cloneImage(level_img);
-    }
-  };
-
-  this.getGrayData = function() {
-    return _gray_image;
-  };
-
-  this.getBluredImages = function(){
-    return _blured_images;
-  };
-
-  /**
-   * Sets the result of the previous {@link AM.Training#Train} call to a {@link AM.TrainedImage}
-   * @inner
-   * @param {AM.TrainedImage} trained_image
-   */
-  this.SetResultToTrainedImage = function(trained_image) {
-    trained_image.Set(_corners_levels, _descriptors_levels, _width, _height);
-  };
-
-  /**
-   * Returns false if this object contains a result
-   * @inner
-   * @returns {bool}
-   */
-  this.IsEmpty = function() {
-    return (!_descriptors_levels || !_corners_levels);
-  };
-
-  /**
-   * Empties results stored
-   * @inner
-   */
-  this.Empty = function() {
-    _descriptors_levels = undefined;
-    _corners_levels = undefined;
-    _blured_images = undefined;
-  };
-
-  /**
-   * Sets parameters of the training
-   * @inner
-   * @param {object} params
-   * @params {number} [params.num_train_levels=3] - default 3
-   * @params {number} [params.blur_size=3] - default 3
-   * @params {number} [params.image_size_max=512] - default 512
-   * @params {number} [params.training_corners_max=200] - default 200
-   * @params {number} [params.laplacian_threshold=30] - default 30
-   * @params {number} [params.eigen_threshold=25] - default 25
-   */
-  this.SetParameters = function(params) {
-    for (var name in params) {
-      if (typeof _params[name] !== 'undefined')
-        _params[name] = params[name];
-    }
-  };
-
-  this.GetScaleIncrement = function(){
-    return _scale_increment;
-  };
-
-};
