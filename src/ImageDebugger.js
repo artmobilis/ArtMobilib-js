@@ -83,6 +83,17 @@ AM.ImageDebugger = function() {
    * @param {object} corner and matching information
   */
   this.DrawCorners = function(marker_corners) {
+    if(!_debugMatches) return;
+    if(!marker_corners) return;
+
+    _screen_corners = marker_corners.screen_corners;
+    _profiler       = marker_corners.profiles;
+    _image_data     = marker_corners.image_data;
+
+
+    if(!_screen_corners) return;
+    if(!_screen_corners.length) return;
+
     that.DrawCornerswithContext(marker_corners);
   //  that.DrawCornerswithImageData(marker_corners);
 
@@ -103,16 +114,6 @@ AM.ImageDebugger = function() {
   this.DrawCornerswithContext = function(marker_corners) {
     var i, sc;
 
-    if(!_debugMatches) return;
-    if(!marker_corners) return;
-
-    _screen_corners = marker_corners.screen_corners;
-    _profiler       = marker_corners.profiles;
-    _image_data     = marker_corners.image_data;
-
-
-    if(!_screen_corners.length) return;
-
     _context2d.fillStyle="red";
   
     _context2d.putImageData(_image_data, _canvas_width-_image_data.width, _hbands);
@@ -127,47 +128,37 @@ AM.ImageDebugger = function() {
 
   this.DrawCornerswithImageData = function(marker_corners) {
     var i, sc;
+    // to keep image from video element
+    //_context2d.drawImage(_camera_video_element, 0, 0, _canvas_width,_canvas_height );
+    //var imageData = _internal_ctx.getImageData(0, 0, _camera_video_element.video_width, _camera_video_element.video_height );
+    var imageData = _context2d.getImageData(0, 0, _canvas_width, _canvas_height );
 
-    if(!_debugMatches) return;
-    if(!marker_corners) return;
+    for(i = 0; i < _screen_corners.length; ++i) {
+      sc = _screen_corners[i];
+      var x=Math.round(sc.x*_ratio+_offsetx);
+      var y=Math.round(sc.y*_ratio+_offsety);
+      drawLargePoint(imageData, [255,0,0,255], x, y, _canvas_width, _canvas_height );
+    }
+    _context2d.putImageData(imageData, 0, 0);
 
-    _screen_corners = marker_corners.screen_corners;
-    _profiler       = marker_corners.profiles;
-    _image_data     = marker_corners.image_data;
+    // draw image data and corners
+    _context2d.putImageData(_image_data, _canvas_width-_image_data.width, _hbands);
+    for(i = 0; i < _screen_corners.length; ++i) {
+      sc = _screen_corners[i];
+      var x=Math.round(sc.x+_canvas_width-_image_data.width);
+      var y=Math.round(sc.y);
+      var ind=y*4*_image_data.width+4*x;
 
-    if(!_screen_corners.length) return; 
+      imageData.data[ind+0]=255;
+      imageData.data[ind+1]=0;
+      imageData.data[ind+2]=0;
+      imageData.data[ind+3]=255;
+    }
+    //    _internal_ctx.putImageData(imageData, 0, 0);
+    //    _context2d.drawImage(_internal_canvas,0,0);
+    _context2d.putImageData(imageData, 0, 0);
 
-      // to keep image from video element
-      //_context2d.drawImage(_camera_video_element, 0, 0, _canvas_width,_canvas_height );
-      //var imageData = _internal_ctx.getImageData(0, 0, _camera_video_element.video_width, _camera_video_element.video_height );
-      var imageData = _context2d.getImageData(0, 0, _canvas_width, _canvas_height );
-
-      for(i = 0; i < _screen_corners.length; ++i) {
-        sc = _screen_corners[i];
-        var x=Math.round(sc.x*_ratio+_offsetx);
-        var y=Math.round(sc.y*_ratio+_offsety);
-        drawLargePoint(imageData, [255,0,0,255], x, y, _canvas_width, _canvas_height );
-      }
-      _context2d.putImageData(imageData, 0, 0);
-
-      // draw image data and corners
-      _context2d.putImageData(_image_data, _canvas_width-_image_data.width, _hbands);
-      for(i = 0; i < _screen_corners.length; ++i) {
-        sc = _screen_corners[i];
-        var x=Math.round(sc.x+_canvas_width-_image_data.width);
-        var y=Math.round(sc.y);
-        var ind=y*4*_image_data.width+4*x;
-
-        imageData.data[ind+0]=255;
-        imageData.data[ind+1]=0;
-        imageData.data[ind+2]=0;
-        imageData.data[ind+3]=255;
-      }
-      //    _internal_ctx.putImageData(imageData, 0, 0);
-      //    _context2d.drawImage(_internal_canvas,0,0);
-      _context2d.putImageData(imageData, 0, 0);
-
-    };
+  };
 
   /**
    * Input function for debugging image training and matching
