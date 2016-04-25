@@ -10812,6 +10812,7 @@ AM.MarkerTracker = function() {
     }
 
     _profiler.stop('matching');
+    if (_debug) console.log(_profiler.log2());
 
     return _match_found;
   };
