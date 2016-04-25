@@ -171,7 +171,10 @@ window.URL = window.URL || window.webkitURL;
 var AM = AM || {};
 
 (function() {
-    
+  
+  /**
+  * Class to start the front camera of the device, or a webcam, on a computer.
+  */
   function FrontCamGrabbing() {
     var _dom_element = document.createElement('video');
     var _stream;
@@ -192,6 +195,10 @@ var AM = AM || {};
 
     Stop();
 
+    /**
+    * Starts the camera, if not already started.
+    * @returns {Promise<undefined, string>} A promise that resolves when the video is loaded.
+    */
     function Start() {
       if (!_started) {
         if (_loader) {
@@ -208,6 +215,9 @@ var AM = AM || {};
       return _load_promise;
     }
 
+    /**
+    * Stops the camera.
+    */
     function Stop() {
       if (_stream) {
         _stream.getTracks()[0].stop();
@@ -221,6 +231,10 @@ var AM = AM || {};
       _started = false;
     }
 
+    /**
+    * Returns true if the camera is active, or if is being started, false otherwise.
+    * @returns {bool}
+    */
     function IsActive() {
       return _started;
     }
@@ -393,8 +407,6 @@ AM.ImageDebugger = function() {
   var _last_trained_uuid;
   var _last_trained_image_data;
 
-  var _image_loader = new AM.ImageLoader();
-
   var _debugMatches=false;
   var _debugTraining=true;
 
@@ -472,17 +484,19 @@ AM.ImageDebugger = function() {
     if(marker_corners.uuid != _last_trained_uuid) {
       _last_trained_uuid=marker_corners.uuid;
 
-      _image_loader.GetImageData(trained_image_url, function(image_data) {
+      AM.LoadImage(trained_image_url).then(function(image) {
+        var image_data = AM.ImageToImageData(image, false);
+
         _last_trained_image_data=image_data;
         correctTrainingImageOffsets();
         displayTrainingImages(true);
         drawContour();
         drawMatches();
         if(_debugTraining){
-         displayTrainingImages(false);
-         drawTrainedCorners();
-       }
-     }, false);
+          displayTrainingImages(false);
+          drawTrainedCorners();
+        }
+      });
     }
 
     if(_last_trained_image_data){
@@ -731,45 +745,68 @@ AM.ImageDebugger = function() {
 };
 var AM = AM || {};
 
-
-AM.ImageLoader = function() {
-
-  var _canvas = document.createElement('canvas');
-  var _ctx = _canvas.getContext('2d');
+(function() {
 
 
-  this.GetImageData = function(url, on_load, square) {
-    var img = new Image();
-    
-    img.onload = function(img, on_load, square) {
-      return function() {
+  /**
+  * Loads an image.
+  * @param {string} url
+  * @param {Image} [image] - An image element in which to load the image.
+  * @returns {Promise<Image, string>} A promise that resolves when the image is loaded.
+  */
+  AM.LoadImage = function(url, image) {
+    return new Promise(function(resolve, reject) {
+      image = image || new Image();
 
-        if (square) {
-          var size = Math.max(img.width, img.height);
-          var x = (size - img.width)  / 2;
-          var y = (size - img.height) / 2;
-
-          _canvas.width = size;
-          _canvas.height = size;
-
-          _ctx.drawImage(img, x, y);
-        }
-        else {
-          _canvas.width = img.width;
-          _canvas.height = img.height;
-
-          _ctx.drawImage(img, 0, 0, _canvas.width, _canvas.height);
-        }
-
-        var image_data = _ctx.getImageData(0, 0, _canvas.width, _canvas.height);
-
-        on_load(image_data);
+      image.src = null;
+      image.onload = function() {
+        resolve(image);
       };
-    }(img, on_load, square);
-    img.src = url;
+      image.onerror = function(e) {
+        reject(e);
+      };
+      image.src = url;
+    });
   };
 
-};
+  /**
+  * Returns the ImageData of an image element.
+  * @param {Image} img
+  * @param {bool} square - if true, the image will be copied inside a square matrix.
+  * @returns {ImageData}
+  */
+  AM.ImageToImageData = (function() {
+
+    var _canvas = document.createElement('canvas');
+    var _ctx = _canvas.getContext('2d');
+
+    return function(img, square) {
+      if (square) {
+        var size = Math.max(img.width, img.height);
+        var x = (size - img.width)  / 2;
+        var y = (size - img.height) / 2;
+
+        _canvas.width = size;
+        _canvas.height = size;
+
+        _ctx.clearRect(0, 0, _canvas.width, _canvas.height);
+        _ctx.drawImage(img, x, y);
+      }
+      else {
+        _canvas.width = img.width;
+        _canvas.height = img.height;
+
+        _ctx.clearRect(0, 0, _canvas.width, _canvas.height);
+        _ctx.drawImage(img, 0, 0, _canvas.width, _canvas.height);
+      }
+
+      return _ctx.getImageData(0, 0, _canvas.width, _canvas.height);
+    };
+
+  })();
+
+
+})();
 var AM = AM || {};
 
 
@@ -7249,8 +7286,7 @@ if (typeof THREE !== 'undefined') {
         mesh.add(object);
 
         scope.model_url = url;
-        while(scope.model_object.children.length !== 0)
-          scope.model_object.remove(scope.model_object.children[0]);
+        scope.model_object.remove.apply(scope.model_object, scope.model_object.children);
         scope.model_object.add(mesh);
 
 
@@ -8986,19 +9022,6 @@ AMTHREE.WorldToCanvasPosition = function(position, camera, canvas) {
   var y = Math.round( (-vec.y + 1) * canvas.height / 2 );
 
   return { x: x, y: y, z: vec.z };
-};
-
-/**
- * Recursively update animations on this object and all his children.
- * @param {THREE.Object3D} object
- */
-AMTHREE.PlayAnimations = function(object) {
-  object.traverse( function ( child ) {
-    if ( child instanceof THREE.SkinnedMesh ) {
-      var animation = new THREE.Animation( child, child.geometry.animation );
-      animation.play();
-    }
-  } );
 };
 
 AMTHREE.GetFilename = function(path) {

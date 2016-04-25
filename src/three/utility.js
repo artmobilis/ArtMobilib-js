@@ -59,19 +59,6 @@ AMTHREE.WorldToCanvasPosition = function(position, camera, canvas) {
   return { x: x, y: y, z: vec.z };
 };
 
-/**
- * Recursively update animations on this object and all his children.
- * @param {THREE.Object3D} object
- */
-AMTHREE.PlayAnimations = function(object) {
-  object.traverse( function ( child ) {
-    if ( child instanceof THREE.SkinnedMesh ) {
-      var animation = new THREE.Animation( child, child.geometry.animation );
-      animation.play();
-    }
-  } );
-};
-
 AMTHREE.GetFilename = function(path) {
   return path.split('/').pop().split('\\').pop();
 };

@@ -54,8 +54,6 @@ AM.ImageDebugger = function() {
   var _last_trained_uuid;
   var _last_trained_image_data;
 
-  var _image_loader = new AM.ImageLoader();
-
   var _debugMatches=false;
   var _debugTraining=true;
 
@@ -133,17 +131,19 @@ AM.ImageDebugger = function() {
     if(marker_corners.uuid != _last_trained_uuid) {
       _last_trained_uuid=marker_corners.uuid;
 
-      _image_loader.GetImageData(trained_image_url, function(image_data) {
+      AM.LoadImage(trained_image_url).then(function(image) {
+        var image_data = AM.ImageToImageData(image, false);
+
         _last_trained_image_data=image_data;
         correctTrainingImageOffsets();
         displayTrainingImages(true);
         drawContour();
         drawMatches();
         if(_debugTraining){
-         displayTrainingImages(false);
-         drawTrainedCorners();
-       }
-     }, false);
+          displayTrainingImages(false);
+          drawTrainedCorners();
+        }
+      });
     }
 
     if(_last_trained_image_data){
