@@ -102,6 +102,13 @@ AM.Detection = function() {
 AM.IcAngle = (function() {
   var u_max = new Int32Array( [ 15, 15, 15, 15, 14, 14, 14, 13, 13, 12, 11, 10, 9, 8, 6, 3, 0 ] );
   var half_pi = Math.PI / 2;
+  
+  function DiamondAngle(y, x) {
+    if (y >= 0)
+      return (x >= 0 ? y / (x + y) : 1 - x / (-x + y)); 
+    else
+      return (x < 0 ? 2 - y / (-x - y) : 3 + x / (x - y));
+  }
 
   return function(img, px, py) {
     var half_k = 15; // half patch size
@@ -129,34 +136,32 @@ AM.IcAngle = (function() {
     }
 
     // return Math.atan2(m_01, m_10);
-    return AM.DiamondAngle(m_01, m_10) * half_pi;
+    DiamondAngle(m_01, m_10) * half_pi;
   };
 })();
 
-AM.DiamondAngle = function(y, x) {
-  if (y >= 0)
-    return (x >= 0 ? y / (x + y) : 1 - x / (-x + y)); 
-  else
-    return (x < 0 ? 2 - y / (-x - y) : 3 + x / (x - y));
-};
+AM.DetectKeypointsPostProc = (function() {
 
-AM.DetectKeypointsPostProc = function(img, corners, count, max_allowed) {
-
-  // sort by score and reduce the count if needed
-  if(count > max_allowed) {
-    jsfeat.math.qsort(corners, 0, count - 1, function(a, b) {
-      return (b.score < a.score);
-    } );
-    count = max_allowed;
+  function Comp(a, b) {
+    return b.score < a.score;
   }
 
-  // calculate dominant orientation for each keypoint
-  for(var i = 0; i < count; ++i) {
-    corners[i].angle = AM.IcAngle(img, corners[i].x, corners[i].y);
-  }
+  return function(img, corners, count, max_allowed) {
 
-  return count;
-};
+    // sort by score and reduce the count if needed
+    if(count > max_allowed) {
+      jsfeat.math.qsort(corners, 0, count - 1, Comp);
+      count = max_allowed;
+    }
+
+    // calculate dominant orientation for each keypoint
+    for(var i = 0; i < count; ++i) {
+      corners[i].angle = AM.IcAngle(img, corners[i].x, corners[i].y);
+    }
+
+    return count;
+  };
+})();
 
 AM.DetectKeypointsYape06 = function(img, corners, max_allowed,
   laplacian_threshold, eigen_threshold, border_size) {
