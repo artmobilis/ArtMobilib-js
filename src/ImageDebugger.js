@@ -112,7 +112,7 @@ AM.ImageDebugger = function() {
   };
  
   this.DrawCornerswithContext = function(marker_corners) {
-    var i, sc;
+    var i, sc, x, y;
 
     _context2d.fillStyle="red";
   
@@ -121,8 +121,18 @@ AM.ImageDebugger = function() {
       sc = _screen_corners[i];
       if (sc.score===0) break;
 
-      _context2d.fillRect(Math.round(sc.x*_ratio+_offsetx-2), Math.round(sc.y*_ratio+_offsety-2), 4, 4);
+      x=Math.round(sc.x*_ratio+_offsetx-2);
+      y=Math.round(sc.y*_ratio+_offsety-2);
+      _context2d.fillRect(x, y, 4, 4);
       _context2d.fillRect(Math.round(sc.x+_canvas_width-_image_data.width-2), Math.round(sc.y+_hbands-2), 4,4);
+
+      // draw angle
+      _context2d.strokeStyle="blue";
+      _context2d.lineWidth=2;
+      _context2d.beginPath();
+      _context2d.moveTo(x+2,y+2);
+      _context2d.lineTo(x+2+10*Math.cos(sc.angle),y+2+10*Math.sin(sc.angle));
+      _context2d.stroke();
     }
 
   };
@@ -382,10 +392,18 @@ AM.ImageDebugger = function() {
       // compute corner location
       var cornerx=tc.x+_template_offsetx;
       var cornery=tc.y+_template_offsety;
-      cornerx=cornerx*_scaleLevel[i]+_offsetLevel[i] ;
-      cornery=cornery*_scaleLevel[i];
+      cornerx=Math.round(cornerx*_scaleLevel[i]+_offsetLevel[i]) ;
+      cornery=Math.round(cornery*_scaleLevel[i])+originy;
 
-      _context2d.fillRect(Math.round(cornerx-2), Math.round(cornery+originy-2), 4, 4);
+      _context2d.fillRect(cornerx-2, cornery-2, 4, 4);
+
+      // draw angle
+      _context2d.strokeStyle="blue";
+      _context2d.lineWidth=2;
+      _context2d.beginPath();
+      _context2d.moveTo(cornerx,cornery);
+      _context2d.lineTo(cornerx+10*Math.cos(tc.angle),cornery+10*Math.sin(tc.angle));
+      _context2d.stroke();
     }
   }
 };
