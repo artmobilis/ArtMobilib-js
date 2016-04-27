@@ -119,7 +119,7 @@ AM.ImageDebugger = function() {
     _context2d.putImageData(_image_data, _canvas_width-_image_data.width, _hbands);
     for(i = 0; i < _screen_corners.length; ++i) {
       sc = _screen_corners[i];
-      if (sc.score==0) break;
+      if (sc.score===0) break;
 
       _context2d.fillRect(Math.round(sc.x*_ratio+_offsetx-2), Math.round(sc.y*_ratio+_offsety-2), 4, 4);
       _context2d.fillRect(Math.round(sc.x+_canvas_width-_image_data.width-2), Math.round(sc.y+_hbands-2), 4,4);
@@ -128,7 +128,7 @@ AM.ImageDebugger = function() {
   };
 
   this.DrawCornerswithImageData = function(marker_corners) {
-    var i, sc;
+    var i, sc, x, y;
     // to keep image from video element
     //_context2d.drawImage(_camera_video_element, 0, 0, _canvas_width,_canvas_height );
     //var imageData = _internal_ctx.getImageData(0, 0, _camera_video_element.video_width, _camera_video_element.video_height );
@@ -136,9 +136,9 @@ AM.ImageDebugger = function() {
 
     for(i = 0; i < _screen_corners.length; ++i) {
       sc = _screen_corners[i];
-      if (sc.score==0) break;
-      var x=Math.round(sc.x*_ratio+_offsetx);
-      var y=Math.round(sc.y*_ratio+_offsety);
+      if (sc.score===0) break;
+      x=Math.round(sc.x*_ratio+_offsetx);
+      y=Math.round(sc.y*_ratio+_offsety);
       drawLargePoint(imageData, [255,0,0,255], x, y, _canvas_width, _canvas_height );
     }
     _context2d.putImageData(imageData, 0, 0);
@@ -147,9 +147,9 @@ AM.ImageDebugger = function() {
     _context2d.putImageData(_image_data, _canvas_width-_image_data.width, _hbands);
     for(i = 0; i < _screen_corners.length; ++i) {
       sc = _screen_corners[i];
-       if (sc.score==0) break;
-       var x=Math.round(sc.x+_canvas_width-_image_data.width);
-      var y=Math.round(sc.y);
+       if (sc.score===0) break;
+      x=Math.round(sc.x+_canvas_width-_image_data.width);
+      y=Math.round(sc.y);
       var ind=y*4*_image_data.width+4*x;
 
       imageData.data[ind+0]=255;
