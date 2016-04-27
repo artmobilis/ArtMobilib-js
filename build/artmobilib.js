@@ -406,7 +406,7 @@ AM.ImageDebugger = function() {
   var _offsetLevel = [];
   var _scaleLevel = [];
 
-  var _last_trained_uuid;
+  var _last_trained_url;
   var _last_trained_image_data;
 
   var _debugMatches=false;
@@ -448,8 +448,7 @@ AM.ImageDebugger = function() {
     if(!_screen_corners.length) return;
 
     that.DrawCornerswithContext(marker_corners);
-  //  that.DrawCornerswithImageData(marker_corners);
-
+  
     // console
     _context2d.font="30px Arial";
     _context2d.fillStyle = "red";
@@ -465,56 +464,31 @@ AM.ImageDebugger = function() {
   };
  
   this.DrawCornerswithContext = function(marker_corners) {
-    var i, sc;
+    var i, sc, x, y;
 
     _context2d.fillStyle="red";
   
     _context2d.putImageData(_image_data, _canvas_width-_image_data.width, _hbands);
     for(i = 0; i < _screen_corners.length; ++i) {
       sc = _screen_corners[i];
-      if (sc.score==0) break;
+      if (sc.score===0) break;
 
-      _context2d.fillRect(Math.round(sc.x*_ratio+_offsetx-2), Math.round(sc.y*_ratio+_offsety-2), 4, 4);
+      x=Math.round(sc.x*_ratio+_offsetx-2);
+      y=Math.round(sc.y*_ratio+_offsety-2);
+      _context2d.fillRect(x, y, 4, 4);
       _context2d.fillRect(Math.round(sc.x+_canvas_width-_image_data.width-2), Math.round(sc.y+_hbands-2), 4,4);
+
+      // draw angle
+      _context2d.strokeStyle="blue";
+      _context2d.lineWidth=2;
+      _context2d.beginPath();
+      _context2d.moveTo(x+2,y+2);
+      _context2d.lineTo(x+2+10*Math.cos(sc.angle),y+2+10*Math.sin(sc.angle));
+      _context2d.stroke();
     }
 
   };
 
-  this.DrawCornerswithImageData = function(marker_corners) {
-    var i, sc;
-    // to keep image from video element
-    //_context2d.drawImage(_camera_video_element, 0, 0, _canvas_width,_canvas_height );
-    //var imageData = _internal_ctx.getImageData(0, 0, _camera_video_element.video_width, _camera_video_element.video_height );
-    var imageData = _context2d.getImageData(0, 0, _canvas_width, _canvas_height );
-
-    for(i = 0; i < _screen_corners.length; ++i) {
-      sc = _screen_corners[i];
-      if (sc.score==0) break;
-      var x=Math.round(sc.x*_ratio+_offsetx);
-      var y=Math.round(sc.y*_ratio+_offsety);
-      drawLargePoint(imageData, [255,0,0,255], x, y, _canvas_width, _canvas_height );
-    }
-    _context2d.putImageData(imageData, 0, 0);
-
-    // draw image data and corners
-    _context2d.putImageData(_image_data, _canvas_width-_image_data.width, _hbands);
-    for(i = 0; i < _screen_corners.length; ++i) {
-      sc = _screen_corners[i];
-       if (sc.score==0) break;
-       var x=Math.round(sc.x+_canvas_width-_image_data.width);
-      var y=Math.round(sc.y);
-      var ind=y*4*_image_data.width+4*x;
-
-      imageData.data[ind+0]=255;
-      imageData.data[ind+1]=0;
-      imageData.data[ind+2]=0;
-      imageData.data[ind+3]=255;
-  }
-    //    _internal_ctx.putImageData(imageData, 0, 0);
-    //    _context2d.drawImage(_internal_canvas,0,0);
-    _context2d.putImageData(imageData, 0, 0);
-
-  };
 
   /**
    * Input function for debugging image training and matching
@@ -534,13 +508,17 @@ AM.ImageDebugger = function() {
     _trained_image_url = trained_image_url;
 
     // draw images, its corresponding corners, and matches
-    if(marker_corners.uuid != _last_trained_uuid) {
-      _last_trained_uuid=marker_corners.uuid;
+    if(_trained_image_url != _last_trained_url) {
+      _last_trained_url=_trained_image_url;
 
       AM.LoadImage(trained_image_url).then(function(image) {
         var image_data = AM.ImageToImageData(image, false);
 
+        // Train the image
         _last_trained_image_data=image_data;
+        _training.Empty();
+        _training.TrainFull(_last_trained_image_data);
+
         correctTrainingImageOffsets();
         displayTrainingImages(true);
         drawContour();
@@ -589,6 +567,7 @@ AM.ImageDebugger = function() {
    * @inner
    */
   drawContour = function(){
+    if(_corners===undefined) return;
     // draw Image corners  (Todo: because we squared initial marquer, result is the square, size should be reduced)
     _context2d.strokeStyle="green";
     _context2d.lineWidth=5;
@@ -607,6 +586,8 @@ AM.ImageDebugger = function() {
    * @param {bool} use all trained levels or all concatene in one image
    */
   drawMatches = function (all_in_first_image) {
+    if(_matches===undefined) return;
+
     if (typeof all_in_first_image === 'undefined')
       all_in_first_image = false;
 
@@ -683,9 +664,6 @@ AM.ImageDebugger = function() {
    * @param {bool} select upperleft or bottomLeft part
   */
    displayTrainingImages = function (upperLeft) {
-    _training.Empty();
-    _training.TrainFull(_last_trained_image_data);
-
     // display grey
     /*var imgGray=jsFeat2ImageData(_training.getGrayData());
     _context2d.putImageData(imgGray, 0, _canvas_height-35-_hbands-imgGray.height);*/
@@ -731,10 +709,18 @@ AM.ImageDebugger = function() {
       // compute corner location
       var cornerx=tc.x+_template_offsetx;
       var cornery=tc.y+_template_offsety;
-      cornerx=cornerx*_scaleLevel[i]+_offsetLevel[i] ;
-      cornery=cornery*_scaleLevel[i];
+      cornerx=Math.round(cornerx*_scaleLevel[i]+_offsetLevel[i]) ;
+      cornery=Math.round(cornery*_scaleLevel[i])+originy;
 
-      _context2d.fillRect(Math.round(cornerx-2), Math.round(cornery+originy-2), 4, 4);
+      _context2d.fillRect(cornerx-2, cornery-2, 4, 4);
+
+      // draw angle
+      _context2d.strokeStyle="blue";
+      _context2d.lineWidth=2;
+      _context2d.beginPath();
+      _context2d.moveTo(cornerx,cornery);
+      _context2d.lineTo(cornerx+10*Math.cos(tc.angle),cornery+10*Math.sin(tc.angle));
+      _context2d.stroke();
     }
   }
 };
