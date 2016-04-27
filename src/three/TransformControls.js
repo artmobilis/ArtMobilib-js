@@ -7,6 +7,9 @@
 
 	'use strict';
 
+  if (typeof THREE === 'undefined')
+    return;
+
 
 	var GizmoMaterial = function ( parameters ) {
 
@@ -1150,4 +1153,4 @@
 	AMTHREE.TransformControls.prototype = Object.create( THREE.Object3D.prototype );
 	AMTHREE.TransformControls.prototype.constructor = AMTHREE.TransformControls;
 
-}() );
+} )();
