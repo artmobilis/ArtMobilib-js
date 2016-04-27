@@ -299,7 +299,7 @@ var AM = AM || {};
       return p;
     }
 
-    function GetSourcesMST(on_error) {
+    function GetSourcesMST() {
       return new Promise(function(resolve, reject) {
         if (_to_destruct)
           reject('loader interrupted');
@@ -307,7 +307,7 @@ var AM = AM || {};
       });
     }
 
-    function GetSourcesMD(on_error) {
+    function GetSourcesMD() {
       if (_to_destruct)
         return Promise.reject('loader interrupted');
       else
@@ -318,17 +318,27 @@ var AM = AM || {};
       if (_to_destruct)
         return Promise.reject('loader interrupted');
 
-      var sources_promises = [];
-      sources_promises.push(GetSourcesMST());
-      sources_promises.push(GetSourcesMD());
-
-      var p = Promise.race(sources_promises).then(GetStream);
+      var p = PromiseOr(GetSourcesMST(), GetSourcesMD()).then(GetStream);
 
       return p;
     }
 
     function Dispose() {
       _to_destruct = true;
+    }
+
+    function PromiseOr(p1, p2) {
+      return new Promise(function(resolve, reject) {
+        var rejected_once = false;
+        var OnReject = function(e) {
+          if (rejected_once)
+            reject(e);
+          else
+            rejected_once = true;
+        };
+        p1.then(resolve, OnReject);
+        p2.then(resolve, OnReject);
+      });
     }
 
     this.Load = Load;
