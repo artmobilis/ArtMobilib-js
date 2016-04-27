@@ -376,9 +376,11 @@ getGradientGreenRedColor = function (n, max){
  * @class
  */
 AM.ImageDebugger = function() {
-
+  var that=this;
   var _training = new AM.Training();
 
+  var _internal_canvas = document.createElement("canvas");
+  var _internal_ctx = _internal_canvas.getContext("2d");
   var _context2d;
   var _camera_video_element;
 
@@ -410,14 +412,30 @@ AM.ImageDebugger = function() {
   var _debugMatches=false;
   var _debugTraining=true;
 
+  drawLargePoint = function (imageData, col, x, y, width, height){
+    for(i = -1; i < 2; ++i) {
+      ind= (y+i)*4*width+4*x;
+
+      imageData.data[ind+0]=col[0];
+      imageData.data[ind+1]=col[1];
+      imageData.data[ind+2]=col[2];
+      imageData.data[ind+4]=col[0];
+      imageData.data[ind+5]=col[1];
+      imageData.data[ind+6]=col[2];
+      imageData.data[ind+7]=col[3];
+      imageData.data[ind+8]=col[0];
+      imageData.data[ind+9]=col[1];
+      imageData.data[ind+10]=col[2];
+      imageData.data[ind+11]=col[3];
+    }
+  };
+
   /**
    * Draw corners and timings for each processed image
    * @inner
    * @param {object} corner and matching information
   */
   this.DrawCorners = function(marker_corners) {
-    var i, sc;
-
     if(!_debugMatches) return;
     if(!marker_corners) return;
 
@@ -426,27 +444,11 @@ AM.ImageDebugger = function() {
     _image_data     = marker_corners.image_data;
 
 
+    if(!_screen_corners) return;
     if(!_screen_corners.length) return;
 
-    _context2d.fillStyle="red";
-  
-    for(i = 0; i < _screen_corners.length; ++i) {
-      sc = _screen_corners[i];
-
-      _context2d.beginPath();
-      _context2d.arc(sc.x*_ratio+_offsetx, sc.y*_ratio+_offsety, 3, 0, 2 * Math.PI);
-      _context2d.fill();
-    }
-
-    // draw image data and corners
-    _context2d.putImageData(_image_data, _canvas_width-_image_data.width, _hbands);
-    for(i = 0; i < _screen_corners.length; ++i) {
-      sc = _screen_corners[i];
-
-      _context2d.beginPath();
-      _context2d.arc(sc.x+_canvas_width-_image_data.width, sc.y+_hbands, 3, 0, 2 * Math.PI);
-      _context2d.fill();
-    }
+    that.DrawCornerswithContext(marker_corners);
+  //  that.DrawCornerswithImageData(marker_corners);
 
     // console
     _context2d.font="30px Arial";
@@ -460,6 +462,57 @@ AM.ImageDebugger = function() {
     }
 
     _context2d.fillText(str, 10, _canvas_height-5-_hbands);
+  };
+ 
+  this.DrawCornerswithContext = function(marker_corners) {
+    var i, sc;
+
+    _context2d.fillStyle="red";
+  
+    _context2d.putImageData(_image_data, _canvas_width-_image_data.width, _hbands);
+    for(i = 0; i < _screen_corners.length; ++i) {
+      sc = _screen_corners[i];
+      if (sc.score==0) break;
+
+      _context2d.fillRect(Math.round(sc.x*_ratio+_offsetx-2), Math.round(sc.y*_ratio+_offsety-2), 4, 4);
+      _context2d.fillRect(Math.round(sc.x+_canvas_width-_image_data.width-2), Math.round(sc.y+_hbands-2), 4,4);
+    }
+
+  };
+
+  this.DrawCornerswithImageData = function(marker_corners) {
+    var i, sc;
+    // to keep image from video element
+    //_context2d.drawImage(_camera_video_element, 0, 0, _canvas_width,_canvas_height );
+    //var imageData = _internal_ctx.getImageData(0, 0, _camera_video_element.video_width, _camera_video_element.video_height );
+    var imageData = _context2d.getImageData(0, 0, _canvas_width, _canvas_height );
+
+    for(i = 0; i < _screen_corners.length; ++i) {
+      sc = _screen_corners[i];
+      if (sc.score==0) break;
+      var x=Math.round(sc.x*_ratio+_offsetx);
+      var y=Math.round(sc.y*_ratio+_offsety);
+      drawLargePoint(imageData, [255,0,0,255], x, y, _canvas_width, _canvas_height );
+    }
+    _context2d.putImageData(imageData, 0, 0);
+
+    // draw image data and corners
+    _context2d.putImageData(_image_data, _canvas_width-_image_data.width, _hbands);
+    for(i = 0; i < _screen_corners.length; ++i) {
+      sc = _screen_corners[i];
+       if (sc.score==0) break;
+       var x=Math.round(sc.x+_canvas_width-_image_data.width);
+      var y=Math.round(sc.y);
+      var ind=y*4*_image_data.width+4*x;
+
+      imageData.data[ind+0]=255;
+      imageData.data[ind+1]=0;
+      imageData.data[ind+2]=0;
+      imageData.data[ind+3]=255;
+  }
+    //    _internal_ctx.putImageData(imageData, 0, 0);
+    //    _context2d.drawImage(_internal_canvas,0,0);
+    _context2d.putImageData(imageData, 0, 0);
 
   };
 
@@ -583,18 +636,14 @@ AM.ImageDebugger = function() {
           cornery=cornery*_scaleLevel[m.pattern_lev];
       }
 
-      _context2d.beginPath();
-      _context2d.arc(cornerx, cornery+_hbands, 3, 0, 2 * Math.PI);
-      _context2d.fill();
+      _context2d.fillRect(Math.round(cornerx-2), Math.round(cornery+_hbands-2), 4, 4);
 
       _context2d.beginPath();
       _context2d.moveTo(cornerx, cornery+_hbands);
       _context2d.lineTo(ts.x*_ratio+_offsetx, ts.y*_ratio+_offsety);
       _context2d.stroke();
 
-      _context2d.beginPath();
-      _context2d.arc(ts.x*_ratio+_offsetx, ts.y*_ratio+_offsety, 3, 0, 2 * Math.PI);
-      _context2d.fill();
+      _context2d.fillRect(Math.round(ts.x*_ratio+_offsetx-2), Math.round(ts.y*_ratio+_offsety-2), 4, 4);
     }
 
   };
@@ -685,9 +734,7 @@ AM.ImageDebugger = function() {
       cornerx=cornerx*_scaleLevel[i]+_offsetLevel[i] ;
       cornery=cornery*_scaleLevel[i];
 
-      _context2d.beginPath();
-      _context2d.arc(cornerx, cornery+originy, 3, 0, 2 * Math.PI);
-      _context2d.fill();
+      _context2d.fillRect(Math.round(cornerx-2), Math.round(cornery+originy-2), 4, 4);
     }
   }
 };
@@ -10418,7 +10465,7 @@ var AM = AM || {};
  * @class
  */
 AM.Detection = function() {
-
+  var that=this;
   var _params = {
     laplacian_threshold: 30,
     eigen_threshold: 25,
@@ -10500,12 +10547,17 @@ AM.Detection = function() {
   };
 
   /**
-   * Returns the last computed corners
+   * Returns a copy of the last computed corners
    * @inner
    * @returns {jsfeat.keypoint_t[]}
    */
   this.GetCorners = function() {
-    return _screen_corners;
+    var copy = [];
+    var i=that.GetNumCorners();
+    while( i--)
+       copy[i]=_screen_corners[i];
+    
+    return copy;
   };
 
 
@@ -10548,7 +10600,7 @@ AM.IcAngle = (function() {
     }
 
     // return Math.atan2(m_01, m_10);
-    DiamondAngle(m_01, m_10) * half_pi;
+    return DiamondAngle(m_01, m_10) * half_pi;
   };
 })();
 
@@ -10771,6 +10823,7 @@ AM.MarkerTracker = function() {
     }
 
     _profiler.stop('matching');
+    if (_debug) console.log(_profiler.log2());
 
     return _match_found;
   };
