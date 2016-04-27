@@ -160,9 +160,9 @@ AM.DetectKeypointsPostProc = (function() {
     }
 
     // calculate dominant orientation for each keypoint
-    for(var i = 0; i < count; ++i) {
-      corners[i].angle = AM.IcAngle(img, corners[i].x, corners[i].y);
-    }
+    // for(var i = 0; i < count; ++i) {
+    //   corners[i].angle = AM.IcAngle(img, corners[i].x, corners[i].y);
+    // }
 
     return count;
   };
