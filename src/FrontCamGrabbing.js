@@ -40,6 +40,7 @@ var AM = AM || {};
     function Start() {
       if (!_started) {
         if (_loader) {
+          _load_promise.catch(IgnoreReject);
           _loader.Dispose();
         }
         _started = true;
@@ -62,10 +63,10 @@ var AM = AM || {};
         _stream = undefined;
       }
       if (_loader) {
+        _load_promise.catch(IgnoreReject);
         _loader.Dispose();
         _loader = undefined;
       }
-      _load_promise = Promise.resolve();
       _started = false;
     }
 
@@ -77,6 +78,9 @@ var AM = AM || {};
       return _started;
     }
 
+    function IgnoreReject(e) {
+    }
+
     this.Start = Start;
     this.Stop = Stop;
     this.IsActive = IsActive;
@@ -85,9 +89,6 @@ var AM = AM || {};
   }
 
   function Loader(dom_element) {
-    var _stream;
-
-    var _loading = false;
     var _to_destruct = false;
 
 
@@ -116,7 +117,7 @@ var AM = AM || {};
 
         for (var i = 0; i != source_infos.length; ++i) {
           var sourceInfo = source_infos[i];
-          if (sourceInfo.kind == "video" && sourceInfo.facing == "environment") {
+          if (sourceInfo.kind == 'video' && sourceInfo.facing == 'environment') {
             constraints.video = {
               optional: [{sourceId: sourceInfo.id}]
             };
@@ -145,36 +146,23 @@ var AM = AM || {};
     }
 
     function GetSourcesMD(on_error) {
-      return Promise.resolve(function() {
-        if (_to_destruct)
-          reject('loader interrupted');
+      if (_to_destruct)
+        return Promise.reject('loader interrupted');
+      else
         return navigator.mediaDevices.enumerateDevices();
-      });
     }
 
     function Load() {
-      _loading = true;
+      if (_to_destruct)
+        return Promise.reject('loader interrupted');
 
-      return new Promise(function(resolve, reject) {
-        if (_to_destruct)
-          reject('loader interrupted');
+      var sources_promises = [];
+      sources_promises.push(GetSourcesMST());
+      sources_promises.push(GetSourcesMD());
 
-        var promise = GetSourcesMST();
+      var p = Promise.race(sources_promises).then(GetStream);
 
-        promise = promise.then(function(source_infos) {
-
-          GetStream(source_infos).then(resolve);
-
-        });
-
-        promise.catch(function() {
-          GetSourcesMD().then(function(source_infos) {
-
-            GetStream(source_infos).then(resolve);
-
-          }).catch(reject);
-        });
-      });
+      return p;
     }
 
     function Dispose() {
