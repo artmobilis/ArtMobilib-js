@@ -236,6 +236,7 @@ AM.ImageDebugger = function() {
    * @inner
    */
   drawContour = function(){
+    if(_corners===undefined) return;
     // draw Image corners  (Todo: because we squared initial marquer, result is the square, size should be reduced)
     _context2d.strokeStyle="green";
     _context2d.lineWidth=5;
@@ -254,6 +255,8 @@ AM.ImageDebugger = function() {
    * @param {bool} use all trained levels or all concatene in one image
    */
   drawMatches = function (all_in_first_image) {
+    if(_matches===undefined) return;
+    
     if (typeof all_in_first_image === 'undefined')
       all_in_first_image = false;
 
