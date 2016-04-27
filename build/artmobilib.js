@@ -10597,8 +10597,8 @@ AM.IcAngle = (function() {
       m_01 += v * v_sum;
     }
 
-    // return Math.atan2(m_01, m_10);
-    return DiamondAngle(m_01, m_10) * half_pi;
+    return Math.atan2(m_01, m_10);
+    // return DiamondAngle(m_01, m_10) * half_pi;
   };
 })();
 
@@ -10617,9 +10617,9 @@ AM.DetectKeypointsPostProc = (function() {
     }
 
     // calculate dominant orientation for each keypoint
-    for(var i = 0; i < count; ++i) {
-      corners[i].angle = AM.IcAngle(img, corners[i].x, corners[i].y);
-    }
+    // for(var i = 0; i < count; ++i) {
+    //   corners[i].angle = AM.IcAngle(img, corners[i].x, corners[i].y);
+    // }
 
     return count;
   };
@@ -11001,7 +11001,7 @@ AM.Matching = function() {
 
   var _screen_descriptors;
 
-  var _num_matches;
+  var _num_matches = 0;
   var _matches = [];
 
   var _params = {
@@ -11090,7 +11090,7 @@ AM.Matching = function() {
     var qd_off = 0;
     var num_matches = 0;
 
-    _matches = [];
+    _matches.length = 0;
 
     for (var qidx = 0; qidx < q_cnt; ++qidx) {
       var best_dist = 256;
