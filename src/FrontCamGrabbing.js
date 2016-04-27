@@ -137,7 +137,7 @@ var AM = AM || {};
       return p;
     }
 
-    function GetSourcesMST(on_error) {
+    function GetSourcesMST() {
       return new Promise(function(resolve, reject) {
         if (_to_destruct)
           reject('loader interrupted');
@@ -145,7 +145,7 @@ var AM = AM || {};
       });
     }
 
-    function GetSourcesMD(on_error) {
+    function GetSourcesMD() {
       if (_to_destruct)
         return Promise.reject('loader interrupted');
       else
