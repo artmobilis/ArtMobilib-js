@@ -95,8 +95,7 @@ AM.ImageDebugger = function() {
     if(!_screen_corners.length) return;
 
     that.DrawCornerswithContext(marker_corners);
-  //  that.DrawCornerswithImageData(marker_corners);
-
+  
     // console
     _context2d.font="30px Arial";
     _context2d.fillStyle = "red";
@@ -137,41 +136,6 @@ AM.ImageDebugger = function() {
 
   };
 
-  this.DrawCornerswithImageData = function(marker_corners) {
-    var i, sc, x, y;
-    // to keep image from video element
-    //_context2d.drawImage(_camera_video_element, 0, 0, _canvas_width,_canvas_height );
-    //var imageData = _internal_ctx.getImageData(0, 0, _camera_video_element.video_width, _camera_video_element.video_height );
-    var imageData = _context2d.getImageData(0, 0, _canvas_width, _canvas_height );
-
-    for(i = 0; i < _screen_corners.length; ++i) {
-      sc = _screen_corners[i];
-      if (sc.score===0) break;
-      x=Math.round(sc.x*_ratio+_offsetx);
-      y=Math.round(sc.y*_ratio+_offsety);
-      drawLargePoint(imageData, [255,0,0,255], x, y, _canvas_width, _canvas_height );
-    }
-    _context2d.putImageData(imageData, 0, 0);
-
-    // draw image data and corners
-    _context2d.putImageData(_image_data, _canvas_width-_image_data.width, _hbands);
-    for(i = 0; i < _screen_corners.length; ++i) {
-      sc = _screen_corners[i];
-       if (sc.score===0) break;
-      x=Math.round(sc.x+_canvas_width-_image_data.width);
-      y=Math.round(sc.y);
-      var ind=y*4*_image_data.width+4*x;
-
-      imageData.data[ind+0]=255;
-      imageData.data[ind+1]=0;
-      imageData.data[ind+2]=0;
-      imageData.data[ind+3]=255;
-  }
-    //    _internal_ctx.putImageData(imageData, 0, 0);
-    //    _context2d.drawImage(_internal_canvas,0,0);
-    _context2d.putImageData(imageData, 0, 0);
-
-  };
 
   /**
    * Input function for debugging image training and matching
