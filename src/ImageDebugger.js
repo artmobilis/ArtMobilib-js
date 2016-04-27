@@ -53,7 +53,7 @@ AM.ImageDebugger = function() {
   var _offsetLevel = [];
   var _scaleLevel = [];
 
-  var _last_trained_uuid;
+  var _last_trained_url;
   var _last_trained_image_data;
 
   var _debugMatches=false;
@@ -181,13 +181,17 @@ AM.ImageDebugger = function() {
     _trained_image_url = trained_image_url;
 
     // draw images, its corresponding corners, and matches
-    if(marker_corners.uuid != _last_trained_uuid) {
-      _last_trained_uuid=marker_corners.uuid;
+    if(_trained_image_url != _last_trained_url) {
+      _last_trained_url=_trained_image_url;
 
       AM.LoadImage(trained_image_url).then(function(image) {
         var image_data = AM.ImageToImageData(image, false);
 
+        // Train the image
         _last_trained_image_data=image_data;
+        _training.Empty();
+        _training.TrainFull(_last_trained_image_data);
+
         correctTrainingImageOffsets();
         displayTrainingImages(true);
         drawContour();
@@ -256,7 +260,7 @@ AM.ImageDebugger = function() {
    */
   drawMatches = function (all_in_first_image) {
     if(_matches===undefined) return;
-    
+
     if (typeof all_in_first_image === 'undefined')
       all_in_first_image = false;
 
@@ -333,9 +337,6 @@ AM.ImageDebugger = function() {
    * @param {bool} select upperleft or bottomLeft part
   */
    displayTrainingImages = function (upperLeft) {
-    _training.Empty();
-    _training.TrainFull(_last_trained_image_data);
-
     // display grey
     /*var imgGray=jsFeat2ImageData(_training.getGrayData());
     _context2d.putImageData(imgGray, 0, _canvas_height-35-_hbands-imgGray.height);*/
