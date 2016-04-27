@@ -140,8 +140,8 @@ AM.IcAngle = (function() {
       m_01 += v * v_sum;
     }
 
-    // return Math.atan2(m_01, m_10);
-    return DiamondAngle(m_01, m_10) * half_pi;
+    return Math.atan2(m_01, m_10);
+    // return DiamondAngle(m_01, m_10) * half_pi;
   };
 })();
 
