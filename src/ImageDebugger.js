@@ -385,22 +385,23 @@ AM.ImageDebugger = function() {
     _canvas_height=canvas2d.height;
     _canvas_width =canvas2d.width;
 
-    var corrected_height=_canvas_height;//-2*_hbands;
     var ratioVideoWH = _camera_video_element.videoWidth/_camera_video_element.videoHeight;
-    var ratioWindowWH = _canvas_width/corrected_height;
+    var ratioWindowWH = _canvas_width/_canvas_height;
 
     // correct position in live image
-    if(ratioWindowWH>ratioVideoWH) { // larger window width, video is bordered by left and right bands
-      var liveWidth=Math.round(corrected_height*ratioVideoWH);
+    if(ratioWindowWH<ratioVideoWH) { 
+      // larger window width than video, video is cropped on left and right sides
+      var liveWidth=Math.round(_canvas_height*ratioVideoWH);
       _ratio=liveWidth/video_size_target;
       _offsetx=Math.round((_canvas_width-liveWidth)*0.5);
       _offsety=0;//_hbands;
     } 
-    else { // larger window height, video is bordered by upper and lower bands
+    else { 
+      // larger window height than video, video is cropped on upper and lower sides
       var liveHeight=_canvas_width/ratioVideoWH;
       _ratio=_canvas_width/video_size_target;
       _offsetx=0;
-      _offsety=/*_hbands+*/Math.round((corrected_height-liveHeight)*0.5);      
+      _offsety=Math.round((_canvas_height-liveHeight)*0.5);      
     }
   };
 
