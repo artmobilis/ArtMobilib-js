@@ -184,8 +184,10 @@ var AM = AM || {};
     function GetSourcesMD() {
       if (_to_destruct)
         return Promise.reject('loader interrupted');
-      else
+      else if (navigator.mediaDevices)
         return navigator.mediaDevices.enumerateDevices();
+      else
+        return Promise.reject('navigator.mediaDevices is undefined');
     }
 
     function Load() {
