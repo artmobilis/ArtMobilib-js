@@ -174,9 +174,12 @@ var AM = AM || {};
   
   /**
   * Class to start the front camera of the device, or a webcam, on a computer.
+  * @param {video element} [video_element] - An html element to play the stream in. Created if not provided.
   */
-  function FrontCamGrabbing() {
-    var _dom_element = document.createElement('video');
+  function FrontCamGrabbing(video_element) {
+    var _dom_element = (video_element && video_element.tagName === 'VIDEO')
+      ? video_element
+      : document.createElement('video');
     var _stream;
     var _loader;
     var _load_promise;
@@ -233,6 +236,37 @@ var AM = AM || {};
     }
 
     /**
+    * Pauses or unpauses the video element, if this is active.
+    * @param {bool} bool
+    * @returns {bool} true if paused, false otherwise.
+    */
+    function Pause(bool) {
+      if (_started && bool !== IsPaused()) {
+        if (bool)
+          _dom_element.pause();
+        else
+          _dom_element.play();
+      }
+      return IsPaused();
+    }
+
+    /**
+    * Toggle pause.
+    * @returns {bool} true if paused, false otherwise.
+    */
+    function TogglePause() {
+      return Pause(!IsPaused());
+    }
+
+    /**
+    * Returns true if paused, false otherwise.
+    * @returns {bool}
+    */
+    function IsPaused() {
+      return _dom_element.paused;
+    }
+
+    /**
     * Returns true if the camera is active, or if is being started, false otherwise.
     * @returns {bool}
     */
@@ -246,6 +280,8 @@ var AM = AM || {};
     this.Start = Start;
     this.Stop = Stop;
     this.IsActive = IsActive;
+    this.Pause = Pause;
+    this.TogglePause = TogglePause;
 
 
   }
@@ -310,8 +346,10 @@ var AM = AM || {};
     function GetSourcesMD() {
       if (_to_destruct)
         return Promise.reject('loader interrupted');
-      else
+      else if (navigator.mediaDevices)
         return navigator.mediaDevices.enumerateDevices();
+      else
+        return Promise.reject('navigator.mediaDevices is undefined');
     }
 
     function Load() {
