@@ -9,7 +9,7 @@ AM.Matching = function() {
 
   var _screen_descriptors;
 
-  var _num_matches;
+  var _num_matches = 0;
   var _matches = [];
 
   var _params = {
@@ -98,7 +98,7 @@ AM.Matching = function() {
     var qd_off = 0;
     var num_matches = 0;
 
-    _matches = [];
+    _matches.length = 0;
 
     for (var qidx = 0; qidx < q_cnt; ++qidx) {
       var best_dist = 256;

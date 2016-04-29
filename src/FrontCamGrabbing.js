@@ -40,6 +40,7 @@ var AM = AM || {};
     function Start() {
       if (!_started) {
         if (_loader) {
+          _load_promise.catch(IgnoreReject);
           _loader.Dispose();
         }
         _started = true;
@@ -62,10 +63,10 @@ var AM = AM || {};
         _stream = undefined;
       }
       if (_loader) {
+        _load_promise.catch(IgnoreReject);
         _loader.Dispose();
         _loader = undefined;
       }
-      _load_promise = Promise.resolve();
       _started = false;
     }
 
@@ -77,6 +78,9 @@ var AM = AM || {};
       return _started;
     }
 
+    function IgnoreReject(e) {
+    }
+
     this.Start = Start;
     this.Stop = Stop;
     this.IsActive = IsActive;
@@ -85,9 +89,6 @@ var AM = AM || {};
   }
 
   function Loader(dom_element) {
-    var _stream;
-
-    var _loading = false;
     var _to_destruct = false;
 
 
@@ -116,7 +117,7 @@ var AM = AM || {};
 
         for (var i = 0; i != source_infos.length; ++i) {
           var sourceInfo = source_infos[i];
-          if (sourceInfo.kind == "video" && sourceInfo.facing == "environment") {
+          if (sourceInfo.kind == 'video' && sourceInfo.facing == 'environment') {
             constraints.video = {
               optional: [{sourceId: sourceInfo.id}]
             };
@@ -136,7 +137,7 @@ var AM = AM || {};
       return p;
     }
 
-    function GetSourcesMST(on_error) {
+    function GetSourcesMST() {
       return new Promise(function(resolve, reject) {
         if (_to_destruct)
           reject('loader interrupted');
@@ -144,41 +145,38 @@ var AM = AM || {};
       });
     }
 
-    function GetSourcesMD(on_error) {
-      return Promise.resolve(function() {
-        if (_to_destruct)
-          reject('loader interrupted');
+    function GetSourcesMD() {
+      if (_to_destruct)
+        return Promise.reject('loader interrupted');
+      else
         return navigator.mediaDevices.enumerateDevices();
-      });
     }
 
     function Load() {
-      _loading = true;
+      if (_to_destruct)
+        return Promise.reject('loader interrupted');
 
-      return new Promise(function(resolve, reject) {
-        if (_to_destruct)
-          reject('loader interrupted');
+      var p = PromiseOr(GetSourcesMST(), GetSourcesMD()).then(GetStream);
 
-        var promise = GetSourcesMST();
-
-        promise = promise.then(function(source_infos) {
-
-          GetStream(source_infos).then(resolve);
-
-        });
-
-        promise.catch(function() {
-          GetSourcesMD().then(function(source_infos) {
-
-            GetStream(source_infos).then(resolve);
-
-          }).catch(reject);
-        });
-      });
+      return p;
     }
 
     function Dispose() {
       _to_destruct = true;
+    }
+
+    function PromiseOr(p1, p2) {
+      return new Promise(function(resolve, reject) {
+        var rejected_once = false;
+        var OnReject = function(e) {
+          if (rejected_once)
+            reject(e);
+          else
+            rejected_once = true;
+        };
+        p1.then(resolve, OnReject);
+        p2.then(resolve, OnReject);
+      });
     }
 
     this.Load = Load;
