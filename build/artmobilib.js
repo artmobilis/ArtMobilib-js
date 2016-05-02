@@ -10521,11 +10521,11 @@ AM.Detection = function() {
    * @inner
    * @param {jsfeat.matrix_t} img
    */
-  this.Detect = function(img) {
+  this.Detect = function(img, fixed_angle) {
     AllocateCorners(img.cols, img.rows);
 
     _num_corners = AM.DetectKeypointsYape06(img, _screen_corners, _params.detection_corners_max,
-      _params.laplacian_threshold, _params.eigen_threshold, _params.border_size);
+      _params.laplacian_threshold, _params.eigen_threshold, _params.border_size, fixed_angle);
     
     // _num_corners = AM.DetectKeypointsFast(img, _screen_corners, _params.detection_corners_max,
     //   _params.fast_threshold, _params.border_size);
@@ -10634,7 +10634,8 @@ AM.DetectKeypointsPostProc = (function() {
     return b.score < a.score;
   }
 
-  return function(img, corners, count, max_allowed) {
+  return function(img, corners, count, max_allowed, angle) {
+    var i;
 
     // sort by score and reduce the count if needed
     if(count > max_allowed) {
@@ -10643,16 +10644,23 @@ AM.DetectKeypointsPostProc = (function() {
     }
 
     // calculate dominant orientation for each keypoint
-    // for(var i = 0; i < count; ++i) {
-    //   corners[i].angle = AM.IcAngle(img, corners[i].x, corners[i].y);
-    // }
+    if (typeof angle === 'number') {
+      for(i = 0; i < count; ++i) {
+        corners[i].angle = angle;
+      }
+    }
+    else {
+      for(i = 0; i < count; ++i) {
+        corners[i].angle = AM.IcAngle(img, corners[i].x, corners[i].y);
+      }
+    }
 
     return count;
   };
 })();
 
 AM.DetectKeypointsYape06 = function(img, corners, max_allowed,
-  laplacian_threshold, eigen_threshold, border_size) {
+  laplacian_threshold, eigen_threshold, border_size, angle) {
 
   jsfeat.yape06.laplacian_threshold = laplacian_threshold;
   jsfeat.yape06.min_eigen_value_threshold = eigen_threshold;
@@ -10660,7 +10668,7 @@ AM.DetectKeypointsYape06 = function(img, corners, max_allowed,
   // detect features
   var count = jsfeat.yape06.detect(img, corners, border_size);
 
-  count = AM.DetectKeypointsPostProc(img, corners, count, max_allowed);
+  count = AM.DetectKeypointsPostProc(img, corners, count, max_allowed, angle);
 
   return count;
 };
@@ -10796,13 +10804,13 @@ AM.MarkerTracker = function() {
   * @inner
   * @param {ImageData} image_data
   */
-  this.ComputeImage = function(image_data) {
+  this.ComputeImage = function(image_data, fixed_angle) {
     _profiler.new_frame();
     _profiler.start('filter');
     _image_filter.Filter(image_data);
     _profiler.stop('filter');
     _profiler.start('detection');
-    _detection.Detect(_image_filter.GetFilteredImage());
+    _detection.Detect(_image_filter.GetFilteredImage(), fixed_angle);
     _profiler.stop('detection');
   };
 
@@ -11014,6 +11022,10 @@ AM.MarkerTracker = function() {
     _image_filter.SetParameters(params);
     _detection.SetParameters(params);
     _matching.SetParameters(params);
+  };
+
+  this.UseFixedAngle = function(bool) {
+    _training.UseFixedAngle(bool);
   };
 };
 var AM = AM || {};
@@ -11629,6 +11641,8 @@ AM.Training = function() {
   var _gray_image;
   var _blured_images = [];
 
+  var _use_fixed_angle = false;
+
   function TrainLevel(img, level_img, level, scale) {
     var corners = _corners_levels[level];
     var descriptors = _descriptors_levels[level];
@@ -11641,8 +11655,13 @@ AM.Training = function() {
       jsfeat.imgproc.gaussian_blur(img, level_img, _params.blur_size);
     }
 
-    var corners_num = AM.DetectKeypointsYape06(level_img, corners, _params.training_corners_max,
-      _params.laplacian_threshold, _params.eigen_threshold);
+    var corners_num = 0;
+    if (_use_fixed_angle)
+      corners_num = AM.DetectKeypointsYape06(level_img, corners, _params.training_corners_max,
+        _params.laplacian_threshold, _params.eigen_threshold, undefined, 0);
+    else
+      corners_num = AM.DetectKeypointsYape06(level_img, corners, _params.training_corners_max,
+        _params.laplacian_threshold, _params.eigen_threshold);
     corners.length = corners_num;
     jsfeat.orb.describe(level_img, corners, corners_num, descriptors);
 
@@ -11828,6 +11847,10 @@ AM.Training = function() {
 
   this.GetScaleIncrement = function(){
     return _scale_increment;
+  };
+
+  this.UseFixedAngle = function(bool) {
+    _use_fixed_angle = bool;
   };
 
 };
