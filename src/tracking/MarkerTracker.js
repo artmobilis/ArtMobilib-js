@@ -61,13 +61,13 @@ AM.MarkerTracker = function() {
   * @inner
   * @param {ImageData} image_data
   */
-  this.ComputeImage = function(image_data) {
+  this.ComputeImage = function(image_data, fixed_angle) {
     _profiler.new_frame();
     _profiler.start('filter');
     _image_filter.Filter(image_data);
     _profiler.stop('filter');
     _profiler.start('detection');
-    _detection.Detect(_image_filter.GetFilteredImage());
+    _detection.Detect(_image_filter.GetFilteredImage(), fixed_angle);
     _profiler.stop('detection');
   };
 
@@ -279,5 +279,9 @@ AM.MarkerTracker = function() {
     _image_filter.SetParameters(params);
     _detection.SetParameters(params);
     _matching.SetParameters(params);
+  };
+
+  this.UseFixedAngle = function(bool) {
+    _training.UseFixedAngle(bool);
   };
 };

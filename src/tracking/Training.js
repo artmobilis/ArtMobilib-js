@@ -27,6 +27,8 @@ AM.Training = function() {
   var _gray_image;
   var _blured_images = [];
 
+  var _use_fixed_angle = false;
+
   function TrainLevel(img, level_img, level, scale) {
     var corners = _corners_levels[level];
     var descriptors = _descriptors_levels[level];
@@ -39,8 +41,13 @@ AM.Training = function() {
       jsfeat.imgproc.gaussian_blur(img, level_img, _params.blur_size);
     }
 
-    var corners_num = AM.DetectKeypointsYape06(level_img, corners, _params.training_corners_max,
-      _params.laplacian_threshold, _params.eigen_threshold);
+    var corners_num = 0;
+    if (_use_fixed_angle)
+      corners_num = AM.DetectKeypointsYape06(level_img, corners, _params.training_corners_max,
+        _params.laplacian_threshold, _params.eigen_threshold, undefined, 0);
+    else
+      corners_num = AM.DetectKeypointsYape06(level_img, corners, _params.training_corners_max,
+        _params.laplacian_threshold, _params.eigen_threshold);
     corners.length = corners_num;
     jsfeat.orb.describe(level_img, corners, corners_num, descriptors);
 
@@ -226,6 +233,10 @@ AM.Training = function() {
 
   this.GetScaleIncrement = function(){
     return _scale_increment;
+  };
+
+  this.UseFixedAngle = function(bool) {
+    _use_fixed_angle = bool;
   };
 
 };
