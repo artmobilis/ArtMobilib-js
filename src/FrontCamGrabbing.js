@@ -120,6 +120,7 @@ var AM = AM || {};
     this.IsActive = IsActive;
     this.Pause = Pause;
     this.TogglePause = TogglePause;
+    this.IsPaused = IsPaused;
 
 
   }
