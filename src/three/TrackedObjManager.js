@@ -86,7 +86,7 @@ var AMTHREE = AMTHREE || {};
 
     var _clock = new THREE.Clock(true);
 
-    var _holder = new AMTHREE.TrackedObjManager.prototype.Holder();
+    var _holder = new Holder();
 
 
     function LerpObjectsTransforms(src, dst, factor) {
@@ -286,95 +286,92 @@ var AMTHREE = AMTHREE || {};
   };
 
 
-  AMTHREE.TrackedObjManager.prototype.Holder = function() {
-    var that = this;
+  function Holder() {
+    this._objects = {};
+  }
 
-    var _objects = {};
+  Holder.prototype.Add = function(object, uuid, on_enable, on_disable) {
 
-    this.Add = function(object, uuid, on_enable, on_disable) {
-
-      var obj =
+    var obj =
+    {
+      object: object,
+      target:
       {
-        object: object,
-        target:
-        {
-          position: object.position.clone(),
-          quaternion: object.quaternion.clone(),
-          scale: object.scale.clone(),
-        },
-        inter_track: new TransformInterpolationComputer(),
-        elapsed: 0,
-        on_enable: on_enable,
-        on_disable: on_disable,
-        enabled: false
-      };
-
-      obj.inter_track.Init(object.position, object.quaternion, object.scale);
-
-      _objects[uuid] = obj;
+        position: object.position.clone(),
+        quaternion: object.quaternion.clone(),
+        scale: object.scale.clone(),
+      },
+      inter_track: new TransformInterpolationComputer(),
+      elapsed: 0,
+      on_enable: on_enable,
+      on_disable: on_disable,
+      enabled: false
     };
 
-    this.Remove = function(uuid) {
-      var elem = _objects[uuid];
+    obj.inter_track.Init(object.position, object.quaternion, object.scale);
 
-      if (elem.enabled) {
+    this._objects[uuid] = obj;
+  };
+
+  Holder.prototype.Remove = function(uuid) {
+    var elem = this._objects[uuid];
+
+    if (elem.enabled) {
+      if (elem.on_disable)
+        elem.on_disable(elem.object);
+    }
+    delete this._objects[uuid];
+  };
+
+  Holder.prototype.Clear = function() {
+    for (var uuid in this._objects)
+      that.Remove(uuid);
+  };
+
+  Holder.prototype.Track = function(uuid) {
+
+    var elem = this._objects[uuid];
+
+    elem.elapsed = 0;
+
+    if (!elem.enabled) {
+      elem.enabled = true;
+      if (elem.on_enable)
+        elem.on_enable(elem.object);
+    }
+  };
+
+  Holder.prototype.UpdateElapsed = function(elapsed) {
+    for (var uuid in this._objects) {
+
+      this._objects[uuid].elapsed += elapsed;
+    }
+  };
+
+  Holder.prototype.CheckTimeout = function(timeout) {
+
+    for (var uuid in this._objects) {
+
+      var elem = this._objects[uuid];
+
+      if (elem.enabled && elem.elapsed > timeout) {
         if (elem.on_disable)
           elem.on_disable(elem.object);
+        elem.enabled = false;
       }
-      delete _objects[uuid];
-    };
-
-    this.Clear = function() {
-      for (var uuid in _objects)
-        that.Remove(uuid);
-    };
-
-    this.Track = function(uuid) {
-
-      var elem = _objects[uuid];
-
-      elem.elapsed = 0;
-
-      if (!elem.enabled) {
-        elem.enabled = true;
-        if (elem.on_enable)
-          elem.on_enable(elem.object);
-      }
-    };
-
-    this.UpdateElapsed = function(elapsed) {
-      for (var uuid in _objects) {
-
-        _objects[uuid].elapsed += elapsed;
-      }
-    };
-
-    this.CheckTimeout = function(timeout) {
-
-      for (var uuid in _objects) {
-
-        var elem = _objects[uuid];
-
-        if (elem.enabled && elem.elapsed > timeout) {
-          if (elem.on_disable)
-            elem.on_disable(elem.object);
-          elem.enabled = false;
-        }
-      }
-    };
-
-    this.ForEach = function(fun) {
-      for (var uuid in _objects) {
-        fun(_objects[uuid]);
-      }
-    };
-
-    this.Get = function(uuid) {
-      return _objects[uuid];
-    };
-
-
+    }
   };
+
+  Holder.prototype.ForEach = function(fun) {
+    for (var uuid in this._objects) {
+      fun(this._objects[uuid]);
+    }
+  };
+
+  Holder.prototype.Get = function(uuid) {
+    return this._objects[uuid];
+  };
+
 
   var qtn_zero = new THREE.Quaternion();
   var tmp_pos = new THREE.Vector3();
