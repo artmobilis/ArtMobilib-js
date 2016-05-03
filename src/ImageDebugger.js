@@ -40,6 +40,7 @@ AM.ImageDebugger = function() {
   var _profiler;
   var _image_data;
   var _uuid;
+  var _matched;
 
   var _hbands=44; // Height of upper horizontal menu band (44 pixels on my desktop)
   var _ratio;
@@ -153,6 +154,7 @@ AM.ImageDebugger = function() {
     _matches          = marker_corners.matches;
     _matches_mask     = marker_corners.matches_mask;
     _trained_image_url = trained_image_url;
+    _matched           = marker_corners.matched;
 
     // draw images, its corresponding corners, and matches
     if(_trained_image_url != _last_trained_url) {
@@ -247,7 +249,7 @@ AM.ImageDebugger = function() {
       var tc = tcl[m.pattern_idx];
       var ts = _screen_corners[m.screen_idx];
 
-      if (mm) {
+      if (mm && _matched) {
         _context2d.fillStyle="blue";
         _context2d.strokeStyle="blue";
       }

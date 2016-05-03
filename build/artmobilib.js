@@ -430,6 +430,7 @@ AM.ImageDebugger = function() {
   var _profiler;
   var _image_data;
   var _uuid;
+  var _matched;
 
   var _hbands=44; // Height of upper horizontal menu band (44 pixels on my desktop)
   var _ratio;
@@ -543,6 +544,7 @@ AM.ImageDebugger = function() {
     _matches          = marker_corners.matches;
     _matches_mask     = marker_corners.matches_mask;
     _trained_image_url = trained_image_url;
+    _matched           = marker_corners.matched;
 
     // draw images, its corresponding corners, and matches
     if(_trained_image_url != _last_trained_url) {
@@ -637,7 +639,7 @@ AM.ImageDebugger = function() {
       var tc = tcl[m.pattern_idx];
       var ts = _screen_corners[m.screen_idx];
 
-      if (mm) {
+      if (mm && _matched) {
         _context2d.fillStyle="blue";
         _context2d.strokeStyle="blue";
       }
@@ -10829,8 +10831,11 @@ AM.MarkerTracker = function() {
 
       var count = _matching.GetNumMatches();
 
+      // save last test uuid for debugging matching
+      _matching_image = trained_image;
+
       _match_found = (count >= _params.match_min);
-      if (_debug) console.log("nbMatches : " + count);
+      if (_debug) console.log( "image: " + uuid + " nbMatches: " + count);
       if (!_match_found)
         continue;
 
@@ -10838,7 +10843,7 @@ AM.MarkerTracker = function() {
         _detection.GetCorners(), trained_image.GetCornersLevels());
       _match_found = (good_count >= _params.match_min);
 
-      if (_debug) console.log(" goodMatches : " + good_count);
+      if (_debug) console.log(" goodMatches: " + good_count);
       if (_match_found) {
         _matching_image = trained_image;
         break;
@@ -10847,7 +10852,7 @@ AM.MarkerTracker = function() {
     }
 
     _profiler.stop('matching');
-    if (_debug) console.log(_profiler.log2());
+    //if (_debug) console.log(_profiler.log2());
 
     return _match_found;
   };
