@@ -125,7 +125,8 @@ AM.MarkerTracker = function() {
    * @inner
    */
   this.GetMatchUuid = function() {
-    return _matching_image.GetUuid();
+    if (_matching_image)
+      return _matching_image.GetUuid();
   };
 
   /**
@@ -250,8 +251,12 @@ AM.MarkerTracker = function() {
    * @returns {jsfeat.keypoint_t[]}
    */
   this.GetTrainedCorners = function () {
-    var trained_image = _trained_images[_matching_image.GetUuid()];
-    return trained_image.GetCornersLevels();
+    if (_matching_image) {
+      var trained_image = _trained_images[_matching_image.GetUuid()];
+      return trained_image.GetCornersLevels();
+    }
+    else
+      return [];
   };
 
   /**
