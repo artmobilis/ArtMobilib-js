@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: three/Image.js</title>
+    <title>JSDoc: Source: JsonLoader.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: three/Image.js</h1>
+    <h1 class="page-title">Source: JsonLoader.js</h1>
 
     
 
@@ -26,47 +26,110 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>var AMTHREE = AMTHREE || {};
+            <pre class="prettyprint source linenums"><code>var AM = AM || {};
 
-if (typeof THREE !== 'undefined') {
 
-  /**
-   * @class
-   * @param {string} [uuid] - generated if not provided
-   * @param {string} [url] - The url of the image
-   */
-  AMTHREE.Image = function(uuid, url) {
-    this.uuid = uuid || THREE.Math.generateUUID();
-    this.url = url;
-  };
+/**
+* Utility class to load a json file and convert the string to a json structure. Can load only one file at a time.
+* @class
+*/
+AM.JsonLoader = function() {
+  var that = this;
 
-  /**
-  * Returns an json object.
-  * @param {object} [meta] - an object holding json ressources. The result of this function will be added to it if provided.
-  * @returns {object} A json object
-  */
-  AMTHREE.Image.prototype.toJSON = function(meta) {
-    var output = {};
+  var _loading = false;
+  var _on_load;
+  var _on_error;
+  var _on_progress;
+  var _url;
 
-    output.uuid = this.uuid;
-    output.url = AMTHREE.GetFilename(this.url);
+  var _xhr;
 
-    if (typeof meta === 'object') {
-      if (!meta.images) meta.images = {};
-      meta.images[output.uuid] = output;
+  function OnEnd(callback, param) {
+    _loading = false;
+    _on_progress = undefined;
+    _on_error = undefined;
+    _on_load = undefined;
+    _xhr = undefined;
+    _url = undefined;
+    that.progress = 0;
+    if (callback)
+      callback(param);
+  }
+
+  function OnLoad() {
+    try
+    {
+      that.json = JSON.parse(_xhr.responseText);
+      OnEnd(_on_load);
     }
+    catch(e)
+    {
+      that.json = {};
+      OnEnd(_on_error, 'failed to parse file: ' + _url);
+    }
+  }
 
-    return output;
+  function OnError(e) {
+    var msg = 'JsonLoader failed to open file: ' + _url;
+
+    console.log(msg);
+    OnEnd(_on_error, msg);
+  }
+
+  function OnProgress(e) {
+    that.progress = (e.loaded / e.total) * 100;
+    if (_on_progress)
+      _on_progress();
+  }
+
+
+  this.json = {};
+  this.progress = 0;
+
+  this.IsLoading = function() {
+    return _loading;
   };
 
+  /**
+  * Loads a file
+  * @param {string} url
+  * @param {function} on_load
+  * @param {function} on_error
+  * @param {function} on_progress
+  */
+  this.Load = function(url, on_load, on_error, on_progress) {
+    if (!_loading) {
+      _loading = true;
 
-}
-else {
-  AMTHREE.Image = function() {
-    console.warn('Image.js: THREE undefined');
+      _on_load = on_load;
+      _on_error = on_error;
+      _on_progress = on_progress;
+      _url = url;
+
+      _xhr = new XMLHttpRequest();
+      _xhr.onprogress = OnProgress;
+      _xhr.open("GET", url, true);
+      _xhr.onload = OnLoad;
+      _xhr.onerror = OnError;
+      _xhr.send(null);
+    }
   };
-}
-</code></pre>
+};
+
+/**
+* Loads a json file using AM.JsonLoader.
+* @function
+* @param {string} url
+* @returns {Promise&lt;object, string>}
+*/
+AM.LoadJson = function(url) {
+  return new Promise(function(resolve, reject) {
+    var loader = new AM.JsonLoader();
+    loader.Load(url, function() {
+      resolve(loader.json);
+    }, reject);
+  });
+};</code></pre>
         </article>
     </section>
 

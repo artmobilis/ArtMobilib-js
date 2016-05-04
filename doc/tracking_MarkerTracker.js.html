@@ -56,6 +56,7 @@ var AM = AM || {};
 
 
 /**
+ * Finds a list of image in an image, and compute its pose.
  * @class
  */
 AM.MarkerTracker = function() {
@@ -73,7 +74,7 @@ AM.MarkerTracker = function() {
 
   var _params = {
     match_min : 8
-  }
+  };
   
   var _debug =false; 
   
@@ -85,23 +86,21 @@ AM.MarkerTracker = function() {
 
 
   /**
-  * Computes the corners and descriptors
-  * @inner
+  * Computes the corners and descriptors.
   * @param {ImageData} image_data
   */
-  this.ComputeImage = function(image_data) {
+  this.ComputeImage = function(image_data, fixed_angle) {
     _profiler.new_frame();
     _profiler.start('filter');
     _image_filter.Filter(image_data);
     _profiler.stop('filter');
     _profiler.start('detection');
-    _detection.Detect(_image_filter.GetFilteredImage());
+    _detection.Detect(_image_filter.GetFilteredImage(), fixed_angle);
     _profiler.stop('detection');
   };
 
   /**
    * Matches the last computed ImageData and every active trained image.
-   * @inner
    * @returns {bool} true if a match if found.
    */
   this.Match = function() {
@@ -112,7 +111,7 @@ AM.MarkerTracker = function() {
 
     _matching.SetScreenDescriptors(_detection.GetDescriptors());
 
-    for(uuid in _trained_images) {
+    for(var uuid in _trained_images) {
       var trained_image = _trained_images[uuid];
 
       if (!trained_image.IsActive())
@@ -122,8 +121,11 @@ AM.MarkerTracker = function() {
 
       var count = _matching.GetNumMatches();
 
+      // save last test uuid for debugging matching
+      _matching_image = trained_image;
+
       _match_found = (count >= _params.match_min);
-      if (_debug) console.log("nbMatches : " + count);
+      if (_debug) console.log( "image: " + uuid + " nbMatches: " + count);
       if (!_match_found)
         continue;
 
@@ -131,7 +133,7 @@ AM.MarkerTracker = function() {
         _detection.GetCorners(), trained_image.GetCornersLevels());
       _match_found = (good_count >= _params.match_min);
 
-      if (_debug) console.log(" goodMatches : " + good_count);
+      if (_debug) console.log(" goodMatches: " + good_count);
       if (_match_found) {
         _matching_image = trained_image;
         break;
@@ -140,21 +142,21 @@ AM.MarkerTracker = function() {
     }
 
     _profiler.stop('matching');
+    //if (_debug) console.log(_profiler.log2());
 
     return _match_found;
   };
 
   /**
-   * Returns the id of the last match
-   * @inner
+   * Returns the id of the last match.
    */
   this.GetMatchUuid = function() {
-    return _matching_image.GetUuid();
+    if (_matching_image)
+      return _matching_image.GetUuid();
   };
 
   /**
-   * Computes and returns the pose of the last match
-   * @inner
+   * Computes and returns the pose of the last match.
    * @returns {Point2D[]} The corners
    */
   this.GetPose = function() {
@@ -168,8 +170,7 @@ AM.MarkerTracker = function() {
   };
 
   /**
-   * Trains a marker
-   * @inner
+   * Trains a marker.
    * @param {ImageData} image_data - The marker, has to be a square (same width and height).
    * @param {value} uuid - The identifier of the marker.
    */
@@ -182,8 +183,7 @@ AM.MarkerTracker = function() {
   };
 
   /**
-   * Removes a marker
-   * @inner
+   * Removes a marker.
    * @param {value} uuid - The identifier of the marker.
    */
   this.RemoveMarker = function(uuid) {
@@ -195,7 +195,6 @@ AM.MarkerTracker = function() {
   /**
    * Activates or desactivates a marker.
    * &lt;br>A marker inactive will be ignored during the matching.
-   * @inner
    * @param {value} uuid - The identifier of the marker.
    * @param {bool} bool - Sets active if true, inactive if false.
    */
@@ -205,27 +204,24 @@ AM.MarkerTracker = function() {
   };
 
   /**
-   * Sets active or inactive all the markers
-   * @inner
+   * Sets active or inactive all the markers.
    * @param {bool} bool - Sets all active if true, inactive if false.
    */
   this.ActiveAllMarkers = function(bool) {
-    for (uuid in _trained_images) {
+    for (var uuid in _trained_images) {
       _trained_images[uuid].Active(bool);
     }
   };
 
   /**
-   * Removes all the markers
-   * @inner
+   * Removes all the markers.
    */
   this.ClearMarkers = function() {
     _trained_images = {};
   };
 
   /**
-   * Returns the corners of the last computed image
-   * @inner
+   * Returns the corners of the last computed image.
    * @returns {jsfeat.keypoint_t[]}
    */
   this.GetScreenCorners = function() {
@@ -233,8 +229,7 @@ AM.MarkerTracker = function() {
   };
 
   /**
-   * Returns the count of corners of the last computed image
-   * @inner
+   * Returns the count of corners of the last computed image.
    * @returns {number}
    */
   this.GetNumScreenCorners = function() {
@@ -242,17 +237,23 @@ AM.MarkerTracker = function() {
   };
 
  /**
-   * Returns the buffer of matches ()
-   * @inner
+   * Returns the buffer of matches.
    * @returns {AM.match_t[]}
    */
-  this.Getmatches = function () {
+  this.GetMatches = function () {
     return _matching.GetMatches();
   };
 
+ /**
+   * Returns the buffer of matches validated by homography.
+   * @returns {AM.match_t[]}
+   */
+  this.GetMatchesMask = function () {
+    return _pose.GetMatchesMask();
+  };
+
 /**
-   * Returns the timings of matching function()
-   * @inner
+   * Returns the timings of matching function.
    * @returns {pair[]}
    */
   this.GetProfiler = function () {
@@ -260,18 +261,20 @@ AM.MarkerTracker = function() {
   };
 
 /**
-   * Returns corners of trained image
-   * @inner
+   * Returns corners of trained image.
    * @returns {jsfeat.keypoint_t[]}
    */
   this.GetTrainedCorners = function () {
-    var trained_image = _trained_images[uuid];
-    return trained_image.GetCornersLevels();
+    if (_matching_image) {
+      var trained_image = _trained_images[_matching_image.GetUuid()];
+      return trained_image.GetCornersLevels();
+    }
+    else
+      return [];
   };
 
   /**
-   * Puts the log to the console
-   * @inner
+   * Puts the log to the console.
    */
   this.Log = function() {
     console.log(_profiler.log() + ((_match_found) ? '&lt;br/>match found' : ''));
@@ -279,16 +282,15 @@ AM.MarkerTracker = function() {
 
   /**
    * Sets optionnals parameters
-   * @inner
    * @param {object} params
-   * @param {number} [match_min=8] minimum number of matching corners necessary for a match to be valid.
+   * @param {number} [match_min] minimum number of matching corners necessary for a match to be valid. default 8
    * @see AM.ImageFilter
    * @see AM.Detection
    * @see AM.Matching
    * @see AM.Training
    */
   this.SetParameters = function(params) {
-    for (name in params) {
+    for (var name in params) {
       if (typeof _params[name] !== 'undefined')
         _params[name] = params[name];
     }
@@ -297,6 +299,14 @@ AM.MarkerTracker = function() {
     _image_filter.SetParameters(params);
     _detection.SetParameters(params);
     _matching.SetParameters(params);
+  };
+
+  /**
+  * If a fixed angle is used, corner orientation isnt computed, set to 0 for the training, and for the detection, a provided angle is used.
+  * @param {boolean} bool
+  */
+  this.UseFixedAngle = function(bool) {
+    _training.UseFixedAngle(bool);
   };
 };</code></pre>
         </article>
@@ -308,13 +318,13 @@ AM.MarkerTracker = function() {
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AM.Detection.html">Detection</a></li><li><a href="AM.DeviceLockScreenOrientation.html">DeviceLockScreenOrientation</a></li><li><a href="AM.DeviceOrientationControl.html">DeviceOrientationControl</a></li><li><a href="AM.EventManager.html">EventManager</a></li><li><a href="AM.GeographicCoordinatesConverter.html">GeographicCoordinatesConverter</a></li><li><a href="AM.GeolocationControl.html">GeolocationControl</a></li><li><a href="AM.ImageFilter.html">ImageFilter</a></li><li><a href="AM.MarkerTracker.html">MarkerTracker</a></li><li><a href="AM.match_t.html">match_t</a></li><li><a href="AM.Matching.html">Matching</a></li><li><a href="AM.Pose.html">Pose</a></li><li><a href="AM.PosePosit.html">PosePosit</a></li><li><a href="AM.PoseThree.html">PoseThree</a></li><li><a href="AM.TrainedImage.html">TrainedImage</a></li><li><a href="AM.Training.html">Training</a></li><li><a href="AMTHREE.GifTexture.html">GifTexture</a></li><li><a href="AMTHREE.Image.html">Image</a></li><li><a href="AMTHREE.ImageTexture.html">ImageTexture</a></li><li><a href="AMTHREE.ObjectLoader.html">ObjectLoader</a></li><li><a href="AMTHREE.Scene.html">Scene</a></li><li><a href="AMTHREE.Sound.html">Sound</a></li><li><a href="AMTHREE.TrackedObjManager.html">TrackedObjManager</a></li><li><a href="AMTHREE.VideoTexture.html">VideoTexture</a></li></ul><h3>Namespaces</h3><ul><li><a href="AM.html">AM</a></li><li><a href="AMTHREE.html">AMTHREE</a></li><li><a href="THREE.html">THREE</a></li></ul><h3>Global</h3><ul><li><a href="global.html#compatibility">compatibility</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AM.Detection.html">Detection</a></li><li><a href="AM.DeviceLockScreenOrientation.html">DeviceLockScreenOrientation</a></li><li><a href="AM.DeviceOrientationControl.html">DeviceOrientationControl</a></li><li><a href="AM.EventManager.html">EventManager</a></li><li><a href="AM.GeographicCoordinatesConverter.html">GeographicCoordinatesConverter</a></li><li><a href="AM.GeolocationControl.html">GeolocationControl</a></li><li><a href="AM.ImageDebugger.html">ImageDebugger</a></li><li><a href="AM.ImageFilter.html">ImageFilter</a></li><li><a href="AM.JsonLoader.html">JsonLoader</a></li><li><a href="AM.LoadingManager.html">LoadingManager</a></li><li><a href="AM.MarkerTracker.html">MarkerTracker</a></li><li><a href="AM.match_t.html">match_t</a></li><li><a href="AM.Matching.html">Matching</a></li><li><a href="AM.Pose.html">Pose</a></li><li><a href="AM.PosePosit.html">PosePosit</a></li><li><a href="AM.PoseThree.html">PoseThree</a></li><li><a href="AM.TrainedImage.html">TrainedImage</a></li><li><a href="AM.Training.html">Training</a></li><li><a href="AMTHREE.ColladaLoader.html">ColladaLoader</a></li><li><a href="AMTHREE.ColladaObject.html">ColladaObject</a></li><li><a href="AMTHREE.GifTexture.html">GifTexture</a></li><li><a href="AMTHREE.Image.html">Image</a></li><li><a href="AMTHREE.ImageTexture.html">ImageTexture</a></li><li><a href="AMTHREE.SoundObject.html">SoundObject</a></li><li><a href="AMTHREE.TrackedObjManager.html">TrackedObjManager</a></li><li><a href="AMTHREE.TransformControls.html">TransformControls</a></li><li><a href="AMTHREE.Video.html">Video</a></li><li><a href="AMTHREE.VideoTexture.html">VideoTexture</a></li></ul><h3>Namespaces</h3><ul><li><a href="AM.html">AM</a></li><li><a href="AMTHREE.html">AMTHREE</a></li><li><a href="THREE.html">THREE</a></li></ul><h3>Global</h3><ul><li><a href="global.html#compatibility">compatibility</a></li><li><a href="global.html#getGradientGreenRedColor">getGradientGreenRedColor</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Wed Apr 06 2016 12:28:02 GMT+0200 (Paris, Madrid (heure d’été))
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Wed May 04 2016 15:17:08 GMT+0200 (Paris, Madrid (heure d’été))
 </footer>
 
 <script> prettyPrint(); </script>

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: three/Image.js</title>
+    <title>JSDoc: Source: three/SoundObject.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: three/Image.js</h1>
+    <h1 class="page-title">Source: three/SoundObject.js</h1>
 
     
 
@@ -28,33 +28,126 @@
         <article>
             <pre class="prettyprint source linenums"><code>var AMTHREE = AMTHREE || {};
 
+
 if (typeof THREE !== 'undefined') {
 
   /**
+   * A THREE.Object holding a sound.
    * @class
-   * @param {string} [uuid] - generated if not provided
-   * @param {string} [url] - The url of the image
+   * @augments {THREE.Object3D}
+   * @param {string} url - url of the sound
    */
-  AMTHREE.Image = function(uuid, url) {
-    this.uuid = uuid || THREE.Math.generateUUID();
-    this.url = url;
+  AMTHREE.SoundObject = function(sound) {
+    THREE.Object3D.call(this);
+
+    this.sound = sound;
+    this.audio = new Audio();
+    this.audio.loop = true;
+    this.playing = false;
+  };
+
+  AMTHREE.SoundObject.prototype = Object.create(THREE.Object3D.prototype);
+  AMTHREE.SoundObject.prototype.constructor = AMTHREE.SoundObject;
+
+  /**
+   * Plays the sound.
+   */
+  AMTHREE.SoundObject.prototype.play = function() {
+    this.playing = true;
+    this.audio.src = this.sound.url;
+    this.audio.play();
   };
 
   /**
-  * Returns an json object.
-  * @param {object} [meta] - an object holding json ressources. The result of this function will be added to it if provided.
-  * @returns {object} A json object
+   * Stops the sound.
+   */
+  AMTHREE.SoundObject.prototype.stop = function() {
+    this.audio.src = '';
+    this.playing = false;
+  };
+
+  /**
+   * Pauses the sound.
+   */
+  AMTHREE.SoundObject.prototype.pause = function() {
+    this.audio.pause();
+    this.playing = false;
+  };
+
+  /**
+   * Sets the sound's url.
+   * @param {string} url
+   */
+  AMTHREE.SoundObject.prototype.setSound = function(sound) {
+    this.sound = sound;
+    if (this.isPlaying())
+      this.play();
+  };
+
+  /**
+   * Returns whether the sound is played.
+   * @returns {bool}
+   */
+  AMTHREE.SoundObject.prototype.isPlaying = function() {
+    return this.playing;
+  };
+
+  /**
+   * Returns a clone of this.
+   * @returns {AMTHREE.SoundObject}
+   */
+  AMTHREE.SoundObject.prototype.clone = function() {
+    return (new AMTHREE.SoundObject()).copy(this);
+  };
+
+  /**
+   * Copies the parameter.
+   * @param {AMTHREE.SoundObject}
+   */
+  AMTHREE.SoundObject.prototype.copy = function(src) {
+    this.setSound(src.sound);
+    return this;
+  };
+
+
+  AMTHREE.SoundsCall = function(object, fun) {
+    object.traverse(function(s) {
+      if (s instanceof AMTHREE.SoundObject &amp;&amp; s[fun])
+        s[fun]();
+    });
+  };
+
+  /**
+  * Recursively plays the sounds of this object and all his children
+  * @param {THREE.Object3D} object
   */
-  AMTHREE.Image.prototype.toJSON = function(meta) {
-    var output = {};
+  AMTHREE.PlaySounds = function(object) {
+    AMTHREE.SoundsCall(object, 'play');
+  };
 
-    output.uuid = this.uuid;
-    output.url = AMTHREE.GetFilename(this.url);
+  /**
+  * Recursively pauses the sounds of this object and all his children
+  * @param {THREE.Object3D} object
+  */
+  AMTHREE.PauseSounds = function(object) {
+    AMTHREE.SoundsCall(object, 'pause');
+  };
 
-    if (typeof meta === 'object') {
-      if (!meta.images) meta.images = {};
-      meta.images[output.uuid] = output;
-    }
+  /**
+  * Recursively stops the sounds of this object and all his children
+  * @param {THREE.Object3D} object
+  */
+  AMTHREE.StopSounds = function(object) {
+    AMTHREE.SoundsCall(object, 'stop');
+  };
+
+  AMTHREE.SoundObject.prototype.toJSON = function(meta) {
+    var output = THREE.Object3D.prototype.toJSON.call(this, meta);
+
+    this.sound.toJSON(meta);
+
+    output.object.type = 'SoundObject';
+    output.object.sound = this.sound.uuid;
 
     return output;
   };
@@ -62,11 +155,10 @@ if (typeof THREE !== 'undefined') {
 
 }
 else {
-  AMTHREE.Image = function() {
-    console.warn('Image.js: THREE undefined');
+  AMTHREE.SoundObject = function() {
+    console.warn('SoundObject.js: THREE undefined');
   };
-}
-</code></pre>
+}</code></pre>
         </article>
     </section>
 

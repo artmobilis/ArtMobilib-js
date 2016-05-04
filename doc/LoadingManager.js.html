@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: three/Image.js</title>
+    <title>JSDoc: Source: LoadingManager.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: three/Image.js</h1>
+    <h1 class="page-title">Source: LoadingManager.js</h1>
 
     
 
@@ -26,47 +26,94 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>var AMTHREE = AMTHREE || {};
+            <pre class="prettyprint source linenums"><code>var AM = AM || {};
 
-if (typeof THREE !== 'undefined') {
+
+/**
+* Helper class to manager loadings, and bind callbacks.
+* @class
+*/
+AM.LoadingManager = function() {
+
+  var _end_callbacks = [];
+  var _progress_callbacks = [];
+  var _loading = 0;
+
+  function DoCallbacks(array) {
+    for (var i = 0, c = array.length; i &lt; c; ++i)
+      array[i]();
+  }
+  
 
   /**
-   * @class
-   * @param {string} [uuid] - generated if not provided
-   * @param {string} [url] - The url of the image
-   */
-  AMTHREE.Image = function(uuid, url) {
-    this.uuid = uuid || THREE.Math.generateUUID();
-    this.url = url;
-  };
-
-  /**
-  * Returns an json object.
-  * @param {object} [meta] - an object holding json ressources. The result of this function will be added to it if provided.
-  * @returns {object} A json object
+  * Registers a number of loading starts.
+  * @param {number} nbr
   */
-  AMTHREE.Image.prototype.toJSON = function(meta) {
-    var output = {};
+  this.Start = function(nbr) {
+    nbr = nbr || 1;
+    _loading += nbr;
+    DoCallbacks(_progress_callbacks);
+  };
 
-    output.uuid = this.uuid;
-    output.url = AMTHREE.GetFilename(this.url);
-
-    if (typeof meta === 'object') {
-      if (!meta.images) meta.images = {};
-      meta.images[output.uuid] = output;
+  /**
+  * Registers a number of loading ends. If there is no loadings left, the listeners are notified, and every listener are removed.
+  * @param {number} nbr
+  */
+  this.End = function(nbr) {
+    nbr = nbr || 1;
+    if (_loading > 0) {
+      _loading -= nbr;
+      DoCallbacks(_progress_callbacks);
     }
-
-    return output;
+    if (_loading &lt;= 0) {
+      _loading = 0;
+      DoCallbacks(_end_callbacks);
+      _end_callbacks.length = 0;
+      _progress_callbacks.length = 0;
+    }
   };
 
-
-}
-else {
-  AMTHREE.Image = function() {
-    console.warn('Image.js: THREE undefined');
+  /**
+  * Adds a listener to the event of the end of the loadings.
+  * @param {function} callback
+  */
+  this.OnEnd = function(callback) {
+    if (_loading > 0) {
+      _end_callbacks.push(callback);
+    }
+    else
+      callback();
   };
-}
-</code></pre>
+
+  /**
+  * Adds a listener to the event of a change.
+  * @param {function} callback
+  */
+  this.OnProgress = function(callback) {
+    if (_loading > 0) {
+      _progress_callbacks.push(callback);
+    }
+    else
+      callback();
+  };
+
+  /**
+  * Returns true if there are loadings left.
+  * @returns {boolean}
+  */
+  this.IsLoading = function() {
+    return _loading > 0;
+  };
+
+  /**
+  * Returns the number of loadings left.
+  * @returns {number}
+  */
+  this.GetRemaining = function() {
+    return _loading;
+  };
+
+};</code></pre>
         </article>
     </section>
 

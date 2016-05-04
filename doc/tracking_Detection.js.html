@@ -34,14 +34,14 @@
  * @class
  */
 AM.Detection = function() {
-
+  var that=this;
   var _params = {
     laplacian_threshold: 30,
     eigen_threshold: 25,
     detection_corners_max: 500,
     border_size: 15,
     fast_threshold: 20
-  }
+  };
 
   var _debug =false;
 
@@ -66,11 +66,11 @@ AM.Detection = function() {
    * @inner
    * @param {jsfeat.matrix_t} img
    */
-  this.Detect = function(img) {
+  this.Detect = function(img, fixed_angle) {
     AllocateCorners(img.cols, img.rows);
 
     _num_corners = AM.DetectKeypointsYape06(img, _screen_corners, _params.detection_corners_max,
-      _params.laplacian_threshold, _params.eigen_threshold, _params.border_size);
+      _params.laplacian_threshold, _params.eigen_threshold, _params.border_size, fixed_angle);
     
     // _num_corners = AM.DetectKeypointsFast(img, _screen_corners, _params.detection_corners_max,
     //   _params.fast_threshold, _params.border_size);
@@ -84,14 +84,14 @@ AM.Detection = function() {
    * Sets the params used during the detection
    * @inner
    * @param {object} params
-   * @param {number} [params.laplacian_threshold=30] - 0 - 100
-   * @param {number} [params.eigen_threshold=25] - 0 - 100
-   * @param {number} [params.detection_corners_max=500] - 100 - 1000
-   * @param {number} [params.border_size=3]
-   * @param {number} [params.fast_threshold=48] - 0 - 10
+   * @param {number} [params.laplacian_threshold] - 0 - 100 default 30
+   * @param {number} [params.eigen_threshold] - 0 - 100 default 25
+   * @param {number} [params.detection_corners_max] - 100 - 1000 default 500
+   * @param {number} [params.border_size] default 3
+   * @param {number} [params.fast_threshold] - 0 - 10 default 48
    */
   this.SetParameters = function(params) {
-    for (name in params) {
+    for (var name in params) {
       if (typeof _params[name] !== 'undefined')
         _params[name] = params[name];
     }
@@ -116,12 +116,17 @@ AM.Detection = function() {
   };
 
   /**
-   * Returns the last computed corners
+   * Returns a copy of the last computed corners
    * @inner
    * @returns {jsfeat.keypoint_t[]}
    */
   this.GetCorners = function() {
-    return _screen_corners;
+    var copy = [];
+    var i=that.GetNumCorners();
+    while( i--)
+       copy[i]=_screen_corners[i];
+    
+    return copy;
   };
 
 
@@ -130,6 +135,13 @@ AM.Detection = function() {
 AM.IcAngle = (function() {
   var u_max = new Int32Array( [ 15, 15, 15, 15, 14, 14, 14, 13, 13, 12, 11, 10, 9, 8, 6, 3, 0 ] );
   var half_pi = Math.PI / 2;
+  
+  function DiamondAngle(y, x) {
+    if (y >= 0)
+      return (x >= 0 ? y / (x + y) : 1 - x / (-x + y)); 
+    else
+      return (x &lt; 0 ? 2 - y / (-x - y) : 3 + x / (x - y));
+  }
 
   return function(img, px, py) {
     var half_k = 15; // half patch size
@@ -156,38 +168,44 @@ AM.IcAngle = (function() {
       m_01 += v * v_sum;
     }
 
-    // return Math.atan2(m_01, m_10);
-    return AM.DiamondAngle(m_01, m_10) * half_pi;
-  }
+    return Math.atan2(m_01, m_10);
+    // return DiamondAngle(m_01, m_10) * half_pi;
+  };
 })();
 
-AM.DiamondAngle = function(y, x) {
-  if (y >= 0)
-    return (x >= 0 ? y / (x + y) : 1 - x / (-x + y)); 
-  else
-    return (x &lt; 0 ? 2 - y / (-x - y) : 3 + x / (x - y));
-}
+AM.DetectKeypointsPostProc = (function() {
 
-AM.DetectKeypointsPostProc = function(img, corners, count, max_allowed) {
-
-  // sort by score and reduce the count if needed
-  if(count > max_allowed) {
-    jsfeat.math.qsort(corners, 0, count - 1, function(a, b) {
-      return (b.score &lt; a.score);
-    } );
-    count = max_allowed;
+  function Comp(a, b) {
+    return b.score &lt; a.score;
   }
 
-  // calculate dominant orientation for each keypoint
-  for(var i = 0; i &lt; count; ++i) {
-    corners[i].angle = AM.IcAngle(img, corners[i].x, corners[i].y);
-  }
+  return function(img, corners, count, max_allowed, angle) {
+    var i;
 
-  return count;
-}
+    // sort by score and reduce the count if needed
+    if(count > max_allowed) {
+      jsfeat.math.qsort(corners, 0, count - 1, Comp);
+      count = max_allowed;
+    }
+
+    // calculate dominant orientation for each keypoint
+    if (typeof angle === 'number') {
+      for(i = 0; i &lt; count; ++i) {
+        corners[i].angle = angle;
+      }
+    }
+    else {
+      for(i = 0; i &lt; count; ++i) {
+        corners[i].angle = AM.IcAngle(img, corners[i].x, corners[i].y);
+      }
+    }
+
+    return count;
+  };
+})();
 
 AM.DetectKeypointsYape06 = function(img, corners, max_allowed,
-  laplacian_threshold, eigen_threshold, border_size) {
+  laplacian_threshold, eigen_threshold, border_size, angle) {
 
   jsfeat.yape06.laplacian_threshold = laplacian_threshold;
   jsfeat.yape06.min_eigen_value_threshold = eigen_threshold;
@@ -195,7 +213,7 @@ AM.DetectKeypointsYape06 = function(img, corners, max_allowed,
   // detect features
   var count = jsfeat.yape06.detect(img, corners, border_size);
 
-  count = AM.DetectKeypointsPostProc(img, corners, count, max_allowed);
+  count = AM.DetectKeypointsPostProc(img, corners, count, max_allowed, angle);
 
   return count;
 };
@@ -218,13 +236,13 @@ AM.DetectKeypointsFast = function(img, corners, max_allowed, threshold, border_s
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AM.Detection.html">Detection</a></li><li><a href="AM.DeviceLockScreenOrientation.html">DeviceLockScreenOrientation</a></li><li><a href="AM.DeviceOrientationControl.html">DeviceOrientationControl</a></li><li><a href="AM.EventManager.html">EventManager</a></li><li><a href="AM.GeographicCoordinatesConverter.html">GeographicCoordinatesConverter</a></li><li><a href="AM.GeolocationControl.html">GeolocationControl</a></li><li><a href="AM.ImageFilter.html">ImageFilter</a></li><li><a href="AM.MarkerTracker.html">MarkerTracker</a></li><li><a href="AM.match_t.html">match_t</a></li><li><a href="AM.Matching.html">Matching</a></li><li><a href="AM.Pose.html">Pose</a></li><li><a href="AM.PosePosit.html">PosePosit</a></li><li><a href="AM.PoseThree.html">PoseThree</a></li><li><a href="AM.TrainedImage.html">TrainedImage</a></li><li><a href="AM.Training.html">Training</a></li><li><a href="AMTHREE.GifTexture.html">GifTexture</a></li><li><a href="AMTHREE.Image.html">Image</a></li><li><a href="AMTHREE.ImageTexture.html">ImageTexture</a></li><li><a href="AMTHREE.ObjectLoader.html">ObjectLoader</a></li><li><a href="AMTHREE.Scene.html">Scene</a></li><li><a href="AMTHREE.Sound.html">Sound</a></li><li><a href="AMTHREE.TrackedObjManager.html">TrackedObjManager</a></li><li><a href="AMTHREE.VideoTexture.html">VideoTexture</a></li></ul><h3>Namespaces</h3><ul><li><a href="AM.html">AM</a></li><li><a href="AMTHREE.html">AMTHREE</a></li><li><a href="THREE.html">THREE</a></li></ul><h3>Global</h3><ul><li><a href="global.html#compatibility">compatibility</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AM.Detection.html">Detection</a></li><li><a href="AM.DeviceLockScreenOrientation.html">DeviceLockScreenOrientation</a></li><li><a href="AM.DeviceOrientationControl.html">DeviceOrientationControl</a></li><li><a href="AM.EventManager.html">EventManager</a></li><li><a href="AM.GeographicCoordinatesConverter.html">GeographicCoordinatesConverter</a></li><li><a href="AM.GeolocationControl.html">GeolocationControl</a></li><li><a href="AM.ImageDebugger.html">ImageDebugger</a></li><li><a href="AM.ImageFilter.html">ImageFilter</a></li><li><a href="AM.JsonLoader.html">JsonLoader</a></li><li><a href="AM.LoadingManager.html">LoadingManager</a></li><li><a href="AM.MarkerTracker.html">MarkerTracker</a></li><li><a href="AM.match_t.html">match_t</a></li><li><a href="AM.Matching.html">Matching</a></li><li><a href="AM.Pose.html">Pose</a></li><li><a href="AM.PosePosit.html">PosePosit</a></li><li><a href="AM.PoseThree.html">PoseThree</a></li><li><a href="AM.TrainedImage.html">TrainedImage</a></li><li><a href="AM.Training.html">Training</a></li><li><a href="AMTHREE.ColladaLoader.html">ColladaLoader</a></li><li><a href="AMTHREE.ColladaObject.html">ColladaObject</a></li><li><a href="AMTHREE.GifTexture.html">GifTexture</a></li><li><a href="AMTHREE.Image.html">Image</a></li><li><a href="AMTHREE.ImageTexture.html">ImageTexture</a></li><li><a href="AMTHREE.SoundObject.html">SoundObject</a></li><li><a href="AMTHREE.TrackedObjManager.html">TrackedObjManager</a></li><li><a href="AMTHREE.TransformControls.html">TransformControls</a></li><li><a href="AMTHREE.Video.html">Video</a></li><li><a href="AMTHREE.VideoTexture.html">VideoTexture</a></li></ul><h3>Namespaces</h3><ul><li><a href="AM.html">AM</a></li><li><a href="AMTHREE.html">AMTHREE</a></li><li><a href="THREE.html">THREE</a></li></ul><h3>Global</h3><ul><li><a href="global.html#compatibility">compatibility</a></li><li><a href="global.html#getGradientGreenRedColor">getGradientGreenRedColor</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Wed Apr 06 2016 12:28:02 GMT+0200 (Paris, Madrid (heure d’été))
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Wed May 04 2016 15:17:08 GMT+0200 (Paris, Madrid (heure d’été))
 </footer>
 
 <script> prettyPrint(); </script>

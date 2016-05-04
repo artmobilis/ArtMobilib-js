@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: three/Image.js</title>
+    <title>JSDoc: Source: ImageLoading.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: three/Image.js</h1>
+    <h1 class="page-title">Source: ImageLoading.js</h1>
 
     
 
@@ -26,47 +26,75 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>var AMTHREE = AMTHREE || {};
+            <pre class="prettyprint source linenums"><code>var AM = AM || {};
 
-if (typeof THREE !== 'undefined') {
+(function() {
+
 
   /**
-   * @class
-   * @param {string} [uuid] - generated if not provided
-   * @param {string} [url] - The url of the image
-   */
-  AMTHREE.Image = function(uuid, url) {
-    this.uuid = uuid || THREE.Math.generateUUID();
-    this.url = url;
+  * Loads an image.
+  * @param {string} url
+  * @param {Image} [image] - An image element in which to load the image.
+  * @returns {Promise&lt;Image, string>} A promise that resolves when the image is loaded.
+  */
+  AM.LoadImage = function(url, image) {
+    return new Promise(function(resolve, reject) {
+      image = image || new Image();
+
+      image.src = null;
+      image.onload = function() {
+        resolve(image);
+      };
+      image.onerror = function(e) {
+        reject(e);
+      };
+      image.src = url;
+    });
   };
 
   /**
-  * Returns an json object.
-  * @param {object} [meta] - an object holding json ressources. The result of this function will be added to it if provided.
-  * @returns {object} A json object
+  * Returns the ImageData of an image element.
+  * @param {Image} img
+  * @param {bool} square - if true, the image will be copied inside a square matrix.
+  * @returns {ImageData}
   */
-  AMTHREE.Image.prototype.toJSON = function(meta) {
-    var output = {};
+  AM.ImageToImageData = (function() {
 
-    output.uuid = this.uuid;
-    output.url = AMTHREE.GetFilename(this.url);
+    var _canvas;
+    var _ctx;
 
-    if (typeof meta === 'object') {
-      if (!meta.images) meta.images = {};
-      meta.images[output.uuid] = output;
+    if (typeof document !== 'undefined') {
+      _canvas = document.createElement('canvas');
+      _ctx = _canvas.getContext('2d');
     }
 
-    return output;
-  };
+    return function(img, square) {
+      if (square) {
+        var size = Math.max(img.width, img.height);
+        var x = (size - img.width)  / 2;
+        var y = (size - img.height) / 2;
+
+        _canvas.width = size;
+        _canvas.height = size;
+
+        _ctx.clearRect(0, 0, _canvas.width, _canvas.height);
+        _ctx.drawImage(img, x, y);
+      }
+      else {
+        _canvas.width = img.width;
+        _canvas.height = img.height;
+
+        _ctx.clearRect(0, 0, _canvas.width, _canvas.height);
+        _ctx.drawImage(img, 0, 0, _canvas.width, _canvas.height);
+      }
+
+      return _ctx.getImageData(0, 0, _canvas.width, _canvas.height);
+    };
+
+  })();
 
 
-}
-else {
-  AMTHREE.Image = function() {
-    console.warn('Image.js: THREE undefined');
-  };
-}
-</code></pre>
+})();</code></pre>
         </article>
     </section>
 

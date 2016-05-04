@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: three/Image.js</title>
+    <title>JSDoc: Source: three/ObjectConvert.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: three/Image.js</h1>
+    <h1 class="page-title">Source: three/ObjectConvert.js</h1>
 
     
 
@@ -28,45 +28,38 @@
         <article>
             <pre class="prettyprint source linenums"><code>var AMTHREE = AMTHREE || {};
 
-if (typeof THREE !== 'undefined') {
+
+(function() {
+
+  function IsDef(val) {
+    return typeof val !== 'undefined' &amp;&amp; val !== null;
+  }
+
+  function ObjectConvert(object) {
+    object.traverse(function(child) {
+
+      if (IsDef(child.material) &amp;&amp; IsDef(child.material.map)) {
+        if (IsDef(child.material.map.image)) {
+          var image = new AMTHREE.Image(undefined, child.material.map.image.src);
+          var texture = new AMTHREE.ImageTexture(image);
+          child.material.map = texture;
+          child.material.needsUpdate = true;
+        }
+      }
+
+    });
+  }
+
 
   /**
-   * @class
-   * @param {string} [uuid] - generated if not provided
-   * @param {string} [url] - The url of the image
-   */
-  AMTHREE.Image = function(uuid, url) {
-    this.uuid = uuid || THREE.Math.generateUUID();
-    this.url = url;
-  };
-
-  /**
-  * Returns an json object.
-  * @param {object} [meta] - an object holding json ressources. The result of this function will be added to it if provided.
-  * @returns {object} A json object
+  * Converts textures types to ArtMobilib types, to ease serialization
+  * @function
+  * @param {THREE.Object3D}
   */
-  AMTHREE.Image.prototype.toJSON = function(meta) {
-    var output = {};
-
-    output.uuid = this.uuid;
-    output.url = AMTHREE.GetFilename(this.url);
-
-    if (typeof meta === 'object') {
-      if (!meta.images) meta.images = {};
-      meta.images[output.uuid] = output;
-    }
-
-    return output;
-  };
+  AMTHREE.ObjectConvert = ObjectConvert;
 
 
-}
-else {
-  AMTHREE.Image = function() {
-    console.warn('Image.js: THREE undefined');
-  };
-}
-</code></pre>
+})();</code></pre>
         </article>
     </section>
 

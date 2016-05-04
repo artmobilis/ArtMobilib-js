@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Class: EventManager</title>
+    <title>JSDoc: Class: ColladaLoader</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Class: EventManager</h1>
+    <h1 class="page-title">Class: ColladaLoader</h1>
 
     
 
@@ -29,7 +29,7 @@
 <header>
     
         <h2>
-            <span class="ancestors"><a href="AM.html">AM</a>.</span>EventManager</h2>
+            <span class="ancestors"><a href="AMTHREE.html">AMTHREE</a>.</span>ColladaLoader</h2>
         
     
 </header>
@@ -41,14 +41,14 @@
 
     
 
-    <h4 class="name" id="EventManager"><span class="type-signature"></span>new EventManager<span class="signature">()</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="ColladaLoader"><span class="type-signature"></span>new ColladaLoader<span class="signature">()</span><span class="type-signature"></span></h4>
 
     
 
 
 
 <div class="description">
-    A class to manage event.
+    A class to load Collada models, edited to add functionality.
 </div>
 
 
@@ -82,6 +82,15 @@
     
 
     
+    <dt class="tag-author">Author:</dt>
+    <dd class="tag-author">
+        <ul>
+            <li>Tim Knip <a href="http://www.floorplanner.com/">http://www.floorplanner.com/</a> tim at floorplanner.com</li>
+        
+            <li>Tony Parisi <a href="http://www.tonyparisi.com/">http://www.tonyparisi.com/</a></li>
+        </ul>
+    </dd>
+    
 
     
 
@@ -92,7 +101,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="EventManager.js.html">EventManager.js</a>, <a href="EventManager.js.html#line9">line 9</a>
+        <a href="three_ColladaLoader.js.html">three/ColladaLoader.js</a>, <a href="three_ColladaLoader.js.html#line12">line 12</a>
     </li></ul></dd>
     
 
@@ -141,14 +150,14 @@
 
     
 
-    <h4 class="name" id="AddListener"><span class="type-signature"></span>AddListener<span class="signature">(name, fun)</span><span class="type-signature"> &rarr; {bool}</span></h4>
+    <h4 class="name" id="~load"><span class="type-signature">(inner) </span>load<span class="signature">(url, texture_path, readyCallback, progressCallback, failCallback)</span><span class="type-signature"></span></h4>
 
     
 
 
 
 <div class="description">
-    Adds a listener to an event.
+    Loads a Collada model
 </div>
 
 
@@ -184,7 +193,7 @@
 
         <tr>
             
-                <td class="name"><code>name</code></td>
+                <td class="name"><code>url</code></td>
             
 
             <td class="type">
@@ -200,14 +209,37 @@
 
             
 
-            <td class="description last">The name of the event to listen to.</td>
+            <td class="description last"></td>
         </tr>
 
     
 
         <tr>
             
-                <td class="name"><code>fun</code></td>
+                <td class="name"><code>texture_path</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>readyCallback</code></td>
             
 
             <td class="type">
@@ -223,343 +255,14 @@
 
             
 
-            <td class="description last">The function that will be called every time the event fires.</td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="EventManager.js.html">EventManager.js</a>, <a href="EventManager.js.html#line19">line 19</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h5>Returns:</h5>
-
-        
-<div class="param-desc">
-    true if the function has succefully be added, false otherwise, if the name isnt a string or if the function is already bound to this event.
-</div>
-
-
-
-<dl>
-    <dt>
-        Type
-    </dt>
-    <dd>
-        
-<span class="param-type">bool</span>
-
-
-    </dd>
-</dl>
-
-    
-
-
-
-        
-            
-
-    
-
-    <h4 class="name" id="Fire"><span class="type-signature"></span>Fire<span class="signature">(name, params)</span><span class="type-signature"> &rarr; {bool}</span></h4>
-
-    
-
-
-
-<div class="description">
-    Fires an event, by calling every function bound to it.
-</div>
-
-
-
-
-
-
-
-
-
-    <h5>Parameters:</h5>
-    
-
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>name</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">string</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">The name of the event.</td>
+            <td class="description last"></td>
         </tr>
 
     
 
         <tr>
             
-                <td class="name"><code>params</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Array.&lt;value></span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">The list of parameters to be passed to the listeners.</td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="EventManager.js.html">EventManager.js</a>, <a href="EventManager.js.html#line66">line 66</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h5>Returns:</h5>
-
-        
-<div class="param-desc">
-    true if the event has any listener bound to it, false otherwise.
-</div>
-
-
-
-<dl>
-    <dt>
-        Type
-    </dt>
-    <dd>
-        
-<span class="param-type">bool</span>
-
-
-    </dd>
-</dl>
-
-    
-
-
-
-        
-            
-
-    
-
-    <h4 class="name" id="RemoveListener"><span class="type-signature"></span>RemoveListener<span class="signature">(name, fun)</span><span class="type-signature"> &rarr; {bool}</span></h4>
-
-    
-
-
-
-<div class="description">
-    Removes a listener to an event.
-</div>
-
-
-
-
-
-
-
-
-
-    <h5>Parameters:</h5>
-    
-
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>name</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">string</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">The name of the event.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>fun</code></td>
+                <td class="name"><code>progressCallback</code></td>
             
 
             <td class="type">
@@ -575,7 +278,30 @@
 
             
 
-            <td class="description last">The listener to remove.</td>
+            <td class="description last"></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>failCallback</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
         </tr>
 
     
@@ -616,7 +342,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="EventManager.js.html">EventManager.js</a>, <a href="EventManager.js.html#line38">line 38</a>
+        <a href="three_ColladaLoader.js.html">three/ColladaLoader.js</a>, <a href="three_ColladaLoader.js.html#line75">line 75</a>
     </li></ul></dd>
     
 
@@ -639,28 +365,6 @@
 
 
 
-<h5>Returns:</h5>
-
-        
-<div class="param-desc">
-    true if the function has succefully be removed, false otherwise.
-</div>
-
-
-
-<dl>
-    <dt>
-        Type
-    </dt>
-    <dd>
-        
-<span class="param-type">bool</span>
-
-
-    </dd>
-</dl>
-
-    
 
 
 
