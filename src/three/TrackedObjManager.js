@@ -334,7 +334,7 @@ var AMTHREE = AMTHREE || {};
 
   Holder.prototype.Clear = function() {
     for (var uuid in this._objects)
-      that.Remove(uuid);
+      this.Remove(uuid);
   };
 
   Holder.prototype.Track = function(uuid) {
