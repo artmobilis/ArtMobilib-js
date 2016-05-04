@@ -20,6 +20,12 @@ if (typeof THREE !== 'undefined') {
   SELECT_BOX_MATERIAL.opacity = 0;
 
 
+  /**
+  * Class to load and hold a Collada model, and to ease its serialization.
+  * @class
+  * @memberof AMTHREE
+  * @augments THREE.Object3D
+  */
   var ColladaObject = function() {
     THREE.Object3D.call(this);
 
@@ -33,6 +39,13 @@ if (typeof THREE !== 'undefined') {
   ColladaObject.prototype = Object.create(THREE.Object3D.prototype);
   ColladaObject.prototype.constructor = ColladaObject;
 
+  /**
+  * Loads a Collada model into this, erasing the inner model, if it wasnt empty.
+  * @memberof AMTHREE.ColladaObject
+  * @param {string} url
+  * @param {string} texture_path
+  * @returns {Promise<this, string>} A promise that resolves when the model is loaded.
+  */
   ColladaObject.prototype.load = function(url, texture_path) {
     var scope = this;
 
@@ -72,6 +85,12 @@ if (typeof THREE !== 'undefined') {
     });
   };
   
+  /**
+  * Returns the json representation of this.
+  * @memberof AMTHREE.ColladaObject
+  * @param {object} meta
+  * @returns {object}
+  */
   ColladaObject.prototype.toJSON = function(meta) {
     var json = {
       uuid: this.uuid,
