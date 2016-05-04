@@ -12,7 +12,7 @@ var AM = AM || {};
   
   /**
   * Class to start the front camera of the device, or a webcam, on a computer.
-  * @param {video element} [video_element] - An html element to play the stream in. Created if not provided.
+  * @param {VideoElement} [video_element] - An html element to play the stream in. Created if not provided.
   */
   function FrontCamGrabbing(video_element) {
     var _dom_element = (video_element && video_element.tagName === 'VIDEO')

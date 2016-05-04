@@ -42,7 +42,6 @@ var AMTHREE = AMTHREE || {};
 
   /**
   * Loads a Collada model into this, erasing the inner model, if it wasnt empty.
-  * @memberof AMTHREE.ColladaObject
   * @param {string} url
   * @param {string} texture_path
   * @returns {Promise<this, string>} A promise that resolves when the model is loaded.
@@ -88,7 +87,6 @@ var AMTHREE = AMTHREE || {};
   
   /**
   * Returns the json representation of this.
-  * @memberof AMTHREE.ColladaObject
   * @param {object} meta
   * @returns {object}
   */
