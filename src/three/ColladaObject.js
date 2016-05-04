@@ -1,9 +1,10 @@
 var AMTHREE = AMTHREE || {};
 
-if (typeof THREE !== 'undefined') {
-
 
 (function() {
+
+  if (typeof THREE === 'undefined')
+    return;
 
   var SELECT_BOX_GEOMETRY = new THREE.BoxGeometry(0.7, 0.7, 0.7);
   SELECT_BOX_GEOMETRY.uuid = '71EB1490-B411-48E3-B187-D4A9B1836ACA';
@@ -123,6 +124,3 @@ if (typeof THREE !== 'undefined') {
 
 
 })();
-
-
-}
