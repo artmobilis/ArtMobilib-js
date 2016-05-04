@@ -24,7 +24,8 @@ if (typeof THREE !== 'undefined') {
   AMTHREE.ImageTexture.prototype.constructor = AMTHREE.ImageTexture;
 
   /*
-  *
+  * Sets the image of the texture
+  * @param {AMTHREE.Image} image
   */
   AMTHREE.ImageTexture.prototype.set = function(image) {
     this.image_ref = image;

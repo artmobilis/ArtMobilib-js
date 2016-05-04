@@ -1,4 +1,3 @@
-/** @namespace */
 var AMTHREE = AMTHREE || {};
 
 if (typeof THREE !== 'undefined') {

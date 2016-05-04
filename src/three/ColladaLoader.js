@@ -1,9 +1,13 @@
-/**
-* @author Tim Knip / http://www.floorplanner.com/ / tim at floorplanner.com
-* @author Tony Parisi / http://www.tonyparisi.com/
-*/
-
 var AMTHREE = AMTHREE || {};
+
+
+/**
+* @author Tim Knip {@link http://www.floorplanner.com/} tim at floorplanner.com
+* @author Tony Parisi {@link http://www.tonyparisi.com/}
+* @class
+* @description A class to load Collada models, edited to add functionality.
+* @memberof AMTHREE
+*/
 
 AMTHREE.ColladaLoader = function () {
 
@@ -59,6 +63,15 @@ AMTHREE.ColladaLoader = function () {
 	var colladaUp = 'Y';
 	var upConversion = null;
 
+
+  /**
+  * Loads a Collada model
+  * @param {string} url
+  * @param {string} texture_path
+  * @param {function} readyCallback
+  * @param {function} progressCallback
+  * @param {function} failCallback
+  */
 	function load ( url, texture_path, readyCallback, progressCallback, failCallback ) {
 
 		var length = 0;
