@@ -9002,6 +9002,15 @@ var AMTHREE = AMTHREE || {};
       return undefined;
     };
 
+    this.MoveEnabledObjects = function(vec) {
+      _holder.ForEach(function(elem) {
+        if (elem.enabled) {
+          elem.target.position.add(vec);
+          elem.object.position.add(vec);
+        }
+      });
+    };
+
 
   };
 
@@ -9045,7 +9054,7 @@ var AMTHREE = AMTHREE || {};
 
   Holder.prototype.Clear = function() {
     for (var uuid in this._objects)
-      that.Remove(uuid);
+      this.Remove(uuid);
   };
 
   Holder.prototype.Track = function(uuid) {
