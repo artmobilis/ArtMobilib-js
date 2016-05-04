@@ -15,9 +15,7 @@ var AM = AM || {};
   * @param {VideoElement} [video_element] - An html element to play the stream in. Created if not provided.
   */
   function FrontCamGrabbing(video_element) {
-    var _dom_element = (video_element && video_element.tagName === 'VIDEO')
-      ? video_element
-      : document.createElement('video');
+    var _dom_element = (video_element && video_element.tagName === 'VIDEO') ? video_element : document.createElement('video');
     var _stream;
     var _loader;
     var _load_promise;
