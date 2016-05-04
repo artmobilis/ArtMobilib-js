@@ -187,7 +187,6 @@ AM.Training = function() {
 
   /**
    * Sets the result of the previous {@link AM.Training#Train} call to a {@link AM.TrainedImage}
-   * @inner
    * @param {AM.TrainedImage} trained_image
    */
   this.SetResultToTrainedImage = function(trained_image) {
@@ -196,7 +195,6 @@ AM.Training = function() {
 
   /**
    * Returns false if this object contains a result
-   * @inner
    * @returns {bool}
    */
   this.IsEmpty = function() {
@@ -205,7 +203,6 @@ AM.Training = function() {
 
   /**
    * Empties results stored
-   * @inner
    */
   this.Empty = function() {
     _descriptors_levels = undefined;
@@ -215,7 +212,6 @@ AM.Training = function() {
 
   /**
    * Sets parameters of the training
-   * @inner
    * @param {object} params
    * @params {number} [params.num_train_levels=3] - default 3
    * @params {number} [params.blur_size=3] - default 3

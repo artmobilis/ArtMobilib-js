@@ -1,6 +1,10 @@
 var AM = AM || {};
 
 
+/**
+* Utility class to load a json file and convert the string to a json structure. Can load only one file at a time.
+* @class
+*/
 AM.JsonLoader = function() {
   var that = this;
 
@@ -58,6 +62,13 @@ AM.JsonLoader = function() {
     return _loading;
   };
 
+  /**
+  * Loads a file
+  * @param {string} url
+  * @param {function} on_load
+  * @param {function} on_error
+  * @param {function} on_progress
+  */
   this.Load = function(url, on_load, on_error, on_progress) {
     if (!_loading) {
       _loading = true;
@@ -77,6 +88,12 @@ AM.JsonLoader = function() {
   };
 };
 
+/**
+* Loads a json file using AM.JsonLoader.
+* @function
+* @param {string} url
+* @returns {Promise<object, string>}
+*/
 AM.LoadJson = function(url) {
   return new Promise(function(resolve, reject) {
     var loader = new AM.JsonLoader();

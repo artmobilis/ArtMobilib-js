@@ -1,6 +1,10 @@
 var AM = AM || {};
 
 
+/**
+* Helper class to manager loadings, and bind callbacks.
+* @class
+*/
 AM.LoadingManager = function() {
 
   var _end_callbacks = [];
@@ -13,12 +17,20 @@ AM.LoadingManager = function() {
   }
   
 
+  /**
+  * Registers a number of loading starts.
+  * @param {number} nbr
+  */
   this.Start = function(nbr) {
     nbr = nbr || 1;
     _loading += nbr;
     DoCallbacks(_progress_callbacks);
   };
 
+  /**
+  * Registers a number of loading ends. If there is no loadings left, the listeners are notified, and every listener are removed.
+  * @param {number} nbr
+  */
   this.End = function(nbr) {
     nbr = nbr || 1;
     if (_loading > 0) {
@@ -33,6 +45,10 @@ AM.LoadingManager = function() {
     }
   };
 
+  /**
+  * Adds a listener to the event of the end of the loadings.
+  * @param {function} callback
+  */
   this.OnEnd = function(callback) {
     if (_loading > 0) {
       _end_callbacks.push(callback);
@@ -41,6 +57,10 @@ AM.LoadingManager = function() {
       callback();
   };
 
+  /**
+  * Adds a listener to the event of a change.
+  * @param {function} callback
+  */
   this.OnProgress = function(callback) {
     if (_loading > 0) {
       _progress_callbacks.push(callback);
@@ -49,10 +69,18 @@ AM.LoadingManager = function() {
       callback();
   };
 
+  /**
+  * Returns true if there are loadings left.
+  * @returns {boolean}
+  */
   this.IsLoading = function() {
     return _loading > 0;
   };
 
+  /**
+  * Returns the number of loadings left.
+  * @returns {number}
+  */
   this.GetRemaining = function() {
     return _loading;
   };

@@ -28,6 +28,7 @@ var AM = AM || {};
 
 
 /**
+ * Finds a list of image in an image, and compute its pose.
  * @class
  */
 AM.MarkerTracker = function() {
@@ -57,8 +58,7 @@ AM.MarkerTracker = function() {
 
 
   /**
-  * Computes the corners and descriptors
-  * @inner
+  * Computes the corners and descriptors.
   * @param {ImageData} image_data
   */
   this.ComputeImage = function(image_data, fixed_angle) {
@@ -73,7 +73,6 @@ AM.MarkerTracker = function() {
 
   /**
    * Matches the last computed ImageData and every active trained image.
-   * @inner
    * @returns {bool} true if a match if found.
    */
   this.Match = function() {
@@ -121,8 +120,7 @@ AM.MarkerTracker = function() {
   };
 
   /**
-   * Returns the id of the last match
-   * @inner
+   * Returns the id of the last match.
    */
   this.GetMatchUuid = function() {
     if (_matching_image)
@@ -130,8 +128,7 @@ AM.MarkerTracker = function() {
   };
 
   /**
-   * Computes and returns the pose of the last match
-   * @inner
+   * Computes and returns the pose of the last match.
    * @returns {Point2D[]} The corners
    */
   this.GetPose = function() {
@@ -145,8 +142,7 @@ AM.MarkerTracker = function() {
   };
 
   /**
-   * Trains a marker
-   * @inner
+   * Trains a marker.
    * @param {ImageData} image_data - The marker, has to be a square (same width and height).
    * @param {value} uuid - The identifier of the marker.
    */
@@ -159,8 +155,7 @@ AM.MarkerTracker = function() {
   };
 
   /**
-   * Removes a marker
-   * @inner
+   * Removes a marker.
    * @param {value} uuid - The identifier of the marker.
    */
   this.RemoveMarker = function(uuid) {
@@ -172,7 +167,6 @@ AM.MarkerTracker = function() {
   /**
    * Activates or desactivates a marker.
    * <br>A marker inactive will be ignored during the matching.
-   * @inner
    * @param {value} uuid - The identifier of the marker.
    * @param {bool} bool - Sets active if true, inactive if false.
    */
@@ -182,8 +176,7 @@ AM.MarkerTracker = function() {
   };
 
   /**
-   * Sets active or inactive all the markers
-   * @inner
+   * Sets active or inactive all the markers.
    * @param {bool} bool - Sets all active if true, inactive if false.
    */
   this.ActiveAllMarkers = function(bool) {
@@ -193,16 +186,14 @@ AM.MarkerTracker = function() {
   };
 
   /**
-   * Removes all the markers
-   * @inner
+   * Removes all the markers.
    */
   this.ClearMarkers = function() {
     _trained_images = {};
   };
 
   /**
-   * Returns the corners of the last computed image
-   * @inner
+   * Returns the corners of the last computed image.
    * @returns {jsfeat.keypoint_t[]}
    */
   this.GetScreenCorners = function() {
@@ -210,8 +201,7 @@ AM.MarkerTracker = function() {
   };
 
   /**
-   * Returns the count of corners of the last computed image
-   * @inner
+   * Returns the count of corners of the last computed image.
    * @returns {number}
    */
   this.GetNumScreenCorners = function() {
@@ -219,8 +209,7 @@ AM.MarkerTracker = function() {
   };
 
  /**
-   * Returns the buffer of matches ()
-   * @inner
+   * Returns the buffer of matches.
    * @returns {AM.match_t[]}
    */
   this.GetMatches = function () {
@@ -228,8 +217,7 @@ AM.MarkerTracker = function() {
   };
 
  /**
-   * Returns the buffer of matches validated by homography ()
-   * @inner
+   * Returns the buffer of matches validated by homography.
    * @returns {AM.match_t[]}
    */
   this.GetMatchesMask = function () {
@@ -237,8 +225,7 @@ AM.MarkerTracker = function() {
   };
 
 /**
-   * Returns the timings of matching function()
-   * @inner
+   * Returns the timings of matching function.
    * @returns {pair[]}
    */
   this.GetProfiler = function () {
@@ -246,8 +233,7 @@ AM.MarkerTracker = function() {
   };
 
 /**
-   * Returns corners of trained image
-   * @inner
+   * Returns corners of trained image.
    * @returns {jsfeat.keypoint_t[]}
    */
   this.GetTrainedCorners = function () {
@@ -260,8 +246,7 @@ AM.MarkerTracker = function() {
   };
 
   /**
-   * Puts the log to the console
-   * @inner
+   * Puts the log to the console.
    */
   this.Log = function() {
     console.log(_profiler.log() + ((_match_found) ? '<br/>match found' : ''));
@@ -269,7 +254,6 @@ AM.MarkerTracker = function() {
 
   /**
    * Sets optionnals parameters
-   * @inner
    * @param {object} params
    * @param {number} [match_min] minimum number of matching corners necessary for a match to be valid. default 8
    * @see AM.ImageFilter
@@ -289,6 +273,10 @@ AM.MarkerTracker = function() {
     _matching.SetParameters(params);
   };
 
+  /**
+  * If a fixed angle is used, corner orientation isnt computed, set to 0 for the training, and for the detection, a provided angle is used.
+  * @param {boolean} bool
+  */
   this.UseFixedAngle = function(bool) {
     _training.UseFixedAngle(bool);
   };
