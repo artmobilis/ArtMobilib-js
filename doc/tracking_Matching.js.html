@@ -37,12 +37,12 @@ AM.Matching = function() {
 
   var _screen_descriptors;
 
-  var _num_matches;
+  var _num_matches = 0;
   var _matches = [];
 
   var _params = {
     match_threshold: 48
-  }
+  };
 
   /**
    *
@@ -101,7 +101,7 @@ AM.Matching = function() {
       n = n >> 8;
       r += v2b[n &amp; m8];
       return r;
-    }
+    };
   }();
 
   var popcnt32_3 = function() {
@@ -117,7 +117,7 @@ AM.Matching = function() {
       n = n >> 16;
       r += v2b[n &amp; m16];
       return r;
-    }
+    };
   }();
 
   function MatchPattern(screen_descriptors, pattern_descriptors) {
@@ -126,7 +126,7 @@ AM.Matching = function() {
     var qd_off = 0;
     var num_matches = 0;
 
-    _matches = [];
+    _matches.length = 0;
 
     for (var qidx = 0; qidx &lt; q_cnt; ++qidx) {
       var best_dist = 256;
@@ -215,10 +215,10 @@ AM.Matching = function() {
    * Sets parameters of the matching
    * @inner
    * @param {object} params
-   * @param {number} [params.match_threshold=48] 16 - 128
+   * @param {number} [params.match_threshold] 16 - 128, default 48
    */
   this.SetParameters = function(params) {
-    for (name in params) {
+    for (var name in params) {
       if (typeof _params[name] !== 'undefined')
         _params[name] = params[name];
     }
@@ -250,13 +250,13 @@ AM.match_t = function (screen_idx, pattern_lev, pattern_idx, distance) {
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AM.Detection.html">Detection</a></li><li><a href="AM.DeviceLockScreenOrientation.html">DeviceLockScreenOrientation</a></li><li><a href="AM.DeviceOrientationControl.html">DeviceOrientationControl</a></li><li><a href="AM.EventManager.html">EventManager</a></li><li><a href="AM.GeographicCoordinatesConverter.html">GeographicCoordinatesConverter</a></li><li><a href="AM.GeolocationControl.html">GeolocationControl</a></li><li><a href="AM.ImageFilter.html">ImageFilter</a></li><li><a href="AM.MarkerTracker.html">MarkerTracker</a></li><li><a href="AM.match_t.html">match_t</a></li><li><a href="AM.Matching.html">Matching</a></li><li><a href="AM.Pose.html">Pose</a></li><li><a href="AM.PosePosit.html">PosePosit</a></li><li><a href="AM.PoseThree.html">PoseThree</a></li><li><a href="AM.TrainedImage.html">TrainedImage</a></li><li><a href="AM.Training.html">Training</a></li><li><a href="AMTHREE.GifTexture.html">GifTexture</a></li><li><a href="AMTHREE.Image.html">Image</a></li><li><a href="AMTHREE.ImageTexture.html">ImageTexture</a></li><li><a href="AMTHREE.ObjectLoader.html">ObjectLoader</a></li><li><a href="AMTHREE.Scene.html">Scene</a></li><li><a href="AMTHREE.Sound.html">Sound</a></li><li><a href="AMTHREE.TrackedObjManager.html">TrackedObjManager</a></li><li><a href="AMTHREE.VideoTexture.html">VideoTexture</a></li></ul><h3>Namespaces</h3><ul><li><a href="AM.html">AM</a></li><li><a href="AMTHREE.html">AMTHREE</a></li><li><a href="THREE.html">THREE</a></li></ul><h3>Global</h3><ul><li><a href="global.html#compatibility">compatibility</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AM.Detection.html">Detection</a></li><li><a href="AM.DeviceLockScreenOrientation.html">DeviceLockScreenOrientation</a></li><li><a href="AM.DeviceOrientationControl.html">DeviceOrientationControl</a></li><li><a href="AM.EventManager.html">EventManager</a></li><li><a href="AM.GeographicCoordinatesConverter.html">GeographicCoordinatesConverter</a></li><li><a href="AM.GeolocationControl.html">GeolocationControl</a></li><li><a href="AM.ImageDebugger.html">ImageDebugger</a></li><li><a href="AM.ImageFilter.html">ImageFilter</a></li><li><a href="AM.JsonLoader.html">JsonLoader</a></li><li><a href="AM.LoadingManager.html">LoadingManager</a></li><li><a href="AM.MarkerTracker.html">MarkerTracker</a></li><li><a href="AM.match_t.html">match_t</a></li><li><a href="AM.Matching.html">Matching</a></li><li><a href="AM.Pose.html">Pose</a></li><li><a href="AM.PosePosit.html">PosePosit</a></li><li><a href="AM.PoseThree.html">PoseThree</a></li><li><a href="AM.TrainedImage.html">TrainedImage</a></li><li><a href="AM.Training.html">Training</a></li><li><a href="AMTHREE.ColladaLoader.html">ColladaLoader</a></li><li><a href="AMTHREE.ColladaObject.html">ColladaObject</a></li><li><a href="AMTHREE.GifTexture.html">GifTexture</a></li><li><a href="AMTHREE.Image.html">Image</a></li><li><a href="AMTHREE.ImageTexture.html">ImageTexture</a></li><li><a href="AMTHREE.SoundObject.html">SoundObject</a></li><li><a href="AMTHREE.TrackedObjManager.html">TrackedObjManager</a></li><li><a href="AMTHREE.TransformControls.html">TransformControls</a></li><li><a href="AMTHREE.Video.html">Video</a></li><li><a href="AMTHREE.VideoTexture.html">VideoTexture</a></li></ul><h3>Namespaces</h3><ul><li><a href="AM.html">AM</a></li><li><a href="AMTHREE.html">AMTHREE</a></li><li><a href="THREE.html">THREE</a></li></ul><h3>Global</h3><ul><li><a href="global.html#compatibility">compatibility</a></li><li><a href="global.html#getGradientGreenRedColor">getGradientGreenRedColor</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Wed Apr 06 2016 12:28:02 GMT+0200 (Paris, Madrid (heure d’été))
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Wed May 04 2016 15:17:08 GMT+0200 (Paris, Madrid (heure d’été))
 </footer>
 
 <script> prettyPrint(); </script>

@@ -1,62 +1,3 @@
-/******************
-
-TrackedObjManager
-A class that moves objects on the scene relatively to the camera,
-smoothly using linear interpolation
-
-
-Constructor
-
-TrackedObjManager(parameters)
-
-parameters: an object holding the parameters 'camera', 'lerp_factor', and 'timeout'
-to set their respectives properties
-
-
-Properties
-
-camera: the origin, a 'THREE.Object3D'. Tracked objects are set has children of this object.
-
-lerp_factor: a number in [0, 1], 0.2 by default.
-The higher, the faster tracked objects will converge toward the camera.
-
-timeout: time in seconds, 3 by default.
-If an object isn't tracked for 'timeout' seconds, on_disable() is called,
-and the object is disabled.
-
-
-Methods
-
-Add(object, uuid, on_enable, on_disable)
-Add an object to track, and set the optionnal callbacks.
-The object is disabled until Track() or TrackCompose() are called.
-
-Remove(uuid)
-Remove an object. If the object is enabled, on_disable is called before removal.
-
-Update()
-
-Track(uuid, matrix)
-Sets a new position for a previously added object.
-If the object is disabled, on_enable() is called and the object is enabled
-
-TrackCompose(uuid, position, quaternion, scale)
-For convenience. Calls Track().
-
-TrackComposePosit(uuid, translation_pose, rotation_pose, model_size)
-For convenience. Calls TrackCompose().
-
-GetObject(uuid)
-
-
-Dependency
-
-three.js
-
-
-******************/
-
-
 var AMTHREE = AMTHREE || {};
 
 (function() {
@@ -70,7 +11,8 @@ var AMTHREE = AMTHREE || {};
 
 
   /**
-  * 
+  * A class that moves objects on the scene relatively to the camera,
+  *  smoothly by interpolation of successives positions and updates.
   * @class
   * @param {object} parameters - An object holding parameters
   * @param {THREE.Camera} parameters.camera
@@ -123,7 +65,6 @@ var AMTHREE = AMTHREE || {};
 
     /**
      * Adds an object
-     * @inner
      * @param {THREE.Object3D} object - Starts disabled.
      * @param {value} uuid
      * @param {function} [on_enable] - Function called when the object is tracked and was disabled before.
@@ -135,7 +76,6 @@ var AMTHREE = AMTHREE || {};
 
     /**
      * Remove an object
-     * @inner
      * @param {value}
      */
     this.Remove = function(uuid) {
@@ -144,7 +84,6 @@ var AMTHREE = AMTHREE || {};
 
     /**
      * Clear all the objects
-     * @inner
      */
     this.Clear = function() {
       _holder.Clear();
@@ -152,7 +91,6 @@ var AMTHREE = AMTHREE || {};
 
     /**
      * Updates the objects tranforms
-     * @inner
      */
     this.Update = function() {
 
@@ -164,8 +102,6 @@ var AMTHREE = AMTHREE || {};
 
     /**
      * Sets a tracked object transform
-     * @inner
-     * @function
      * @param {value} uuid
      * @param {THREE.Matrix4} matrix
      */
@@ -214,8 +150,6 @@ var AMTHREE = AMTHREE || {};
 
     /**
      * Sets a tracked object transform
-     * @inner
-     * @function
      * @param {value} uuid
      * @param {THREE.Vector3} position
      * @param {THREE.Quaternion} quaternion
@@ -235,8 +169,6 @@ var AMTHREE = AMTHREE || {};
 
     /**
      * Sets a tracked object transform
-     * @inner
-     * @function
      * @param {value} uuid
      * @param {number[]} translation_pose
      * @param {number[][]} rotation_pose
@@ -271,7 +203,6 @@ var AMTHREE = AMTHREE || {};
 
     /**
      * Returns an object held by this
-     * @inner
      * @param {value} uuid
      */
     this.GetObject = function(uuid) {
@@ -282,6 +213,10 @@ var AMTHREE = AMTHREE || {};
       return undefined;
     };
 
+    /**
+    * Moves all enabled objects
+    * @param {THREE.Vector3} vec
+    */
     this.MoveEnabledObjects = function(vec) {
       _holder.ForEach(function(elem) {
         if (elem.enabled) {
@@ -334,7 +269,7 @@ var AMTHREE = AMTHREE || {};
 
   Holder.prototype.Clear = function() {
     for (var uuid in this._objects)
-      that.Remove(uuid);
+      this.Remove(uuid);
   };
 
   Holder.prototype.Track = function(uuid) {

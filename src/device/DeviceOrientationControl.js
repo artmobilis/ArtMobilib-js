@@ -1,31 +1,3 @@
-/******************
-
-
-DeviceOrientationControl
-Orient a THREE.Object3D using the gyroscope
-
-
-Constructor
-
-DeviceOrientationControl(object: THREE.Object3D)
-
-
-Methods
-
-Connect() 
-Listen to the orientation events
-
-Update()
-Sets the rotation of the object accordingly to the last orientation event
-
-Disconnect()
-Remove the listeners
-
-
-*******************/
-
-
-/** @namespace */
 var AM = AM || {};
 
 

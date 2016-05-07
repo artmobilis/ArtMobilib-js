@@ -1,9 +1,10 @@
 var AMTHREE = AMTHREE || {};
 
-if (typeof THREE !== 'undefined') {
-
 
 (function() {
+
+  if (typeof THREE === 'undefined')
+    return;
 
   var SELECT_BOX_GEOMETRY = new THREE.BoxGeometry(0.7, 0.7, 0.7);
   SELECT_BOX_GEOMETRY.uuid = '71EB1490-B411-48E3-B187-D4A9B1836ACA';
@@ -20,6 +21,12 @@ if (typeof THREE !== 'undefined') {
   SELECT_BOX_MATERIAL.opacity = 0;
 
 
+  /**
+  * Class to load and hold a Collada model, and to ease its serialization.
+  * @class
+  * @memberof AMTHREE
+  * @augments THREE.Object3D
+  */
   var ColladaObject = function() {
     THREE.Object3D.call(this);
 
@@ -33,6 +40,12 @@ if (typeof THREE !== 'undefined') {
   ColladaObject.prototype = Object.create(THREE.Object3D.prototype);
   ColladaObject.prototype.constructor = ColladaObject;
 
+  /**
+  * Loads a Collada model into this, erasing the inner model, if it wasnt empty.
+  * @param {string} url
+  * @param {string} texture_path
+  * @returns {Promise<this, string>} A promise that resolves when the model is loaded.
+  */
   ColladaObject.prototype.load = function(url, texture_path) {
     var scope = this;
 
@@ -72,6 +85,11 @@ if (typeof THREE !== 'undefined') {
     });
   };
   
+  /**
+  * Returns the json representation of this.
+  * @param {object} meta
+  * @returns {object}
+  */
   ColladaObject.prototype.toJSON = function(meta) {
     var json = {
       uuid: this.uuid,
@@ -104,6 +122,3 @@ if (typeof THREE !== 'undefined') {
 
 
 })();
-
-
-}

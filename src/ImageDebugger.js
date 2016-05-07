@@ -411,7 +411,7 @@ AM.ImageDebugger = function() {
    * Set data at initialisation
    * @inner
    * @param {context2D} current canvas 
-   * @param {video element} webcam element to compute initial video size
+   * @param {VideoElement} webcam element to compute initial video size
    * @param {bool} display or not debugging information
    */
   this.SetData = function ( context2d, camera_video_element, debugMatches) {

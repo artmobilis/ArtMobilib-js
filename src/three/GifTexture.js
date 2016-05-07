@@ -1,21 +1,10 @@
-/*************************
-
-Dependency
-
-Threejs
-
-libgif: https://github.com/buzzfeed/libgif-js
-
-*************************/
-
-
-/** @namespace */
 var AMTHREE = AMTHREE || {};
 
 if (typeof THREE !== 'undefined') {
 
   /**
    * A helper class to use a gif image as a Threejs texture
+   *  - Requires libgif: {@link https://github.com/buzzfeed/libgif-js}
    * @class
    * @augments THREE.Texture
    */

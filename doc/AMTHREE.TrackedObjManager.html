@@ -47,6 +47,10 @@
 
 
 
+<div class="description">
+    A class that moves objects on the scene relatively to the camera, smoothly by interpolation of successives positions and updates.
+</div>
+
 
 
 
@@ -114,8 +118,6 @@
         
 
         
-        <th>Default</th>
-        
 
         <th class="last">Description</th>
     </tr>
@@ -149,10 +151,6 @@
             
 
             
-                <td class="default">
-                
-                </td>
-            
 
             <td class="description last"></td>
         </tr>
@@ -161,7 +159,7 @@
 
         <tr>
             
-                <td class="name"><code>lerp_factor</code></td>
+                <td class="name"><code>lerp_track_factor</code></td>
             
 
             <td class="type">
@@ -186,14 +184,74 @@
             
 
             
-                <td class="default">
+
+            <td class="description last">Sets the lerp_track_factor property.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>lerp_update_factor</code></td>
+            
+
+            <td class="type">
+            
                 
-                    0.2
+<span class="param-type">number</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
                 
                 </td>
             
 
-            <td class="description last">0 - 1</td>
+            
+
+            <td class="description last">Sets the lerp_update_factor property.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>damping_factor</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">Sets the damping_factor property.</td>
         </tr>
 
     
@@ -225,14 +283,8 @@
             
 
             
-                <td class="default">
-                
-                    6
-                
-                </td>
-            
 
-            <td class="description last">Time before an object enabled gets disabled, in seconds.</td>
+            <td class="description last">Sets the timeout property.</td>
         </tr>
 
     
@@ -280,7 +332,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="three_TrackedObjManager.js.html">three/TrackedObjManager.js</a>, <a href="three_TrackedObjManager.js.html#line72">line 72</a>
+        <a href="three_TrackedObjManager.js.html">three/TrackedObjManager.js</a>, <a href="three_TrackedObjManager.js.html#line24">line 24</a>
     </li></ul></dd>
     
 
@@ -384,7 +436,7 @@
 
         <tr>
             
-                <td class="name"><code>lerp_factor</code></td>
+                <td class="name"><code>lerp_track_factor</code></td>
             
 
             <td class="type">
@@ -400,7 +452,53 @@
 
             
 
-            <td class="description last"></td>
+            <td class="description last">[0-1] - 0.01 by default. Helps filter out bad poses. The new target tranform is an interpolation by this factor of the last tranform and the tranform given by a 'Track' call.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>lerp_update_factor</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">[0-1] - 0.3 by default. The object's transform gets closer to the target transform, by this factor, at each 'Update' call.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>damping_factor</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">[0-1] - 0.9 by default. Successive calls of 'Track' creates a momentum, that needs to be damped, otherwise it creates a yoyo effect.</td>
         </tr>
 
     
@@ -423,7 +521,7 @@
 
             
 
-            <td class="description last"></td>
+            <td class="description last">6 by default. Time before an object enabled gets disabled, in seconds.</td>
         </tr>
 
     
@@ -462,7 +560,193 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="three_TrackedObjManager.js.html">three/TrackedObjManager.js</a>, <a href="three_TrackedObjManager.js.html#line103">line 103</a>
+        <a href="three_TrackedObjManager.js.html">three/TrackedObjManager.js</a>, <a href="three_TrackedObjManager.js.html#line58">line 58</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="Track"><span class="type-signature"></span>Track<span class="type-signature"></span></h4>
+
+
+
+
+<div class="description">
+    Sets a tracked object transform
+</div>
+
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="three_TrackedObjManager.js.html">three/TrackedObjManager.js</a>, <a href="three_TrackedObjManager.js.html#line108">line 108</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="TrackCompose"><span class="type-signature"></span>TrackCompose<span class="type-signature"></span></h4>
+
+
+
+
+<div class="description">
+    Sets a tracked object transform
+</div>
+
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="three_TrackedObjManager.js.html">three/TrackedObjManager.js</a>, <a href="three_TrackedObjManager.js.html#line158">line 158</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="TrackComposePosit"><span class="type-signature"></span>TrackComposePosit<span class="type-signature"></span></h4>
+
+
+
+
+<div class="description">
+    Sets a tracked object transform
+</div>
+
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="three_TrackedObjManager.js.html">three/TrackedObjManager.js</a>, <a href="three_TrackedObjManager.js.html#line177">line 177</a>
     </li></ul></dd>
     
 
@@ -696,7 +980,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="three_TrackedObjManager.js.html">three/TrackedObjManager.js</a>, <a href="three_TrackedObjManager.js.html#line117">line 117</a>
+        <a href="three_TrackedObjManager.js.html">three/TrackedObjManager.js</a>, <a href="three_TrackedObjManager.js.html#line73">line 73</a>
     </li></ul></dd>
     
 
@@ -778,7 +1062,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="three_TrackedObjManager.js.html">three/TrackedObjManager.js</a>, <a href="three_TrackedObjManager.js.html#line134">line 134</a>
+        <a href="three_TrackedObjManager.js.html">three/TrackedObjManager.js</a>, <a href="three_TrackedObjManager.js.html#line88">line 88</a>
     </li></ul></dd>
     
 
@@ -909,7 +1193,138 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="three_TrackedObjManager.js.html">three/TrackedObjManager.js</a>, <a href="three_TrackedObjManager.js.html#line259">line 259</a>
+        <a href="three_TrackedObjManager.js.html">three/TrackedObjManager.js</a>, <a href="three_TrackedObjManager.js.html#line208">line 208</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="MoveEnabledObjects"><span class="type-signature"></span>MoveEnabledObjects<span class="signature">(vec)</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+<div class="description">
+    Moves all enabled objects
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>vec</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">THREE.Vector3</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="three_TrackedObjManager.js.html">three/TrackedObjManager.js</a>, <a href="three_TrackedObjManager.js.html#line220">line 220</a>
     </li></ul></dd>
     
 
@@ -1040,561 +1455,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="three_TrackedObjManager.js.html">three/TrackedObjManager.js</a>, <a href="three_TrackedObjManager.js.html#line126">line 126</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
-            
-
-    
-
-    <h4 class="name" id="Track"><span class="type-signature"></span>Track<span class="signature">(uuid, matrix)</span><span class="type-signature"></span></h4>
-
-    
-
-
-
-<div class="description">
-    Sets a tracked object transform
-</div>
-
-
-
-
-
-
-
-
-
-    <h5>Parameters:</h5>
-    
-
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>uuid</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">value</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"></td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>matrix</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">THREE.Matrix4</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"></td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="three_TrackedObjManager.js.html">three/TrackedObjManager.js</a>, <a href="three_TrackedObjManager.js.html#line157">line 157</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
-            
-
-    
-
-    <h4 class="name" id="TrackCompose"><span class="type-signature"></span>TrackCompose<span class="signature">(uuid, position, quaternion, scale)</span><span class="type-signature"></span></h4>
-
-    
-
-
-
-<div class="description">
-    Sets a tracked object transform
-</div>
-
-
-
-
-
-
-
-
-
-    <h5>Parameters:</h5>
-    
-
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>uuid</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">value</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"></td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>position</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">THREE.Vector3</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"></td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>quaternion</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">THREE.Quaternion</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"></td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>scale</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">THREE.Vector3</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"></td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="three_TrackedObjManager.js.html">three/TrackedObjManager.js</a>, <a href="three_TrackedObjManager.js.html#line206">line 206</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
-            
-
-    
-
-    <h4 class="name" id="TrackComposePosit"><span class="type-signature"></span>TrackComposePosit<span class="signature">(uuid, translation_pose, rotation_pose, model_size)</span><span class="type-signature"></span></h4>
-
-    
-
-
-
-<div class="description">
-    Sets a tracked object transform
-</div>
-
-
-
-
-
-
-
-
-
-    <h5>Parameters:</h5>
-    
-
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>uuid</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">value</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"></td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>translation_pose</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Array.&lt;number></span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"></td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>rotation_pose</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Array.&lt;Array.&lt;number>></span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"></td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>model_size</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">number</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"></td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="three_TrackedObjManager.js.html">three/TrackedObjManager.js</a>, <a href="three_TrackedObjManager.js.html#line227">line 227</a>
+        <a href="three_TrackedObjManager.js.html">three/TrackedObjManager.js</a>, <a href="three_TrackedObjManager.js.html#line81">line 81</a>
     </li></ul></dd>
     
 
@@ -1676,7 +1537,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="three_TrackedObjManager.js.html">three/TrackedObjManager.js</a>, <a href="three_TrackedObjManager.js.html#line142">line 142</a>
+        <a href="three_TrackedObjManager.js.html">three/TrackedObjManager.js</a>, <a href="three_TrackedObjManager.js.html#line95">line 95</a>
     </li></ul></dd>
     
 
@@ -1718,13 +1579,13 @@
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AM.Detection.html">Detection</a></li><li><a href="AM.DeviceLockScreenOrientation.html">DeviceLockScreenOrientation</a></li><li><a href="AM.DeviceOrientationControl.html">DeviceOrientationControl</a></li><li><a href="AM.EventManager.html">EventManager</a></li><li><a href="AM.GeographicCoordinatesConverter.html">GeographicCoordinatesConverter</a></li><li><a href="AM.GeolocationControl.html">GeolocationControl</a></li><li><a href="AM.ImageFilter.html">ImageFilter</a></li><li><a href="AM.MarkerTracker.html">MarkerTracker</a></li><li><a href="AM.match_t.html">match_t</a></li><li><a href="AM.Matching.html">Matching</a></li><li><a href="AM.Pose.html">Pose</a></li><li><a href="AM.PosePosit.html">PosePosit</a></li><li><a href="AM.PoseThree.html">PoseThree</a></li><li><a href="AM.TrainedImage.html">TrainedImage</a></li><li><a href="AM.Training.html">Training</a></li><li><a href="AMTHREE.GifTexture.html">GifTexture</a></li><li><a href="AMTHREE.Image.html">Image</a></li><li><a href="AMTHREE.ImageTexture.html">ImageTexture</a></li><li><a href="AMTHREE.ObjectLoader.html">ObjectLoader</a></li><li><a href="AMTHREE.Scene.html">Scene</a></li><li><a href="AMTHREE.Sound.html">Sound</a></li><li><a href="AMTHREE.TrackedObjManager.html">TrackedObjManager</a></li><li><a href="AMTHREE.VideoTexture.html">VideoTexture</a></li></ul><h3>Namespaces</h3><ul><li><a href="AM.html">AM</a></li><li><a href="AMTHREE.html">AMTHREE</a></li><li><a href="THREE.html">THREE</a></li></ul><h3>Global</h3><ul><li><a href="global.html#compatibility">compatibility</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AM.Detection.html">Detection</a></li><li><a href="AM.DeviceLockScreenOrientation.html">DeviceLockScreenOrientation</a></li><li><a href="AM.DeviceOrientationControl.html">DeviceOrientationControl</a></li><li><a href="AM.EventManager.html">EventManager</a></li><li><a href="AM.GeographicCoordinatesConverter.html">GeographicCoordinatesConverter</a></li><li><a href="AM.GeolocationControl.html">GeolocationControl</a></li><li><a href="AM.ImageDebugger.html">ImageDebugger</a></li><li><a href="AM.ImageFilter.html">ImageFilter</a></li><li><a href="AM.JsonLoader.html">JsonLoader</a></li><li><a href="AM.LoadingManager.html">LoadingManager</a></li><li><a href="AM.MarkerTracker.html">MarkerTracker</a></li><li><a href="AM.match_t.html">match_t</a></li><li><a href="AM.Matching.html">Matching</a></li><li><a href="AM.Pose.html">Pose</a></li><li><a href="AM.PosePosit.html">PosePosit</a></li><li><a href="AM.PoseThree.html">PoseThree</a></li><li><a href="AM.TrainedImage.html">TrainedImage</a></li><li><a href="AM.Training.html">Training</a></li><li><a href="AMTHREE.ColladaLoader.html">ColladaLoader</a></li><li><a href="AMTHREE.ColladaObject.html">ColladaObject</a></li><li><a href="AMTHREE.GifTexture.html">GifTexture</a></li><li><a href="AMTHREE.Image.html">Image</a></li><li><a href="AMTHREE.ImageTexture.html">ImageTexture</a></li><li><a href="AMTHREE.SoundObject.html">SoundObject</a></li><li><a href="AMTHREE.TrackedObjManager.html">TrackedObjManager</a></li><li><a href="AMTHREE.TransformControls.html">TransformControls</a></li><li><a href="AMTHREE.Video.html">Video</a></li><li><a href="AMTHREE.VideoTexture.html">VideoTexture</a></li></ul><h3>Namespaces</h3><ul><li><a href="AM.html">AM</a></li><li><a href="AMTHREE.html">AMTHREE</a></li><li><a href="THREE.html">THREE</a></li></ul><h3>Global</h3><ul><li><a href="global.html#compatibility">compatibility</a></li><li><a href="global.html#getGradientGreenRedColor">getGradientGreenRedColor</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Wed Apr 06 2016 12:28:03 GMT+0200 (Paris, Madrid (heure d’été))
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Wed May 04 2016 15:17:09 GMT+0200 (Paris, Madrid (heure d’été))
 </footer>
 
 <script> prettyPrint(); </script>

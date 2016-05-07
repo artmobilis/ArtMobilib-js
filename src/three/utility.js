@@ -59,6 +59,11 @@ AMTHREE.WorldToCanvasPosition = function(position, camera, canvas) {
   return { x: x, y: y, z: vec.z };
 };
 
+/**
+* Returns the name of the file pointed by a path string.
+* @param {string} path
+* @returns {string}
+*/
 AMTHREE.GetFilename = function(path) {
   return path.split('/').pop().split('\\').pop();
 };

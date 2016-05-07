@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: three/ColladaObject.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: three/ColladaObject.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>var AMTHREE = AMTHREE || {};
+
+
+(function() {
+
+  if (typeof THREE === 'undefined')
+    return;
+
+  var SELECT_BOX_GEOMETRY = new THREE.BoxGeometry(0.7, 0.7, 0.7);
+  SELECT_BOX_GEOMETRY.uuid = '71EB1490-B411-48E3-B187-D4A9B1836ACA';
+  SELECT_BOX_GEOMETRY.name = 'SELECT_BOX_GEOMETRY';
+
+  var SELECT_BOX_MATERIAL = new THREE.MeshBasicMaterial( {
+    side: THREE.DoubleSide,
+    depthWrite: false,
+    depthTest: false
+  } );
+  SELECT_BOX_MATERIAL.uuid = '0DD7A775-4B05-487D-845B-A10A2A224A55';
+  SELECT_BOX_MATERIAL.name = 'SELECT_BOX_MATERIAL';
+  SELECT_BOX_MATERIAL.transparent = true;
+  SELECT_BOX_MATERIAL.opacity = 0;
+
+
+  /**
+  * Class to load and hold a Collada model, and to ease its serialization.
+  * @class
+  * @memberof AMTHREE
+  * @augments THREE.Object3D
+  */
+  var ColladaObject = function() {
+    THREE.Object3D.call(this);
+
+    this.model_url = '';
+
+    this.model_object = new THREE.Object3D();
+
+    this.add(this.model_object);
+  };
+
+  ColladaObject.prototype = Object.create(THREE.Object3D.prototype);
+  ColladaObject.prototype.constructor = ColladaObject;
+
+  /**
+  * Loads a Collada model into this, erasing the inner model, if it wasnt empty.
+  * @param {string} url
+  * @param {string} texture_path
+  * @returns {Promise&lt;this, string>} A promise that resolves when the model is loaded.
+  */
+  ColladaObject.prototype.load = function(url, texture_path) {
+    var scope = this;
+
+    return new Promise(function(resolve, reject) {
+      var loader = new AMTHREE.ColladaLoader();
+      loader.options.convertUpAxis = true;
+
+      loader.load(url, texture_path,
+        function(collada) {
+        var box = new THREE.Box3();
+        var center = new THREE.Vector3();
+        var object = collada.scene;
+        var mesh = new THREE.Mesh(SELECT_BOX_GEOMETRY, SELECT_BOX_MATERIAL);
+
+
+        mesh.add(object);
+
+        scope.model_url = url;
+        scope.model_object.remove.apply(scope.model_object, scope.model_object.children);
+        scope.model_object.add(mesh);
+
+
+        box.setFromObject(object);
+        box.size(mesh.scale);
+        scope.updateMatrix();
+
+        box.center(center);
+        object.scale.divide(mesh.scale);
+        object.position.sub(center.divide(mesh.scale));
+
+        object.updateMatrix();
+        AMTHREE.ObjectConvert(scope.model_object);
+        resolve(scope);
+      },
+      undefined,
+      reject);
+    });
+  };
+  
+  /**
+  * Returns the json representation of this.
+  * @param {object} meta
+  * @returns {object}
+  */
+  ColladaObject.prototype.toJSON = function(meta) {
+    var json = {
+      uuid: this.uuid,
+      type: 'Collada',
+      name: this.name,
+      url: AMTHREE.GetFilename(this.model_url),
+      matrix: this.matrix.toArray()
+    };
+
+    if (JSON.stringify(this.userData) !== '{}') json.userData = this.userData;
+    if (this.castShadow === true) json.castShadow = true;
+    if (this.receiveShadow === true) json.receiveShadow = true;
+    if (this.visible === false) json.visible = false;
+
+    var children = [];
+
+    for (var i = 0; i &lt; this.children.length; ++i) {
+      if (this.children[i] !== this.model_object)
+        children.push(this.children[i].toJSON(meta).object);
+    }
+
+    if (children.length > 0)
+      json.children = children;
+
+    return { object: json };
+  };
+
+
+  AMTHREE.ColladaObject = ColladaObject;
+
+
+})();</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AM.Detection.html">Detection</a></li><li><a href="AM.DeviceLockScreenOrientation.html">DeviceLockScreenOrientation</a></li><li><a href="AM.DeviceOrientationControl.html">DeviceOrientationControl</a></li><li><a href="AM.EventManager.html">EventManager</a></li><li><a href="AM.GeographicCoordinatesConverter.html">GeographicCoordinatesConverter</a></li><li><a href="AM.GeolocationControl.html">GeolocationControl</a></li><li><a href="AM.ImageDebugger.html">ImageDebugger</a></li><li><a href="AM.ImageFilter.html">ImageFilter</a></li><li><a href="AM.JsonLoader.html">JsonLoader</a></li><li><a href="AM.LoadingManager.html">LoadingManager</a></li><li><a href="AM.MarkerTracker.html">MarkerTracker</a></li><li><a href="AM.match_t.html">match_t</a></li><li><a href="AM.Matching.html">Matching</a></li><li><a href="AM.Pose.html">Pose</a></li><li><a href="AM.PosePosit.html">PosePosit</a></li><li><a href="AM.PoseThree.html">PoseThree</a></li><li><a href="AM.TrainedImage.html">TrainedImage</a></li><li><a href="AM.Training.html">Training</a></li><li><a href="AMTHREE.ColladaLoader.html">ColladaLoader</a></li><li><a href="AMTHREE.ColladaObject.html">ColladaObject</a></li><li><a href="AMTHREE.GifTexture.html">GifTexture</a></li><li><a href="AMTHREE.Image.html">Image</a></li><li><a href="AMTHREE.ImageTexture.html">ImageTexture</a></li><li><a href="AMTHREE.SoundObject.html">SoundObject</a></li><li><a href="AMTHREE.TrackedObjManager.html">TrackedObjManager</a></li><li><a href="AMTHREE.TransformControls.html">TransformControls</a></li><li><a href="AMTHREE.Video.html">Video</a></li><li><a href="AMTHREE.VideoTexture.html">VideoTexture</a></li></ul><h3>Namespaces</h3><ul><li><a href="AM.html">AM</a></li><li><a href="AMTHREE.html">AMTHREE</a></li><li><a href="THREE.html">THREE</a></li></ul><h3>Global</h3><ul><li><a href="global.html#compatibility">compatibility</a></li><li><a href="global.html#getGradientGreenRedColor">getGradientGreenRedColor</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Wed May 04 2016 15:17:08 GMT+0200 (Paris, Madrid (heure d’été))
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

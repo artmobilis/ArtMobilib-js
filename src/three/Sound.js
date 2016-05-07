@@ -4,11 +4,21 @@ var AMTHREE = AMTHREE || {};
 if (typeof THREE !== 'undefined') {
 
 
+  /**
+  * A class to hold an url.
+  * @param {string} [uuid] - Generated if not provided
+  * @param {string} [url]
+  */
   AMTHREE.Sound = function(uuid, url) {
     this.uuid = uuid || THREE.Math.generateUUID();
     this.url = url;
   };
 
+  /**
+  * Returns the json representation of this.
+  * @param {object} meta
+  * @return {object}
+  */
   AMTHREE.Sound.prototype.toJSON = function(meta) {
     var output = {
       uuid: this.uuid,

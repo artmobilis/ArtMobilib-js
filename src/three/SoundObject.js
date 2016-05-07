@@ -4,7 +4,7 @@ var AMTHREE = AMTHREE || {};
 if (typeof THREE !== 'undefined') {
 
   /**
-   * 
+   * A THREE.Object holding a sound.
    * @class
    * @augments {THREE.Object3D}
    * @param {string} url - url of the sound
@@ -23,7 +23,6 @@ if (typeof THREE !== 'undefined') {
 
   /**
    * Plays the sound.
-   * @inner
    */
   AMTHREE.SoundObject.prototype.play = function() {
     this.playing = true;
@@ -33,7 +32,6 @@ if (typeof THREE !== 'undefined') {
 
   /**
    * Stops the sound.
-   * @inner
    */
   AMTHREE.SoundObject.prototype.stop = function() {
     this.audio.src = '';
@@ -42,7 +40,6 @@ if (typeof THREE !== 'undefined') {
 
   /**
    * Pauses the sound.
-   * @inner
    */
   AMTHREE.SoundObject.prototype.pause = function() {
     this.audio.pause();
@@ -51,7 +48,6 @@ if (typeof THREE !== 'undefined') {
 
   /**
    * Sets the sound's url.
-   * @inner
    * @param {string} url
    */
   AMTHREE.SoundObject.prototype.setSound = function(sound) {
@@ -62,7 +58,6 @@ if (typeof THREE !== 'undefined') {
 
   /**
    * Returns whether the sound is played.
-   * @inner
    * @returns {bool}
    */
   AMTHREE.SoundObject.prototype.isPlaying = function() {
@@ -71,7 +66,6 @@ if (typeof THREE !== 'undefined') {
 
   /**
    * Returns a clone of this.
-   * @inner
    * @returns {AMTHREE.SoundObject}
    */
   AMTHREE.SoundObject.prototype.clone = function() {
@@ -80,7 +74,6 @@ if (typeof THREE !== 'undefined') {
 
   /**
    * Copies the parameter.
-   * @inner
    * @param {AMTHREE.SoundObject}
    */
   AMTHREE.SoundObject.prototype.copy = function(src) {
@@ -98,7 +91,6 @@ if (typeof THREE !== 'undefined') {
 
   /**
   * Recursively plays the sounds of this object and all his children
-  * @function
   * @param {THREE.Object3D} object
   */
   AMTHREE.PlaySounds = function(object) {
@@ -107,7 +99,6 @@ if (typeof THREE !== 'undefined') {
 
   /**
   * Recursively pauses the sounds of this object and all his children
-  * @function
   * @param {THREE.Object3D} object
   */
   AMTHREE.PauseSounds = function(object) {
@@ -116,7 +107,6 @@ if (typeof THREE !== 'undefined') {
 
   /**
   * Recursively stops the sounds of this object and all his children
-  * @function
   * @param {THREE.Object3D} object
   */
   AMTHREE.StopSounds = function(object) {

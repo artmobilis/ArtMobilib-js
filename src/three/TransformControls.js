@@ -609,6 +609,13 @@
 	AMTHREE.TransformGizmoScale.prototype = Object.create( AMTHREE.TransformGizmo.prototype );
 	AMTHREE.TransformGizmoScale.prototype.constructor = AMTHREE.TransformGizmoScale;
 
+
+  /**
+  * THREE exemple edited. Display guizmos to move, rotate and rescale a THREE.Object3D.
+  * @class
+  * @param {THREE.Camera} camera - The guizmos are displayed relatively to this camera.
+  * @param {DomElement} [domElement=document] - The element to which attach the mouse events.
+  */
 	AMTHREE.TransformControls = function ( camera, domElement ) {
 
 		// TODO: Make non-uniform scale and rotate play nice in hierarchies
@@ -707,6 +714,9 @@
 		domElement.addEventListener( "touchcancel", onPointerUp, false );
 		domElement.addEventListener( "touchleave", onPointerUp, false );
 
+    /**
+    * Destroyes this object, by removing the event listeners.
+    */
 		this.dispose = function () {
 
 			domElement.removeEventListener( "mousedown", onPointerDown );
@@ -726,6 +736,10 @@
 
 		};
 
+    /**
+    * Sets the object to be edited.
+    * @param {THREE.Object3D} object
+    */
 		this.attach = function ( object ) {
 
 			this.object = object;
@@ -734,6 +748,9 @@
 
 		};
 
+    /**
+    * Detach this from the object.
+    */
 		this.detach = function () {
 
 			this.object = undefined;
@@ -742,12 +759,20 @@
 
 		};
 
+    /**
+    * Returns the current mode.
+    * @returns {'translate'|'rotate'|'scale'}
+    */
 		this.getMode = function () {
 
 			return _mode;
 
 		};
 
+    /**
+    * Sets the mode of edition.
+    * @param {'translate'|'rotate'|'scale'} mode
+    */
 		this.setMode = function ( mode ) {
 
 			_mode = mode ? mode : _mode;
@@ -789,6 +814,9 @@
 
 		};
 
+    /**
+    * Updates the target object, and the guizmos.
+    */
 		this.update = function () {
 
 			if ( scope.object === undefined ) return;

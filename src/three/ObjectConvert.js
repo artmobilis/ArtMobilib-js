@@ -23,6 +23,11 @@ var AMTHREE = AMTHREE || {};
   }
 
 
+  /**
+  * Converts textures types to ArtMobilib types, to ease serialization
+  * @function
+  * @param {THREE.Object3D}
+  */
   AMTHREE.ObjectConvert = ObjectConvert;
 
 

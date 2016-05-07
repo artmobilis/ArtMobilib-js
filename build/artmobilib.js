@@ -73,6 +73,14 @@ var compatibility = (function() {
  * @namespace THREE
  */
 
+ /**
+ * @namespace AMTHREE
+ */
+
+ /**
+ * @namespace AM
+ */
+
 /**
  * @typedef THREE.Object3D
  * @see {@link http://threejs.org/docs/index.html#Reference/Core/Object3D|Threejs documentation}
@@ -174,12 +182,10 @@ var AM = AM || {};
   
   /**
   * Class to start the front camera of the device, or a webcam, on a computer.
-  * @param {video element} [video_element] - An html element to play the stream in. Created if not provided.
+  * @param {VideoElement} [video_element] - An html element to play the stream in. Created if not provided.
   */
   function FrontCamGrabbing(video_element) {
-    var _dom_element = (video_element && video_element.tagName === 'VIDEO')
-      ? video_element
-      : document.createElement('video');
+    var _dom_element = (video_element && video_element.tagName === 'VIDEO') ? video_element : document.createElement('video');
     var _stream;
     var _loader;
     var _load_promise;
@@ -801,7 +807,7 @@ AM.ImageDebugger = function() {
    * Set data at initialisation
    * @inner
    * @param {context2D} current canvas 
-   * @param {video element} webcam element to compute initial video size
+   * @param {VideoElement} webcam element to compute initial video size
    * @param {bool} display or not debugging information
    */
   this.SetData = function ( context2d, camera_video_element, debugMatches) {
@@ -888,6 +894,10 @@ var AM = AM || {};
 var AM = AM || {};
 
 
+/**
+* Utility class to load a json file and convert the string to a json structure. Can load only one file at a time.
+* @class
+*/
 AM.JsonLoader = function() {
   var that = this;
 
@@ -945,6 +955,13 @@ AM.JsonLoader = function() {
     return _loading;
   };
 
+  /**
+  * Loads a file
+  * @param {string} url
+  * @param {function} on_load
+  * @param {function} on_error
+  * @param {function} on_progress
+  */
   this.Load = function(url, on_load, on_error, on_progress) {
     if (!_loading) {
       _loading = true;
@@ -964,6 +981,12 @@ AM.JsonLoader = function() {
   };
 };
 
+/**
+* Loads a json file using AM.JsonLoader.
+* @function
+* @param {string} url
+* @returns {Promise<object, string>}
+*/
 AM.LoadJson = function(url) {
   return new Promise(function(resolve, reject) {
     var loader = new AM.JsonLoader();
@@ -975,6 +998,10 @@ AM.LoadJson = function(url) {
 var AM = AM || {};
 
 
+/**
+* Helper class to manager loadings, and bind callbacks.
+* @class
+*/
 AM.LoadingManager = function() {
 
   var _end_callbacks = [];
@@ -987,12 +1014,20 @@ AM.LoadingManager = function() {
   }
   
 
+  /**
+  * Registers a number of loading starts.
+  * @param {number} nbr
+  */
   this.Start = function(nbr) {
     nbr = nbr || 1;
     _loading += nbr;
     DoCallbacks(_progress_callbacks);
   };
 
+  /**
+  * Registers a number of loading ends. If there is no loadings left, the listeners are notified, and every listener are removed.
+  * @param {number} nbr
+  */
   this.End = function(nbr) {
     nbr = nbr || 1;
     if (_loading > 0) {
@@ -1007,6 +1042,10 @@ AM.LoadingManager = function() {
     }
   };
 
+  /**
+  * Adds a listener to the event of the end of the loadings.
+  * @param {function} callback
+  */
   this.OnEnd = function(callback) {
     if (_loading > 0) {
       _end_callbacks.push(callback);
@@ -1015,6 +1054,10 @@ AM.LoadingManager = function() {
       callback();
   };
 
+  /**
+  * Adds a listener to the event of a change.
+  * @param {function} callback
+  */
   this.OnProgress = function(callback) {
     if (_loading > 0) {
       _progress_callbacks.push(callback);
@@ -1023,10 +1066,18 @@ AM.LoadingManager = function() {
       callback();
   };
 
+  /**
+  * Returns true if there are loadings left.
+  * @returns {boolean}
+  */
   this.IsLoading = function() {
     return _loading > 0;
   };
 
+  /**
+  * Returns the number of loadings left.
+  * @returns {number}
+  */
   this.GetRemaining = function() {
     return _loading;
   };
@@ -1297,34 +1348,6 @@ AM.DeviceLockScreenOrientation = function() {
     Command(UnlockDoit);
   };
 };
-/******************
-
-
-DeviceOrientationControl
-Orient a THREE.Object3D using the gyroscope
-
-
-Constructor
-
-DeviceOrientationControl(object: THREE.Object3D)
-
-
-Methods
-
-Connect() 
-Listen to the orientation events
-
-Update()
-Sets the rotation of the object accordingly to the last orientation event
-
-Disconnect()
-Remove the listeners
-
-
-*******************/
-
-
-/** @namespace */
 var AM = AM || {};
 
 
@@ -1818,12 +1841,16 @@ AM.GeolocationControl = function(object, geoConverter) {
 	};
 
 };
-/**
-* @author Tim Knip / http://www.floorplanner.com/ / tim at floorplanner.com
-* @author Tony Parisi / http://www.tonyparisi.com/
-*/
-
 var AMTHREE = AMTHREE || {};
+
+
+/**
+* @author Tim Knip {@link http://www.floorplanner.com/} tim at floorplanner.com
+* @author Tony Parisi {@link http://www.tonyparisi.com/}
+* @class
+* @description A class to load Collada models, edited to add functionality.
+* @memberof AMTHREE
+*/
 
 AMTHREE.ColladaLoader = function () {
 
@@ -1879,6 +1906,15 @@ AMTHREE.ColladaLoader = function () {
 	var colladaUp = 'Y';
 	var upConversion = null;
 
+
+  /**
+  * Loads a Collada model
+  * @param {string} url
+  * @param {string} texture_path
+  * @param {function} readyCallback
+  * @param {function} progressCallback
+  * @param {function} failCallback
+  */
 	function load ( url, texture_path, readyCallback, progressCallback, failCallback ) {
 
 		var length = 0;
@@ -7352,10 +7388,11 @@ AMTHREE.ColladaLoader = function () {
 
 var AMTHREE = AMTHREE || {};
 
-if (typeof THREE !== 'undefined') {
-
 
 (function() {
+
+  if (typeof THREE === 'undefined')
+    return;
 
   var SELECT_BOX_GEOMETRY = new THREE.BoxGeometry(0.7, 0.7, 0.7);
   SELECT_BOX_GEOMETRY.uuid = '71EB1490-B411-48E3-B187-D4A9B1836ACA';
@@ -7372,6 +7409,12 @@ if (typeof THREE !== 'undefined') {
   SELECT_BOX_MATERIAL.opacity = 0;
 
 
+  /**
+  * Class to load and hold a Collada model, and to ease its serialization.
+  * @class
+  * @memberof AMTHREE
+  * @augments THREE.Object3D
+  */
   var ColladaObject = function() {
     THREE.Object3D.call(this);
 
@@ -7385,6 +7428,12 @@ if (typeof THREE !== 'undefined') {
   ColladaObject.prototype = Object.create(THREE.Object3D.prototype);
   ColladaObject.prototype.constructor = ColladaObject;
 
+  /**
+  * Loads a Collada model into this, erasing the inner model, if it wasnt empty.
+  * @param {string} url
+  * @param {string} texture_path
+  * @returns {Promise<this, string>} A promise that resolves when the model is loaded.
+  */
   ColladaObject.prototype.load = function(url, texture_path) {
     var scope = this;
 
@@ -7424,6 +7473,11 @@ if (typeof THREE !== 'undefined') {
     });
   };
   
+  /**
+  * Returns the json representation of this.
+  * @param {object} meta
+  * @returns {object}
+  */
   ColladaObject.prototype.toJSON = function(meta) {
     var json = {
       uuid: this.uuid,
@@ -7456,27 +7510,13 @@ if (typeof THREE !== 'undefined') {
 
 
 })();
-
-
-}
-/*************************
-
-Dependency
-
-Threejs
-
-libgif: https://github.com/buzzfeed/libgif-js
-
-*************************/
-
-
-/** @namespace */
 var AMTHREE = AMTHREE || {};
 
 if (typeof THREE !== 'undefined') {
 
   /**
    * A helper class to use a gif image as a Threejs texture
+   *  - Requires libgif: {@link https://github.com/buzzfeed/libgif-js}
    * @class
    * @augments THREE.Texture
    */
@@ -7579,7 +7619,6 @@ else {
   };
 }
 
-/** @namespace */
 var AMTHREE = AMTHREE || {};
 
 if (typeof THREE !== 'undefined') {
@@ -7647,7 +7686,8 @@ if (typeof THREE !== 'undefined') {
   AMTHREE.ImageTexture.prototype.constructor = AMTHREE.ImageTexture;
 
   /*
-  *
+  * Sets the image of the texture
+  * @param {AMTHREE.Image} image
   */
   AMTHREE.ImageTexture.prototype.set = function(image) {
     this.image_ref = image;
@@ -7708,6 +7748,11 @@ var AMTHREE = AMTHREE || {};
   }
 
 
+  /**
+  * Converts textures types to ArtMobilib types, to ease serialization
+  * @function
+  * @param {THREE.Object3D}
+  */
   AMTHREE.ObjectConvert = ObjectConvert;
 
 
@@ -8549,11 +8594,21 @@ var AMTHREE = AMTHREE || {};
 if (typeof THREE !== 'undefined') {
 
 
+  /**
+  * A class to hold an url.
+  * @param {string} [uuid] - Generated if not provided
+  * @param {string} [url]
+  */
   AMTHREE.Sound = function(uuid, url) {
     this.uuid = uuid || THREE.Math.generateUUID();
     this.url = url;
   };
 
+  /**
+  * Returns the json representation of this.
+  * @param {object} meta
+  * @return {object}
+  */
   AMTHREE.Sound.prototype.toJSON = function(meta) {
     var output = {
       uuid: this.uuid,
@@ -8581,7 +8636,7 @@ var AMTHREE = AMTHREE || {};
 if (typeof THREE !== 'undefined') {
 
   /**
-   * 
+   * A THREE.Object holding a sound.
    * @class
    * @augments {THREE.Object3D}
    * @param {string} url - url of the sound
@@ -8600,7 +8655,6 @@ if (typeof THREE !== 'undefined') {
 
   /**
    * Plays the sound.
-   * @inner
    */
   AMTHREE.SoundObject.prototype.play = function() {
     this.playing = true;
@@ -8610,7 +8664,6 @@ if (typeof THREE !== 'undefined') {
 
   /**
    * Stops the sound.
-   * @inner
    */
   AMTHREE.SoundObject.prototype.stop = function() {
     this.audio.src = '';
@@ -8619,7 +8672,6 @@ if (typeof THREE !== 'undefined') {
 
   /**
    * Pauses the sound.
-   * @inner
    */
   AMTHREE.SoundObject.prototype.pause = function() {
     this.audio.pause();
@@ -8628,7 +8680,6 @@ if (typeof THREE !== 'undefined') {
 
   /**
    * Sets the sound's url.
-   * @inner
    * @param {string} url
    */
   AMTHREE.SoundObject.prototype.setSound = function(sound) {
@@ -8639,7 +8690,6 @@ if (typeof THREE !== 'undefined') {
 
   /**
    * Returns whether the sound is played.
-   * @inner
    * @returns {bool}
    */
   AMTHREE.SoundObject.prototype.isPlaying = function() {
@@ -8648,7 +8698,6 @@ if (typeof THREE !== 'undefined') {
 
   /**
    * Returns a clone of this.
-   * @inner
    * @returns {AMTHREE.SoundObject}
    */
   AMTHREE.SoundObject.prototype.clone = function() {
@@ -8657,7 +8706,6 @@ if (typeof THREE !== 'undefined') {
 
   /**
    * Copies the parameter.
-   * @inner
    * @param {AMTHREE.SoundObject}
    */
   AMTHREE.SoundObject.prototype.copy = function(src) {
@@ -8675,7 +8723,6 @@ if (typeof THREE !== 'undefined') {
 
   /**
   * Recursively plays the sounds of this object and all his children
-  * @function
   * @param {THREE.Object3D} object
   */
   AMTHREE.PlaySounds = function(object) {
@@ -8684,7 +8731,6 @@ if (typeof THREE !== 'undefined') {
 
   /**
   * Recursively pauses the sounds of this object and all his children
-  * @function
   * @param {THREE.Object3D} object
   */
   AMTHREE.PauseSounds = function(object) {
@@ -8693,7 +8739,6 @@ if (typeof THREE !== 'undefined') {
 
   /**
   * Recursively stops the sounds of this object and all his children
-  * @function
   * @param {THREE.Object3D} object
   */
   AMTHREE.StopSounds = function(object) {
@@ -8718,65 +8763,6 @@ else {
     console.warn('SoundObject.js: THREE undefined');
   };
 }
-/******************
-
-TrackedObjManager
-A class that moves objects on the scene relatively to the camera,
-smoothly using linear interpolation
-
-
-Constructor
-
-TrackedObjManager(parameters)
-
-parameters: an object holding the parameters 'camera', 'lerp_factor', and 'timeout'
-to set their respectives properties
-
-
-Properties
-
-camera: the origin, a 'THREE.Object3D'. Tracked objects are set has children of this object.
-
-lerp_factor: a number in [0, 1], 0.2 by default.
-The higher, the faster tracked objects will converge toward the camera.
-
-timeout: time in seconds, 3 by default.
-If an object isn't tracked for 'timeout' seconds, on_disable() is called,
-and the object is disabled.
-
-
-Methods
-
-Add(object, uuid, on_enable, on_disable)
-Add an object to track, and set the optionnal callbacks.
-The object is disabled until Track() or TrackCompose() are called.
-
-Remove(uuid)
-Remove an object. If the object is enabled, on_disable is called before removal.
-
-Update()
-
-Track(uuid, matrix)
-Sets a new position for a previously added object.
-If the object is disabled, on_enable() is called and the object is enabled
-
-TrackCompose(uuid, position, quaternion, scale)
-For convenience. Calls Track().
-
-TrackComposePosit(uuid, translation_pose, rotation_pose, model_size)
-For convenience. Calls TrackCompose().
-
-GetObject(uuid)
-
-
-Dependency
-
-three.js
-
-
-******************/
-
-
 var AMTHREE = AMTHREE || {};
 
 (function() {
@@ -8790,7 +8776,8 @@ var AMTHREE = AMTHREE || {};
 
 
   /**
-  * 
+  * A class that moves objects on the scene relatively to the camera,
+  *  smoothly by interpolation of successives positions and updates.
   * @class
   * @param {object} parameters - An object holding parameters
   * @param {THREE.Camera} parameters.camera
@@ -8843,7 +8830,6 @@ var AMTHREE = AMTHREE || {};
 
     /**
      * Adds an object
-     * @inner
      * @param {THREE.Object3D} object - Starts disabled.
      * @param {value} uuid
      * @param {function} [on_enable] - Function called when the object is tracked and was disabled before.
@@ -8855,7 +8841,6 @@ var AMTHREE = AMTHREE || {};
 
     /**
      * Remove an object
-     * @inner
      * @param {value}
      */
     this.Remove = function(uuid) {
@@ -8864,7 +8849,6 @@ var AMTHREE = AMTHREE || {};
 
     /**
      * Clear all the objects
-     * @inner
      */
     this.Clear = function() {
       _holder.Clear();
@@ -8872,7 +8856,6 @@ var AMTHREE = AMTHREE || {};
 
     /**
      * Updates the objects tranforms
-     * @inner
      */
     this.Update = function() {
 
@@ -8884,8 +8867,6 @@ var AMTHREE = AMTHREE || {};
 
     /**
      * Sets a tracked object transform
-     * @inner
-     * @function
      * @param {value} uuid
      * @param {THREE.Matrix4} matrix
      */
@@ -8934,8 +8915,6 @@ var AMTHREE = AMTHREE || {};
 
     /**
      * Sets a tracked object transform
-     * @inner
-     * @function
      * @param {value} uuid
      * @param {THREE.Vector3} position
      * @param {THREE.Quaternion} quaternion
@@ -8955,8 +8934,6 @@ var AMTHREE = AMTHREE || {};
 
     /**
      * Sets a tracked object transform
-     * @inner
-     * @function
      * @param {value} uuid
      * @param {number[]} translation_pose
      * @param {number[][]} rotation_pose
@@ -8991,7 +8968,6 @@ var AMTHREE = AMTHREE || {};
 
     /**
      * Returns an object held by this
-     * @inner
      * @param {value} uuid
      */
     this.GetObject = function(uuid) {
@@ -9000,6 +8976,19 @@ var AMTHREE = AMTHREE || {};
         return elem.object;
       }
       return undefined;
+    };
+
+    /**
+    * Moves all enabled objects
+    * @param {THREE.Vector3} vec
+    */
+    this.MoveEnabledObjects = function(vec) {
+      _holder.ForEach(function(elem) {
+        if (elem.enabled) {
+          elem.target.position.add(vec);
+          elem.object.position.add(vec);
+        }
+      });
     };
 
 
@@ -9045,7 +9034,7 @@ var AMTHREE = AMTHREE || {};
 
   Holder.prototype.Clear = function() {
     for (var uuid in this._objects)
-      that.Remove(uuid);
+      this.Remove(uuid);
   };
 
   Holder.prototype.Track = function(uuid) {
@@ -9753,6 +9742,13 @@ var AMTHREE = AMTHREE || {};
 	AMTHREE.TransformGizmoScale.prototype = Object.create( AMTHREE.TransformGizmo.prototype );
 	AMTHREE.TransformGizmoScale.prototype.constructor = AMTHREE.TransformGizmoScale;
 
+
+  /**
+  * THREE exemple edited. Display guizmos to move, rotate and rescale a THREE.Object3D.
+  * @class
+  * @param {THREE.Camera} camera - The guizmos are displayed relatively to this camera.
+  * @param {DomElement} [domElement=document] - The element to which attach the mouse events.
+  */
 	AMTHREE.TransformControls = function ( camera, domElement ) {
 
 		// TODO: Make non-uniform scale and rotate play nice in hierarchies
@@ -9851,6 +9847,9 @@ var AMTHREE = AMTHREE || {};
 		domElement.addEventListener( "touchcancel", onPointerUp, false );
 		domElement.addEventListener( "touchleave", onPointerUp, false );
 
+    /**
+    * Destroyes this object, by removing the event listeners.
+    */
 		this.dispose = function () {
 
 			domElement.removeEventListener( "mousedown", onPointerDown );
@@ -9870,6 +9869,10 @@ var AMTHREE = AMTHREE || {};
 
 		};
 
+    /**
+    * Sets the object to be edited.
+    * @param {THREE.Object3D} object
+    */
 		this.attach = function ( object ) {
 
 			this.object = object;
@@ -9878,6 +9881,9 @@ var AMTHREE = AMTHREE || {};
 
 		};
 
+    /**
+    * Detach this from the object.
+    */
 		this.detach = function () {
 
 			this.object = undefined;
@@ -9886,12 +9892,20 @@ var AMTHREE = AMTHREE || {};
 
 		};
 
+    /**
+    * Returns the current mode.
+    * @returns {'translate'|'rotate'|'scale'}
+    */
 		this.getMode = function () {
 
 			return _mode;
 
 		};
 
+    /**
+    * Sets the mode of edition.
+    * @param {'translate'|'rotate'|'scale'} mode
+    */
 		this.setMode = function ( mode ) {
 
 			_mode = mode ? mode : _mode;
@@ -9933,6 +9947,9 @@ var AMTHREE = AMTHREE || {};
 
 		};
 
+    /**
+    * Updates the target object, and the guizmos.
+    */
 		this.update = function () {
 
 			if ( scope.object === undefined ) return;
@@ -10360,6 +10377,11 @@ AMTHREE.WorldToCanvasPosition = function(position, camera, canvas) {
   return { x: x, y: y, z: vec.z };
 };
 
+/**
+* Returns the name of the file pointed by a path string.
+* @param {string} path
+* @returns {string}
+*/
 AMTHREE.GetFilename = function(path) {
   return path.split('/').pop().split('\\').pop();
 };
@@ -10369,7 +10391,6 @@ AMTHREE.MODEL_PATH = 'models/';
 AMTHREE.VIDEO_PATH = 'videos/';
 AMTHREE.SOUND_PATH = 'sounds/';
 AMTHREE.ASSET_PATH = 'assets/';
-/** @namespace */
 var AMTHREE = AMTHREE || {};
 
 if (typeof THREE !== 'undefined') {
@@ -10835,6 +10856,7 @@ var AM = AM || {};
 
 
 /**
+ * Finds a list of image in an image, and compute its pose.
  * @class
  */
 AM.MarkerTracker = function() {
@@ -10864,8 +10886,7 @@ AM.MarkerTracker = function() {
 
 
   /**
-  * Computes the corners and descriptors
-  * @inner
+  * Computes the corners and descriptors.
   * @param {ImageData} image_data
   */
   this.ComputeImage = function(image_data, fixed_angle) {
@@ -10880,7 +10901,6 @@ AM.MarkerTracker = function() {
 
   /**
    * Matches the last computed ImageData and every active trained image.
-   * @inner
    * @returns {bool} true if a match if found.
    */
   this.Match = function() {
@@ -10928,8 +10948,7 @@ AM.MarkerTracker = function() {
   };
 
   /**
-   * Returns the id of the last match
-   * @inner
+   * Returns the id of the last match.
    */
   this.GetMatchUuid = function() {
     if (_matching_image)
@@ -10937,8 +10956,7 @@ AM.MarkerTracker = function() {
   };
 
   /**
-   * Computes and returns the pose of the last match
-   * @inner
+   * Computes and returns the pose of the last match.
    * @returns {Point2D[]} The corners
    */
   this.GetPose = function() {
@@ -10952,8 +10970,7 @@ AM.MarkerTracker = function() {
   };
 
   /**
-   * Trains a marker
-   * @inner
+   * Trains a marker.
    * @param {ImageData} image_data - The marker, has to be a square (same width and height).
    * @param {value} uuid - The identifier of the marker.
    */
@@ -10966,8 +10983,7 @@ AM.MarkerTracker = function() {
   };
 
   /**
-   * Removes a marker
-   * @inner
+   * Removes a marker.
    * @param {value} uuid - The identifier of the marker.
    */
   this.RemoveMarker = function(uuid) {
@@ -10979,7 +10995,6 @@ AM.MarkerTracker = function() {
   /**
    * Activates or desactivates a marker.
    * <br>A marker inactive will be ignored during the matching.
-   * @inner
    * @param {value} uuid - The identifier of the marker.
    * @param {bool} bool - Sets active if true, inactive if false.
    */
@@ -10989,8 +11004,7 @@ AM.MarkerTracker = function() {
   };
 
   /**
-   * Sets active or inactive all the markers
-   * @inner
+   * Sets active or inactive all the markers.
    * @param {bool} bool - Sets all active if true, inactive if false.
    */
   this.ActiveAllMarkers = function(bool) {
@@ -11000,16 +11014,14 @@ AM.MarkerTracker = function() {
   };
 
   /**
-   * Removes all the markers
-   * @inner
+   * Removes all the markers.
    */
   this.ClearMarkers = function() {
     _trained_images = {};
   };
 
   /**
-   * Returns the corners of the last computed image
-   * @inner
+   * Returns the corners of the last computed image.
    * @returns {jsfeat.keypoint_t[]}
    */
   this.GetScreenCorners = function() {
@@ -11017,8 +11029,7 @@ AM.MarkerTracker = function() {
   };
 
   /**
-   * Returns the count of corners of the last computed image
-   * @inner
+   * Returns the count of corners of the last computed image.
    * @returns {number}
    */
   this.GetNumScreenCorners = function() {
@@ -11026,8 +11037,7 @@ AM.MarkerTracker = function() {
   };
 
  /**
-   * Returns the buffer of matches ()
-   * @inner
+   * Returns the buffer of matches.
    * @returns {AM.match_t[]}
    */
   this.GetMatches = function () {
@@ -11035,8 +11045,7 @@ AM.MarkerTracker = function() {
   };
 
  /**
-   * Returns the buffer of matches validated by homography ()
-   * @inner
+   * Returns the buffer of matches validated by homography.
    * @returns {AM.match_t[]}
    */
   this.GetMatchesMask = function () {
@@ -11044,8 +11053,7 @@ AM.MarkerTracker = function() {
   };
 
 /**
-   * Returns the timings of matching function()
-   * @inner
+   * Returns the timings of matching function.
    * @returns {pair[]}
    */
   this.GetProfiler = function () {
@@ -11053,8 +11061,7 @@ AM.MarkerTracker = function() {
   };
 
 /**
-   * Returns corners of trained image
-   * @inner
+   * Returns corners of trained image.
    * @returns {jsfeat.keypoint_t[]}
    */
   this.GetTrainedCorners = function () {
@@ -11067,8 +11074,7 @@ AM.MarkerTracker = function() {
   };
 
   /**
-   * Puts the log to the console
-   * @inner
+   * Puts the log to the console.
    */
   this.Log = function() {
     console.log(_profiler.log() + ((_match_found) ? '<br/>match found' : ''));
@@ -11076,7 +11082,6 @@ AM.MarkerTracker = function() {
 
   /**
    * Sets optionnals parameters
-   * @inner
    * @param {object} params
    * @param {number} [match_min] minimum number of matching corners necessary for a match to be valid. default 8
    * @see AM.ImageFilter
@@ -11096,6 +11101,10 @@ AM.MarkerTracker = function() {
     _matching.SetParameters(params);
   };
 
+  /**
+  * If a fixed angle is used, corner orientation isnt computed, set to 0 for the training, and for the detection, a provided angle is used.
+  * @param {boolean} bool
+  */
   this.UseFixedAngle = function(bool) {
     _training.UseFixedAngle(bool);
   };
@@ -11873,7 +11882,6 @@ AM.Training = function() {
 
   /**
    * Sets the result of the previous {@link AM.Training#Train} call to a {@link AM.TrainedImage}
-   * @inner
    * @param {AM.TrainedImage} trained_image
    */
   this.SetResultToTrainedImage = function(trained_image) {
@@ -11882,7 +11890,6 @@ AM.Training = function() {
 
   /**
    * Returns false if this object contains a result
-   * @inner
    * @returns {bool}
    */
   this.IsEmpty = function() {
@@ -11891,7 +11898,6 @@ AM.Training = function() {
 
   /**
    * Empties results stored
-   * @inner
    */
   this.Empty = function() {
     _descriptors_levels = undefined;
@@ -11901,7 +11907,6 @@ AM.Training = function() {
 
   /**
    * Sets parameters of the training
-   * @inner
    * @param {object} params
    * @params {number} [params.num_train_levels=3] - default 3
    * @params {number} [params.blur_size=3] - default 3
