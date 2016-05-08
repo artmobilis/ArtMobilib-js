@@ -246,12 +246,13 @@ AM.MarkerTracker = function() {
    * @returns {jsfeat.keypoint_t[]}
    */
   this.GetTrainedCorners = function () {
+    var trained_image;
     if (_matching_image) {
-      var trained_image = _trained_images[_matching_image.GetUuid()];
+      trained_image = _trained_images[_matching_image.GetUuid()];
       return trained_image.GetCornersLevels();
     }
     else if(_last_trained_uuid){
-      var trained_image = _trained_images[_last_trained_uuid];
+      trained_image = _trained_images[_last_trained_uuid];
       return trained_image.GetCornersLevels();
     }
     else
@@ -263,12 +264,13 @@ AM.MarkerTracker = function() {
    * @returns {jsfeat.keypoint_t[]}
    */
   this.GetTrainedDescriptors = function () {
+    var trained_image;
     if (_matching_image) {
-      var trained_image = _trained_images[_matching_image.GetUuid()];
+      trained_image = _trained_images[_matching_image.GetUuid()];
       return trained_image.GetDescriptorsLevels();
     }
     else if(_last_trained_uuid){
-      var trained_image = _trained_images[_last_trained_uuid];
+      trained_image = _trained_images[_last_trained_uuid];
       return trained_image.GetDescriptorsLevels();
     }
     else
