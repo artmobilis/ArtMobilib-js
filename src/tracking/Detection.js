@@ -53,6 +53,34 @@ AM.Detection = function() {
   };
 
   /**
+   * Crop image and computes the image corners and descriptors and saves them internally.
+   * <br>Use {@link ImageFilter} first to filter an Image.
+   * @inner
+   * @param {jsfeat.matrix_t} img
+   */
+  this.CropDetect = function(img, fixed_angle, cx, cy) {
+    // crop image
+    var new_cols=img.cols-2*cx;
+    var new_rows=img.rows-2*cy;
+    var cropped = new jsfeat.matrix_t(new_cols, new_rows, jsfeat.U8_t | jsfeat.C1_t);
+    var i,j;  
+
+    for (j=0; j<new_rows; ++j)
+      for (i=0; i<new_cols; ++i){
+        cropped.data[j*new_cols+i]=img.data[(j+cy)*img.cols+i+cx];
+      }
+
+    // detect features
+    that.Detect(cropped, fixed_angle);
+
+    // correct corners location
+    for (i=0; i<_screen_corners.length; ++i){
+      _screen_corners[i].x += cx;
+      _screen_corners[i].y += cy;
+    }
+  };
+
+  /**
    * Sets the params used during the detection
    * @inner
    * @param {object} params

@@ -68,7 +68,8 @@ AM.MarkerTracker = function() {
     _image_filter.Filter(image_data);
     _profiler.stop('filter');
     _profiler.start('detection');
-    _detection.Detect(_image_filter.GetFilteredImage(), fixed_angle);
+    _detection.CropDetect(_image_filter.GetFilteredImage(), fixed_angle, 60,0);
+//    _detection.Detect(_image_filter.GetFilteredImage(), fixed_angle);
     _profiler.stop('detection');
   };
 
