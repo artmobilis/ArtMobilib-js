@@ -430,6 +430,7 @@ AM.ImageDebugger = function() {
   var _trained_image_url;
   var _corners;
   var _trained_corners;
+  var _trained_descriptors;
   var _screen_corners;
   var _matches;
   var _matches_mask;
@@ -547,6 +548,7 @@ AM.ImageDebugger = function() {
 
     _corners          = marker_corners.corners;
     _trained_corners  = marker_corners.trained_corners;       
+    _trained_descriptors = marker_corners.trained_descriptors;       
     _matches          = marker_corners.matches;
     _matches_mask     = marker_corners.matches_mask;
     _trained_image_url = trained_image_url;
@@ -740,6 +742,7 @@ AM.ImageDebugger = function() {
   var bluredImages=_training.getBluredImages();
   var trained_image = new AM.TrainedImage(_uuid);
   _training.SetResultToTrainedImage(trained_image);
+  trained_image.Set(_trained_corners, _trained_descriptors, trained_image.GetWidth(), trained_image.GetHeight());
 
   for(var i = 0; i < trained_image.GetLevelNbr(); ++i) {
     var corners = trained_image.GetCorners(i);
@@ -10871,6 +10874,7 @@ AM.MarkerTracker = function() {
 
   var _match_found = false;
   var _matching_image;
+  var _last_trained_uuid;
 
   var _params = {
     match_min : 8
@@ -10913,6 +10917,7 @@ AM.MarkerTracker = function() {
 
     for(var uuid in _trained_images) {
       var trained_image = _trained_images[uuid];
+      _last_trained_uuid = uuid;
 
       if (!trained_image.IsActive())
         continue;
@@ -10921,8 +10926,6 @@ AM.MarkerTracker = function() {
 
       var count = _matching.GetNumMatches();
 
-      // save last test uuid for debugging matching
-      _matching_image = trained_image;
 
       _match_found = (count >= _params.match_min);
       if (_debug) console.log( "image: " + uuid + " nbMatches: " + count);
@@ -10956,7 +10959,16 @@ AM.MarkerTracker = function() {
   };
 
   /**
-   * Computes and returns the pose of the last match.
+   * Returns the id of the last match
+   * Returns the id of the last match
+   */
+  this.GetLastUuid = function() {
+      return _last_trained_uuid;
+  };
+
+  /**
+   * Computes and returns the pose of the last match
+   * @inner
    * @returns {Point2D[]} The corners
    */
   this.GetPose = function() {
@@ -11068,6 +11080,27 @@ AM.MarkerTracker = function() {
     if (_matching_image) {
       var trained_image = _trained_images[_matching_image.GetUuid()];
       return trained_image.GetCornersLevels();
+    }
+    else if(_last_trained_uuid){
+      var trained_image = _trained_images[_last_trained_uuid];
+      return trained_image.GetCornersLevels();
+    }
+    else
+      return [];
+  };
+
+/**
+   * Returns corners of trained image.
+   * @returns {jsfeat.keypoint_t[]}
+   */
+  this.GetTrainedDescriptors = function () {
+    if (_matching_image) {
+      var trained_image = _trained_images[_matching_image.GetUuid()];
+      return trained_image.GetDescriptorsLevels();
+    }
+    else if(_last_trained_uuid){
+      var trained_image = _trained_images[_last_trained_uuid];
+      return trained_image.GetDescriptorsLevels();
     }
     else
       return [];

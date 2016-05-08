@@ -258,6 +258,23 @@ AM.MarkerTracker = function() {
       return [];
   };
 
+/**
+   * Returns corners of trained image.
+   * @returns {jsfeat.keypoint_t[]}
+   */
+  this.GetTrainedDescriptors = function () {
+    if (_matching_image) {
+      var trained_image = _trained_images[_matching_image.GetUuid()];
+      return trained_image.GetDescriptorsLevels();
+    }
+    else if(_last_trained_uuid){
+      var trained_image = _trained_images[_last_trained_uuid];
+      return trained_image.GetDescriptorsLevels();
+    }
+    else
+      return [];
+  };
+
   /**
    * Puts the log to the console.
    */
