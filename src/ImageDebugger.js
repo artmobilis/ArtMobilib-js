@@ -397,14 +397,14 @@ AM.ImageDebugger = function() {
     if(ratioWindowWH<ratioVideoWH) { 
       // larger window width than video, video is cropped on left and right sides
       var liveWidth=Math.round(_canvas_height*ratioVideoWH);
-      _ratio=liveWidth/video_size_target;
+      _ratio=_canvas_height/video_size_target;
       _offsetx=Math.round((_canvas_width-liveWidth)*0.5);
       _offsety=0;//_hbands;
     } 
     else { 
       // larger window height than video, video is cropped on upper and lower sides
       var liveHeight=_canvas_width/ratioVideoWH;
-      _ratio=_canvas_width/video_size_target;
+      _ratio=liveHeight/video_size_target;
       _offsetx=0;
       _offsety=Math.round((_canvas_height-liveHeight)*0.5);      
     }

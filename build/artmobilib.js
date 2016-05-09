@@ -737,7 +737,7 @@ AM.ImageDebugger = function() {
    */
   drawTrainedCorners = function (number_per_level) {
     if (typeof number_per_level === 'undefined')
-      number_per_level = 50;
+      number_per_level = 300;
 
   var bluredImages=_training.getBluredImages();
   var trained_image = new AM.TrainedImage(_uuid);
@@ -749,8 +749,8 @@ AM.ImageDebugger = function() {
     var descriptors = trained_image.GetDescriptors(i); // what to do with that in debug?
     var originy =_canvas_height-35-_hbands-bluredImages[i].rows;
     
-
-    for(var j = 0; j < number_per_level; ++j) {
+    var nb_display=Math.min(number_per_level, corners.length);
+    for(var j = 0; j < nb_display; ++j) {
       var tc=corners[j];
       _context2d.fillStyle=getGradientGreenRedColor(number_per_level-j,number_per_level); // strongest red
 
@@ -793,14 +793,14 @@ AM.ImageDebugger = function() {
     if(ratioWindowWH<ratioVideoWH) { 
       // larger window width than video, video is cropped on left and right sides
       var liveWidth=Math.round(_canvas_height*ratioVideoWH);
-      _ratio=liveWidth/video_size_target;
+      _ratio=_canvas_height/video_size_target;
       _offsetx=Math.round((_canvas_width-liveWidth)*0.5);
       _offsety=0;//_hbands;
     } 
     else { 
       // larger window height than video, video is cropped on upper and lower sides
       var liveHeight=_canvas_width/ratioVideoWH;
-      _ratio=_canvas_width/video_size_target;
+      _ratio=liveHeight/video_size_target;
       _offsetx=0;
       _offsety=Math.round((_canvas_height-liveHeight)*0.5);      
     }
@@ -10592,6 +10592,7 @@ AM.Detection = function() {
   var _num_corners = 0;
 
   var _screen_descriptors = new jsfeat.matrix_t(32, _params.detection_corners_max, jsfeat.U8_t | jsfeat.C1_t);
+  var _cropped = new jsfeat.matrix_t(640, 480, jsfeat.U8_t | jsfeat.C1_t);
 
   function AllocateCorners(width, height) {
     var i = width * height;
@@ -10633,16 +10634,18 @@ AM.Detection = function() {
     // crop image
     var new_cols=img.cols-2*cx;
     var new_rows=img.rows-2*cy;
-    var cropped = new jsfeat.matrix_t(new_cols, new_rows, jsfeat.U8_t | jsfeat.C1_t);
-    var i,j;  
+    var i,j;
+
+    if (new_cols != _cropped.cols || new_rows != _cropped.rows )
+      _cropped.resize(new_cols, new_rows, _cropped.channel);
 
     for (j=0; j<new_rows; ++j)
       for (i=0; i<new_cols; ++i){
-        cropped.data[j*new_cols+i]=img.data[(j+cy)*img.cols+i+cx];
+        _cropped.data[j*new_cols+i]=img.data[(j+cy)*img.cols+i+cx];
       }
 
     // detect features
-    that.Detect(cropped, fixed_angle);
+    that.Detect(_cropped, fixed_angle);
 
     // correct corners location
     for (i=0; i<_screen_corners.length; ++i){
@@ -10927,7 +10930,7 @@ AM.MarkerTracker = function() {
     _image_filter.Filter(image_data);
     _profiler.stop('filter');
     _profiler.start('detection');
-    _detection.CropDetect(_image_filter.GetFilteredImage(), fixed_angle, 60,0);
+    _detection.CropDetect(_image_filter.GetFilteredImage(), fixed_angle, 100,0);
 //    _detection.Detect(_image_filter.GetFilteredImage(), fixed_angle);
     _profiler.stop('detection');
   };
