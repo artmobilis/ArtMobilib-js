@@ -34,6 +34,7 @@ AM.ImageDebugger = function() {
   var _trained_image_url;
   var _corners;
   var _trained_corners;
+  var _trained_descriptors;
   var _screen_corners;
   var _matches;
   var _matches_mask;
@@ -151,6 +152,7 @@ AM.ImageDebugger = function() {
 
     _corners          = marker_corners.corners;
     _trained_corners  = marker_corners.trained_corners;       
+    _trained_descriptors = marker_corners.trained_descriptors;       
     _matches          = marker_corners.matches;
     _matches_mask     = marker_corners.matches_mask;
     _trained_image_url = trained_image_url;
@@ -344,6 +346,7 @@ AM.ImageDebugger = function() {
   var bluredImages=_training.getBluredImages();
   var trained_image = new AM.TrainedImage(_uuid);
   _training.SetResultToTrainedImage(trained_image);
+  trained_image.Set(_trained_corners, _trained_descriptors, trained_image.GetWidth(), trained_image.GetHeight());
 
   for(var i = 0; i < trained_image.GetLevelNbr(); ++i) {
     var corners = trained_image.GetCorners(i);
