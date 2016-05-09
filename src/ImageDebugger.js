@@ -341,7 +341,7 @@ AM.ImageDebugger = function() {
    */
   drawTrainedCorners = function (number_per_level) {
     if (typeof number_per_level === 'undefined')
-      number_per_level = 50;
+      number_per_level = 300;
 
   var bluredImages=_training.getBluredImages();
   var trained_image = new AM.TrainedImage(_uuid);
@@ -353,8 +353,8 @@ AM.ImageDebugger = function() {
     var descriptors = trained_image.GetDescriptors(i); // what to do with that in debug?
     var originy =_canvas_height-35-_hbands-bluredImages[i].rows;
     
-
-    for(var j = 0; j < number_per_level; ++j) {
+    var nb_display=Math.min(number_per_level, corners.length);
+    for(var j = 0; j < nb_display; ++j) {
       var tc=corners[j];
       _context2d.fillStyle=getGradientGreenRedColor(number_per_level-j,number_per_level); // strongest red
 
@@ -397,14 +397,14 @@ AM.ImageDebugger = function() {
     if(ratioWindowWH<ratioVideoWH) { 
       // larger window width than video, video is cropped on left and right sides
       var liveWidth=Math.round(_canvas_height*ratioVideoWH);
-      _ratio=liveWidth/video_size_target;
+      _ratio=_canvas_height/video_size_target;
       _offsetx=Math.round((_canvas_width-liveWidth)*0.5);
       _offsety=0;//_hbands;
     } 
     else { 
       // larger window height than video, video is cropped on upper and lower sides
       var liveHeight=_canvas_width/ratioVideoWH;
-      _ratio=_canvas_width/video_size_target;
+      _ratio=liveHeight/video_size_target;
       _offsetx=0;
       _offsety=Math.round((_canvas_height-liveHeight)*0.5);      
     }
