@@ -341,7 +341,7 @@ AM.ImageDebugger = function() {
    */
   drawTrainedCorners = function (number_per_level) {
     if (typeof number_per_level === 'undefined')
-      number_per_level = 50;
+      number_per_level = 300;
 
   var bluredImages=_training.getBluredImages();
   var trained_image = new AM.TrainedImage(_uuid);
@@ -353,8 +353,8 @@ AM.ImageDebugger = function() {
     var descriptors = trained_image.GetDescriptors(i); // what to do with that in debug?
     var originy =_canvas_height-35-_hbands-bluredImages[i].rows;
     
-
-    for(var j = 0; j < number_per_level; ++j) {
+    var nb_display=Math.min(number_per_level, corners.length);
+    for(var j = 0; j < nb_display; ++j) {
       var tc=corners[j];
       _context2d.fillStyle=getGradientGreenRedColor(number_per_level-j,number_per_level); // strongest red
 
