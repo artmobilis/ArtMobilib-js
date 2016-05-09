@@ -21,6 +21,7 @@ AM.Detection = function() {
   var _num_corners = 0;
 
   var _screen_descriptors = new jsfeat.matrix_t(32, _params.detection_corners_max, jsfeat.U8_t | jsfeat.C1_t);
+  var _cropped = new jsfeat.matrix_t(640, 480, jsfeat.U8_t | jsfeat.C1_t);
 
   function AllocateCorners(width, height) {
     var i = width * height;
@@ -62,16 +63,18 @@ AM.Detection = function() {
     // crop image
     var new_cols=img.cols-2*cx;
     var new_rows=img.rows-2*cy;
-    var cropped = new jsfeat.matrix_t(new_cols, new_rows, jsfeat.U8_t | jsfeat.C1_t);
-    var i,j;  
+    var i,j;
+
+    if (new_cols != _cropped.cols || new_rows != _cropped.rows )
+      _cropped.resize(new_cols, new_rows, _cropped.channel);
 
     for (j=0; j<new_rows; ++j)
       for (i=0; i<new_cols; ++i){
-        cropped.data[j*new_cols+i]=img.data[(j+cy)*img.cols+i+cx];
+        _cropped.data[j*new_cols+i]=img.data[(j+cy)*img.cols+i+cx];
       }
 
     // detect features
-    that.Detect(cropped, fixed_angle);
+    that.Detect(_cropped, fixed_angle);
 
     // correct corners location
     for (i=0; i<_screen_corners.length; ++i){
