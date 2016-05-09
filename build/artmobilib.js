@@ -11803,7 +11803,7 @@ AM.Training = function() {
     var corners_num = 0;
     if (_use_fixed_angle)
       corners_num = AM.DetectKeypointsYape06(level_img, corners, _params.training_corners_max,
-        _params.laplacian_threshold, _params.eigen_threshold, undefined, 0);
+        _params.laplacian_threshold, _params.eigen_threshold, undefined, -Math.PI / 2);
     else
       corners_num = AM.DetectKeypointsYape06(level_img, corners, _params.training_corners_max,
         _params.laplacian_threshold, _params.eigen_threshold);
