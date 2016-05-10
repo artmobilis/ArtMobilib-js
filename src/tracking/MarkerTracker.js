@@ -68,9 +68,13 @@ AM.MarkerTracker = function() {
     _image_filter.Filter(image_data);
     _profiler.stop('filter');
     _profiler.start('detection');
-    _detection.CropDetect(_image_filter.GetFilteredImage(), fixed_angle, 100,0);
+
+    // crop image if image is in landscape (sides are less important)
+    var cx= image_data.width>image_data.height ? 0.2 : 0;
+    _detection.CropDetect(_image_filter.GetFilteredImage(), fixed_angle, cx, 0);
 //    _detection.Detect(_image_filter.GetFilteredImage(), fixed_angle);
     _profiler.stop('detection');
+    if (_debug) console.log( "im("+image_data.width+" "+image_data.height+") nbScreenCorners: " + _detection.GetNumCorners());
   };
 
   /**
@@ -115,7 +119,7 @@ AM.MarkerTracker = function() {
     }
 
     _profiler.stop('matching');
-    //if (_debug) console.log(_profiler.log2());
+    if (_debug) console.log(_profiler.log2());
 
     return _match_found;
   };

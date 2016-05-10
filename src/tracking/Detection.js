@@ -58,11 +58,16 @@ AM.Detection = function() {
    * <br>Use {@link ImageFilter} first to filter an Image.
    * @inner
    * @param {jsfeat.matrix_t} img
+   * @param {bool} use fixed angles for descriptor orientation
+   * @param {double} width percentage to crop on each image side
+   * @param {double} height percentage to crop on each image side
    */
   this.CropDetect = function(img, fixed_angle, cx, cy) {
     // crop image
-    var new_cols=img.cols-2*cx;
-    var new_rows=img.rows-2*cy;
+    var bandw=Math.round(cx*img.cols);
+    var bandh=Math.round(cy*img.rows);
+    var new_cols=img.cols-2*bandw;
+    var new_rows=img.rows-2*bandh;
     var i,j;
 
     if (new_cols != _cropped.cols || new_rows != _cropped.rows )
@@ -70,7 +75,7 @@ AM.Detection = function() {
 
     for (j=0; j<new_rows; ++j)
       for (i=0; i<new_cols; ++i){
-        _cropped.data[j*new_cols+i]=img.data[(j+cy)*img.cols+i+cx];
+        _cropped.data[j*new_cols+i]=img.data[(j+bandh)*img.cols+i+bandw];
       }
 
     // detect features
@@ -78,8 +83,8 @@ AM.Detection = function() {
 
     // correct corners location
     for (i=0; i<_screen_corners.length; ++i){
-      _screen_corners[i].x += cx;
-      _screen_corners[i].y += cy;
+      _screen_corners[i].x += bandw;
+      _screen_corners[i].y += bandh;
     }
   };
 
