@@ -7909,33 +7909,28 @@ var AMTHREE = AMTHREE || {};
     return sounds;
   }
 
-  function ParseImages(json, path) {
-    return new Promise(function(resolve, reject) {
-      var images = {};
-      if (json instanceof Array) {
+  function CreateImages(json, path) {
 
-        return Promise.all(json.map(function(image_json) {
+    var images = {};
 
-          return new Promise(function(resolve, reject) {
-            if (image_json.url === undefined)
-              reject('failed to parse image: no "url" specified for image ' + i);
-            else if (image_json.uuid === undefined)
-              reject('failed to parse image: no "uuid" specified for image ' + i);
-            else {
-              var image = new AMTHREE.Image(image_json.uuid, path + '/' + image_json.url);
-              images[image.uuid] = image;
-              resolve();
-            }
-          });
+    if (json instanceof Array) {
 
+      for (var i = 0, c = json.length; i < c; ++i) {
+        var image_json = json[i];
 
-        })).then(resolve(images), reject);
-
+        if (image_json.uuid === undefined)
+          reject('failed to parse image: no "uuid" specified for image ' + i);
+        else if (image_json.url === undefined)
+          reject('failed to parse image: no "url" specified for image ' + i);
+        else {
+          var image = new AMTHREE.Image(image_json.uuid, path + '/' + image_json.url);
+          images[image.uuid] = image;
+        }
       }
-      else {
-        reject('images parsing failed: json not an array');
-      }
-    });
+
+    }
+
+    return images;
   }
 
   function CreateVideos(json, path) {
@@ -8278,52 +8273,45 @@ var AMTHREE = AMTHREE || {};
     return LoadFile(url, ParseArray, path);
   }
 
-  function ParseResources(json, path) {
-    var constants = CreateConstants(json.constants, path);
+  function CreateResources(json, path) {
+    var constants  = CreateConstants(json.constants, path);
+    var images     = CreateImages(json.images || [], constants.image_path);
+    var sounds     = CreateSounds(json.sounds || [], constants.sound_path);
+    var videos     = CreateVideos(json.videos || [], constants.video_path);
+    var textures   = CreateTextures(json.textures || [], images, videos);
+    var animations = CreateAnimations(json.animations || []);
+    var materials  = CreateMaterials(json.materials || [], textures);
+    var geometries = CreateGeometries(json.geometries || []);
 
-    return ParseImages(json.images || [], constants.image_path).then(function(images) {
-
-      var sounds = CreateSounds(json.sounds || [], constants.sound_path);
-      var videos = CreateVideos(json.videos || [], constants.video_path);
-      var textures = CreateTextures(json.textures || [], images, videos);
-      var animations = CreateAnimations(json.animations || []);
-      var materials = CreateMaterials(json.materials || [], textures);
-      var geometries = CreateGeometries(json.geometries || []);
-
-      var resources = {
-        constants:  constants,
-        videos:     videos,
-        images:     images,
-        sounds:     sounds,
-        textures:   textures,
-        animations: animations,
-        materials:  materials,
-        geometries: geometries
-      };
-
-      return resources;
-    });
+    return {
+      constants:  constants,
+      images:     images,
+      sounds:     sounds,
+      videos:     videos,
+      textures:   textures,
+      animations: animations,
+      materials:  materials,
+      geometries: geometries
+    };
   }
 
   function Parse(json, path) {
-    return ParseResources(json, path).then(function(res) {
-      return ParseObject(json.object, res.materials, res.geometries, res.sounds, res.constants)
+    return (function(res) {
+      ParseObject(json.object, res.materials, res.geometries, res.sounds, res.constants)
       .then(function(object) {
 
         object.animations = res.animations;
         return object;
 
       });
-    });
+    })(CreateResources(json, path));
   }
 
   function ParseArray(json, path) {
-    return ParseResources(json, path).then(function(res) {
+    var res = CreateResources(json, path);
 
-      return ParseObjectArray(json.objects, res.materials,
-        res.geometries, res.sounds, res.constants);
-
-    });
+    return ParseObjectArray(json.objects, res.materials,
+      res.geometries, res.sounds, res.constants);
   }
 
   function ParseObjectPostLoading(object, json, materials, geometries, sounds, constants) {
@@ -10520,10 +10508,8 @@ if (typeof THREE !== 'undefined') {
    */
   AMTHREE.VideoTexture.prototype.play = function() {
     if (this.videoElement && !this.playing && this.video) {
-      if (!this.paused) {
-        this.videoElement.src = this.video.url;
-      }
       this.videoElement.setAttribute('crossorigin', 'anonymous');
+      this.videoElement.src = this.video.url;
       this.videoElement.play();
       this.image = this.videoElement;
       this.playing = true;
@@ -10554,7 +10540,7 @@ if (typeof THREE !== 'undefined') {
    */
   AMTHREE.VideoTexture.prototype.stop = function() {
     if (this.videoElement) {
-      this.pause();
+      this.playing = false;
       this.videoElement.src = '';
       this.image = undefined;
       this.needsUpdate = true;
@@ -10570,6 +10556,8 @@ if (typeof THREE !== 'undefined') {
    * @param {bool} [autoplay=false]
    */
   AMTHREE.VideoTexture.prototype.set = function(video, width, height, loop, autoplay) {
+    var playing = this.playing;
+
     this.stop();
 
     this.video = video;
@@ -10581,7 +10569,7 @@ if (typeof THREE !== 'undefined') {
 
     this.playing = false;
 
-    if (this.videoElement.autoplay)
+    if (this.videoElement.autoplay || playing)
       this.play();
   };
 
