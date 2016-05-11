@@ -35,10 +35,8 @@ if (typeof THREE !== 'undefined') {
    */
   AMTHREE.VideoTexture.prototype.play = function() {
     if (this.videoElement && !this.playing && this.video) {
-      if (!this.paused) {
-        this.videoElement.src = this.video.url;
-      }
       this.videoElement.setAttribute('crossorigin', 'anonymous');
+      this.videoElement.src = this.video.url;
       this.videoElement.play();
       this.image = this.videoElement;
       this.playing = true;
@@ -69,7 +67,7 @@ if (typeof THREE !== 'undefined') {
    */
   AMTHREE.VideoTexture.prototype.stop = function() {
     if (this.videoElement) {
-      this.pause();
+      this.playing = false;
       this.videoElement.src = '';
       this.image = undefined;
       this.needsUpdate = true;
@@ -85,6 +83,8 @@ if (typeof THREE !== 'undefined') {
    * @param {bool} [autoplay=false]
    */
   AMTHREE.VideoTexture.prototype.set = function(video, width, height, loop, autoplay) {
+    var playing = this.playing;
+
     this.stop();
 
     this.video = video;
@@ -96,7 +96,7 @@ if (typeof THREE !== 'undefined') {
 
     this.playing = false;
 
-    if (this.videoElement.autoplay)
+    if (this.videoElement.autoplay || playing)
       this.play();
   };
 
