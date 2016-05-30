@@ -289,6 +289,10 @@ AM.MarkerTracker = function() {
     console.log(_profiler.log() + ((_match_found) ? '<br/>match found' : ''));
   };
 
+  this.GetTrainedImageCount = function (){
+    return _trained_images.length;
+  }
+
   /**
    * Sets optionnals parameters
    * @param {object} params
