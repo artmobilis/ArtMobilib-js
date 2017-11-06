@@ -346,7 +346,8 @@ var AM = AM || {};
       return new Promise(function(resolve, reject) {
         if (_to_destruct)
           reject('loader interrupted');
-        return MediaStreamTrack.getSources(resolve);
+        //return MediaStreamTrack.getSources(resolve);
+        return MediaDevices.enumerateDevices(resolve);
       });
     }
 
